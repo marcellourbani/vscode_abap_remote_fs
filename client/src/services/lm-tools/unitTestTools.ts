@@ -137,7 +137,7 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
         `Running unit tests for ABAP object:\n\n` +
           `**Object:** ${objectName}\n` +
           `**Connection:** ${connectionId}\n\n` +
-          `Tests run only for the active version. If the object has inactive changes, no tests will run and nothing will be activated. Results will be displayed in the Testing view.`
+          `Tests run only for the active version. If the object or its owning class has inactive changes, no tests will run and nothing will be activated. Results will be displayed in the Testing view.`
       )
     }
 
@@ -151,10 +151,14 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
     const object = isAbapFile(path?.file) && path?.file?.object
     if (!object) throw new Error("Failed to retrieve object for unit test run")
     const main = isAbapClassInclude(object) ? object.parent : object
-    const struct = await main.loadStructure()
-    if (struct?.metaData["adtcore:version"] === "inactive") {
+    const objectStructure = await object.loadStructure()
+    const mainStructure = main === object ? objectStructure : await main.loadStructure()
+    if (
+      objectStructure?.metaData["adtcore:version"] === "inactive" ||
+      mainStructure?.metaData["adtcore:version"] === "inactive"
+    ) {
       throw new Error(
-        `${objectName} has saved inactive changes. No tests were run; activate it explicitly before running tests.`
+        `${objectName} or its owning class has saved inactive changes. No tests were run; activate the required object(s) explicitly before running tests.`
       )
     }
   }

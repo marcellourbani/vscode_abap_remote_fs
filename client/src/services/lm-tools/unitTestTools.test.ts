@@ -96,7 +96,7 @@ import { getSearchService } from "../abapSearchService"
 import { getOrCreateRoot } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { uriAbapFile } from "../../adt/operations/AdtObjectFinder"
-import { isAbapClass } from "abapobject"
+import { isAbapClass, isAbapClassInclude } from "abapobject"
 import { isAbapFile } from "abapfs"
 import type { Mock } from "vitest"
 
@@ -280,6 +280,7 @@ describe("RunUnitTestsTool", () => {
     ;(getOrCreateRoot as Mock).mockResolvedValue(mockRoot)
     mockAddResultsWithReturn.mockResolvedValue(makeTestResults())
     mockActivate.mockResolvedValue({ ok: true })
+    ;(isAbapClassInclude as unknown as Mock).mockReturnValue(false)
   })
 
   describe("prepareInvocation", () => {
@@ -635,6 +636,36 @@ describe("RunUnitTestsTool", () => {
         expect(mockAddResultsWithReturn).not.toHaveBeenCalled()
         expect(result.parts[0].text).toContain("Failed to run unit tests")
         expect(result.parts[0].text).toContain("saved inactive changes")
+        expect(result.parts[0].text).toContain("No tests were run")
+      })
+
+      it("does not run or activate tests for an inactive include with an active owning class", async () => {
+        const owningClass = {
+          loadStructure: vi.fn().mockResolvedValue({
+            metaData: { "adtcore:version": "active" }
+          })
+        }
+        const include = {
+          name: "ZCL_TEST.testclasses",
+          parent: owningClass,
+          loadStructure: vi.fn().mockResolvedValue({
+            metaData: { "adtcore:version": "inactive" }
+          })
+        }
+        mockRoot.findByAdtUri.mockResolvedValue({
+          path: "/zcl_test/source/testclasses",
+          file: { object: include }
+        })
+        ;(isAbapFile as unknown as Mock).mockReturnValue(true)
+        ;(isAbapClassInclude as unknown as Mock).mockReturnValue(true)
+
+        const result: any = await tool.invoke(
+          makeOptions({ objectName: "ZCL_TEST", connectionId: "dev100" }),
+          mockToken
+        )
+
+        expect(mockActivate).not.toHaveBeenCalled()
+        expect(mockAddResultsWithReturn).not.toHaveBeenCalled()
         expect(result.parts[0].text).toContain("No tests were run")
       })
     })
