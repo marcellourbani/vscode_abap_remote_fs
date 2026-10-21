@@ -8,13 +8,11 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { getOrCreateRoot } from "../../adt/conections"
-import { createUri, uriAbapFile } from "../../adt/operations/AdtObjectFinder"
+import { uriAbapFile } from "../../adt/operations/AdtObjectFinder"
 import { isAbapClass, isAbapClassInclude } from "abapobject"
 import { UnitTestRunner } from "../../adt/operations/UnitTestRunner"
 import { isAbapFile, isAbapStat, type PathItem } from "abapfs"
-import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 import { assertToolInvocationAuthorized } from "./toolGuard"
-import { showHideActivate } from "../../listeners"
 
 // ============================================================================
 // INTERFACES
@@ -139,7 +137,7 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
         `Running unit tests for ABAP object:\n\n` +
           `**Object:** ${objectName}\n` +
           `**Connection:** ${connectionId}\n\n` +
-          `Results will be displayed in the Testing view.`
+          `Tests run only for the active version. If the object has inactive changes, no tests will run and nothing will be activated. Results will be displayed in the Testing view.`
       )
     }
 
@@ -149,17 +147,15 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
     }
   }
 
-  private async activate(path: PathItem, connectionId: string) {
+  private async ensureActive(path: PathItem, objectName: string) {
     const object = isAbapFile(path?.file) && path?.file?.object
     if (!object) throw new Error("Failed to retrieve object for unit test run")
     const main = isAbapClassInclude(object) ? object.parent : object
     const struct = await main.loadStructure()
     if (struct?.metaData["adtcore:version"] === "inactive") {
-      const uri = createUri(connectionId, path.path)
-      const activator = AdtObjectActivator.get(connectionId)
-      const result = await activator.activate(main, uri, false)
-      showHideActivate(vscode.window.activeTextEditor, true)
-      if (!result.ok) throw new Error(result.summary || "Activation failed before running tests")
+      throw new Error(
+        `${objectName} has saved inactive changes. No tests were run; activate it explicitly before running tests.`
+      )
     }
   }
 
@@ -194,7 +190,7 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
 
       const workspaceUri = vscode.Uri.parse(`adt://${connectionId.toLowerCase()}${result.path}`)
 
-      await this.activate(result, connectionId) // if was saved recently we need to activate first. Activation errors will bubble up
+      await this.ensureActive(result, objectName)
 
       // Use the new method that returns results
       const testResults = await UnitTestRunner.get(connectionId.toLowerCase()).addResultsWithReturn(

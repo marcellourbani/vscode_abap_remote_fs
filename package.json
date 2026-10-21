@@ -2950,7 +2950,7 @@
       {
         "name": "abapfs_run_unit_tests",
         "displayName": "Run ABAP Unit Tests",
-        "modelDescription": "Run ABAP unit tests for an object. Results shown in VS Code Testing panel with pass/fail.",
+        "modelDescription": "Run ABAP unit tests for an object only when its active version is current. If the object has saved inactive changes, no tests are run and nothing is activated; activate the required objects explicitly, then retry. Results are shown in the VS Code Testing panel with pass/fail.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_run_unit_tests",
         "icon": "$(beaker)",

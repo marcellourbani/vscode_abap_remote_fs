@@ -610,34 +610,32 @@ describe("RunUnitTestsTool", () => {
         expect(result.parts[0].text).toContain("Failed to run unit tests")
       })
 
-      it("activates an inactive object without dialogs before running tests", async () => {
-        setupInvokeToRunner({ version: "inactive" })
+      it("runs tests without activating an active object", async () => {
+        setupInvokeToRunner()
 
         const result: any = await tool.invoke(
           makeOptions({ objectName: "ZCL_TEST", connectionId: "dev100" }),
           mockToken
         )
 
-        expect(mockActivate).toHaveBeenCalledWith(expect.anything(), undefined, false)
+        expect(mockActivate).not.toHaveBeenCalled()
         expect(mockAddResultsWithReturn).toHaveBeenCalled()
         expect(result.parts[0].text).toContain("Unit Test Results")
       })
 
-      it("does not run tests when activation fails", async () => {
+      it("does not run or activate tests for an inactive object", async () => {
         setupInvokeToRunner({ version: "inactive" })
-        mockActivate.mockResolvedValue({
-          ok: false,
-          summary: "Activation failed: 1 error in ZCL_TEST"
-        })
 
         const result: any = await tool.invoke(
           makeOptions({ objectName: "ZCL_TEST", connectionId: "dev100" }),
           mockToken
         )
 
+        expect(mockActivate).not.toHaveBeenCalled()
         expect(mockAddResultsWithReturn).not.toHaveBeenCalled()
         expect(result.parts[0].text).toContain("Failed to run unit tests")
-        expect(result.parts[0].text).toContain("1 error in ZCL_TEST")
+        expect(result.parts[0].text).toContain("saved inactive changes")
+        expect(result.parts[0].text).toContain("No tests were run")
       })
     })
   })
