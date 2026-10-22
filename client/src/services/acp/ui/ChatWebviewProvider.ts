@@ -60,9 +60,13 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     private readonly sessionUpdateHandler: SessionUpdateHandler
   ) {
     // Configure marked for safe rendering
+    const markdownRenderer = new marked.Renderer()
+    const renderCode = markdownRenderer.code.bind(markdownRenderer)
+    markdownRenderer.code = token => (token.text.trim() ? renderCode(token) : "")
     marked.setOptions({
       breaks: true,
-      gfm: true
+      gfm: true,
+      renderer: markdownRenderer
     })
 
     // Register as a session update listener
@@ -2139,6 +2143,10 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const messagesEl = document.getElementById('messages');
+    let shouldAutoScroll = true;
+    messagesEl.addEventListener('scroll', () => {
+      shouldAutoScroll = messagesEl.scrollHeight - messagesEl.clientHeight - messagesEl.scrollTop <= 24;
+    });
     const emptyState = document.getElementById('emptyState');
     const promptInput = document.getElementById('promptInput');
     const sendStopBtn = document.getElementById('sendStopBtn');
@@ -3165,7 +3173,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     function scrollToBottom() {
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      if (shouldAutoScroll) messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
     function getStatusIcon(status) {
@@ -3773,7 +3781,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         pendingThinkText = text;
         return '';
       }
-      return text.trim() ? text : '';
+      return text;
     }
 
     function closeTextSegment() {
