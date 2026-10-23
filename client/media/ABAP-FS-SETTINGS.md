@@ -560,7 +560,7 @@ Experimental chat panel for external coding agents (Claude Code, Codex, Gemini C
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `enabled` | boolean | `false` | Show the **ABAP FS - Agent Chat** panel (secondary side bar). Turning it off stops all running agents. |
+| `enabled` | boolean | `true` | Show the **ABAP FS - Agent Chat** panel (secondary side bar). Turning it off stops all running agents. |
 
 ### `abapfs.acp.agents`
 
@@ -638,7 +638,7 @@ See [Agent Chat](../../docs/agent-chat/index.md) for setup and usage.
 | ABAP Cleaner not working | `abapfs.cleaner.enabled`, `*.executablePath` | Both must be set. Verify `abap-cleanerc.exe` exists at the path. |
 | Subagents disabled automatically | `abapfs.subagents.models` | Configure an available model for each active agent through the unified panel or `abapfs_manage_subagents`. |
 | MCP server connection refused | `abapfs.mcpServer.autoStart`, `*.port` | Ensure autoStart is true, verify port isn't in use by another application. |
-| Agent Chat panel missing | `abapfs.acp.enabled` | Enable it; the panel is in the secondary side bar. |
+| Agent Chat panel missing | `abapfs.acp.enabled` | On by default; check that a user or workspace setting hasn't turned it off. The panel is in the secondary side bar. |
 | Agent has no ABAP FS tools | `abapfs.acp.provideMcpServer` | Enable it and start a new chat, or add the MCP server in the agent's own config. |
 | MCP client or agent cannot edit with `replace_string_in_abap_object` | `abapfs.mcpServer.exposeEditTool` | Must be `true`; start a new MCP session after changing it. |
 | No Keep / Undo after AI edits | `abapfs.editReview.enabled` | Enable it. Edits through `replace_string_in_abap_object` and Agent Chat agents' file tools are tracked; edits written by MCP clients' own tools outside ABAP FS are not. |

@@ -6,7 +6,7 @@ All settings are in VS Code Settings (`Ctrl+,`). Search for `abapfs.acp`.
 
 | Setting | Default | What it does |
 | ------- | ------- | ------------ |
-| `abapfs.acp.enabled` | `false` | Turns Agent Chat on. When off, the panel is hidden and no agent runs. Turning it off stops running agents. |
+| `abapfs.acp.enabled` | `true` | Turns Agent Chat on. When off, the panel is hidden and no agent runs. Turning it off stops running agents. |
 | `abapfs.acp.agents` | `{}` | The agents you can connect to, keyed by display name. Each entry has `command` (required), `args` and `env`. **Add Agent** fills this in for you. See [Setup](setup.md#editing-agents-in-settingsjson). |
 | `abapfs.acp.provideMcpServer` | `false` | Hands the ABAP FS MCP server, and with it all ABAP FS tools, to every agent session, starting the server when needed. See [ABAP FS Tools for Agents](mcp.md). |
 | `abapfs.acp.autoApprovePermissions` | `ask` | `ask`: every permission request from the agent shows a picker. `allowAll`: allows everything automatically. |

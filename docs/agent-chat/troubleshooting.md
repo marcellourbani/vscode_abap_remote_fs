@@ -7,7 +7,7 @@ Start with the logs. Both are in the panel's `...` menu:
 
 ## The panel doesn't appear
 
-- Check that `abapfs.acp.enabled` is on.
+- Check that `abapfs.acp.enabled` is on. It's on by default, so look for a user or workspace setting that turned it off.
 - Look in the secondary side bar (right side). If it's closed, use **View → Appearance → Secondary Side Bar**, or run **ABAP FS Agents: Open Chat**.
 
 ## Agent fails to connect

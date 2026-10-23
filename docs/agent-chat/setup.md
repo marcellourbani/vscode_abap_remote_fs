@@ -2,17 +2,19 @@
 
 > **Prerequisites:** Complete the [Installation Steps](../getting-started/installation.md) first and connect to at least one SAP system (`ABAP FS: Connect to an ABAP system`).
 
-## 1. Enable Agent Chat
+## 1. Open Agent Chat
 
-Open Settings (`Ctrl+,`), search for `abapfs.acp.enabled` and tick it, or add to `settings.json`:
+Agent Chat is on by default (`abapfs.acp.enabled`). The **ABAP FS - Agent Chat** view appears in the secondary side bar (the right-hand side, next to Copilot Chat) and opens automatically.
+
+To turn it off, open Settings (`Ctrl+,`), search for `abapfs.acp.enabled` and untick it, or add to `settings.json`:
 
 ```json
 {
-  "abapfs.acp.enabled": true
+  "abapfs.acp.enabled": false
 }
 ```
 
-The **ABAP FS - Agent Chat** view appears in the secondary side bar (the right-hand side, next to Copilot Chat) and opens automatically. Unticking the setting stops all agents and hides the panel again.
+Turning it off stops all agents and hides the panel. Tick it again to bring the panel back.
 
 ## 2. Turn on the ABAP FS tools for agents (recommended)
 

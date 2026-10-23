@@ -1,6 +1,6 @@
 # Agent Chat (ACP)
 
-> ⚠️ **EXPERIMENTAL FEATURE** - Off by default. Please report any issues.
+> ⚠️ **EXPERIMENTAL FEATURE** - On by default; turn it off with `abapfs.acp.enabled`. Please report any issues.
 
 **Agent Chat** lets you use external coding agents such as Claude Code, Codex, Gemini CLI or GitHub Copilot's CLI agent from a chat panel inside VS Code, working on your SAP systems through ABAP FS.
 
