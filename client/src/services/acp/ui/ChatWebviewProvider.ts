@@ -8,6 +8,7 @@ import { log, logError } from "../utils/Logger"
 import { sendEvent } from "../utils/TelemetryManager"
 import { toAgentUri } from "../fs/AbapPathMapper"
 import { ADTSCHEME } from "../../../adt/conections"
+import { CHAT_MASCOT_HTML, CHAT_MASCOT_SCRIPT, CHAT_MASCOT_STYLES } from "./ChatMascot"
 
 const TURN_RUNNING_CONTEXT = "abapfs.acp.turnRunning"
 
@@ -43,6 +44,8 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView
   private updateListener: SessionUpdateListener
   private _hasChatContent = false
+  private mascotEnabled = true
+  private mascotActivity: "connecting" | "idle" | "error" = "idle"
   private pendingAttachments = new Map<string, vscode.Uri | PastedAttachment>()
   private activeSessionId?: string
   private subagentSessions = new Map<string, SubagentUpdate>()
@@ -175,6 +178,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
           break
         case "ready":
           this.sendCurrentState()
+          this.postMessage({ type: "mascotActivity", activity: this.mascotActivity })
           break
         case "renderMarkdown": {
           // Webview requests markdown rendering for history items
@@ -435,6 +439,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
    * Send current session state to the webview on load.
    */
   private sendCurrentState(): void {
+    this.postMessage({ type: "mascotVisibility", enabled: this.mascotEnabled })
     const activeId = this.sessionManager.getActiveSessionId()
     const session = activeId ? this.sessionManager.getSession(activeId) : null
     this.postMessage({
@@ -455,6 +460,16 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         : null
     })
     this.postAttachmentsUpdate()
+  }
+
+  setMascotEnabled(enabled: boolean): void {
+    this.mascotEnabled = enabled
+    this.postMessage({ type: "mascotVisibility", enabled })
+  }
+
+  notifyMascotActivity(activity: "connecting" | "idle" | "error"): void {
+    this.mascotActivity = activity
+    this.postMessage({ type: "mascotActivity", activity })
   }
 
   private postAttachmentsUpdate(): void {
@@ -878,6 +893,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
   <title>ABAP FS - Agent Chat</title>
   <link rel="stylesheet" href="${codiconsUri}">
   <style>
+${CHAT_MASCOT_STYLES}
     :root {
       --container-padding: 12px;
       --message-radius: 8px;
@@ -2092,6 +2108,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     <span id="progressLabel">Working…</span>
   </div>
 
+${CHAT_MASCOT_HTML}
   <div class="input-area" id="inputArea">
     <div class="slash-popup" id="slashPopup">
       <div class="slash-popup-header">Commands</div>
@@ -2142,6 +2159,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
+${CHAT_MASCOT_SCRIPT}
     const messagesEl = document.getElementById('messages');
     let shouldAutoScroll = true;
     messagesEl.addEventListener('scroll', () => {
@@ -2173,6 +2191,11 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
     let hasActiveSession = false;
     let isProcessing = false;
+    let mascotPosition = 18;
+    const chatMascot = createAcpChatMascot(state => {
+      mascotPosition = state.position;
+      saveState();
+    });
 
     // Modes / models state (legacy fallback path)
     let availableModes = [];
@@ -2219,7 +2242,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     let sessionState = null;
 
     function saveState() {
-      vscode.setState({ chatHistory, sessionState, hasActiveSession });
+      vscode.setState({ chatHistory, sessionState, hasActiveSession, mascotPosition });
     }
 
     function restoreState() {
@@ -2230,6 +2253,8 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         .filter(item => !(item.kind === 'message' && isEmptyThinkText(item.text))
           && !(item.kind === 'thought' && !item.text?.trim()));
       sessionState = saved.sessionState || null;
+      mascotPosition = saved.mascotPosition;
+      chatMascot.setState({ position: mascotPosition });
       hasActiveSession = false;
 
       const assistantItems = [];
@@ -2429,6 +2454,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         .filter(Boolean)
         .join('\\n');
       addMessage('user', displayText);
+      chatMascot.submit();
       promptInput.value = '';
       autoGrowInput();
       vscode.postMessage({
@@ -2535,6 +2561,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     function setProcessing(processing) {
       isProcessing = processing;
       document.body.classList.toggle('processing', processing);
+      if (processing) chatMascot.setActivity('working');
       updateSendButton();
       if (processing) {
         statusEl.textContent = '';
@@ -3951,6 +3978,12 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     window.addEventListener('message', (event) => {
       const msg = event.data;
       switch (msg.type) {
+        case 'mascotVisibility':
+          chatMascot.setEnabled(msg.enabled);
+          break;
+        case 'mascotActivity':
+          chatMascot.setActivity(msg.activity);
+          break;
         case 'state':
           if (msg.session) {
             if (sessionState?.sessionId !== msg.session.sessionId) {
@@ -4026,6 +4059,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
           activeResponseSessionId = null;
           turnUsageUpdate = null;
           setProcessing(false);
+          chatMascot.setActivity(msg.stopReason === 'error' || msg.stopReason === 'cancelled' ? 'error' : 'idle');
           break;
 
         case 'clearChat':
@@ -4070,6 +4104,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
         case 'error':
           addMessage('error', msg.message || 'An error occurred');
+          chatMascot.react('sad');
           break;
 
         case 'sessionUpdate':
@@ -4139,6 +4174,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
       switch (type) {
         case 'agent_message_chunk': {
+          if (!isLoadingSession) chatMascot.speak();
           const content = update.content;
           if (content && content.type === 'text' && content.text) {
             const visible = visibleAssistantText(content.text);
@@ -4228,6 +4264,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         }
 
         case 'tool_call': {
+          if (!isLoadingSession) chatMascot.toolUpdate(update.toolCallId || 'unknown', update.status || 'pending');
           const tc = update;
           addToolCall(
             tc.toolCallId || 'unknown',
@@ -4241,6 +4278,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         }
 
         case 'tool_call_update': {
+          if (!isLoadingSession && update.status) chatMascot.toolUpdate(update.toolCallId || 'unknown', update.status);
           updateToolCall(
             update.toolCallId || 'unknown',
             update.status || 'completed',

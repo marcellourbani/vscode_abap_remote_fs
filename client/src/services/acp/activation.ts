@@ -119,6 +119,27 @@ function startAcp(context: vscode.ExtensionContext): vscode.Disposable {
     sessionManager,
     sessionUpdateHandler
   )
+  let petVisible = context.globalState.get<boolean>("abapfs.acp.petVisible", true)
+  chatWebviewProvider.setMascotEnabled(petVisible)
+  void vscode.commands.executeCommand("setContext", "abapfs.acp.petVisible", petVisible)
+  const togglePetCmd = vscode.commands.registerCommand("abapfs.acp.togglePet", async () => {
+    petVisible = !petVisible
+    chatWebviewProvider.setMascotEnabled(petVisible)
+    await context.globalState.update("abapfs.acp.petVisible", petVisible)
+    await vscode.commands.executeCommand("setContext", "abapfs.acp.petVisible", petVisible)
+  })
+
+  async function withConnectingPet(operation: () => Promise<unknown>): Promise<void> {
+    chatWebviewProvider.notifyMascotActivity("connecting")
+    try {
+      await operation()
+      chatWebviewProvider.notifyMascotActivity("idle")
+    } catch (error) {
+      chatWebviewProvider.notifyMascotActivity("error")
+      throw error
+    }
+  }
+
   const chatViewRegistration = vscode.window.registerWebviewViewProvider(
     ChatWebviewProvider.viewType,
     chatWebviewProvider,
@@ -217,7 +238,7 @@ function startAcp(context: vscode.ExtensionContext): vscode.Disposable {
             cancellable: false
           },
           async () => {
-            await sessionManager.connectToAgent(agentName!)
+            await withConnectingPet(() => sessionManager.connectToAgent(agentName!))
           }
         )
       } catch (e: any) {
@@ -246,7 +267,7 @@ function startAcp(context: vscode.ExtensionContext): vscode.Disposable {
             cancellable: false
           },
           async () => {
-            await sessionManager.newConversation()
+            await withConnectingPet(() => sessionManager.newConversation())
           }
         )
       } catch (e: any) {
@@ -312,8 +333,10 @@ function startAcp(context: vscode.ExtensionContext): vscode.Disposable {
           cancellable: false
         },
         async () => {
-          await sessionManager.disconnectAgent(agentName)
-          await sessionManager.connectToAgent(agentName)
+          await withConnectingPet(async () => {
+            await sessionManager.disconnectAgent(agentName)
+            await sessionManager.connectToAgent(agentName)
+          })
         }
       )
       vscode.window.showInformationMessage(`Restarted ${agentName}`)
@@ -403,6 +426,7 @@ function startAcp(context: vscode.ExtensionContext): vscode.Disposable {
     registerAgentManagementCommands(),
     chatViewRegistration,
     statusBarManager,
+    togglePetCmd,
     connectAgentCmd,
     newConversationCmd,
     showHistoryCmd,

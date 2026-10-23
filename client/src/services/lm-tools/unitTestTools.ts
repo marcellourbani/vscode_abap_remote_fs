@@ -8,11 +8,18 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { getOrCreateRoot } from "../../adt/conections"
-import { uriAbapFile } from "../../adt/operations/AdtObjectFinder"
+import { createUri, uriAbapFile } from "../../adt/operations/AdtObjectFinder"
 import { isAbapClass, isAbapClassInclude } from "abapobject"
 import { UnitTestRunner } from "../../adt/operations/UnitTestRunner"
 import { isAbapFile, isAbapStat, type PathItem } from "abapfs"
+import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 import { assertToolInvocationAuthorized } from "./toolGuard"
+import { showHideActivate } from "../../listeners"
+
+const NO_AUTO_ACTIVATE_SETTING = "abapfs.unitTests.noAutoActivate"
+
+const noAutoActivate = () =>
+  vscode.workspace.getConfiguration().get<boolean>(NO_AUTO_ACTIVATE_SETTING, false)
 
 // ============================================================================
 // INTERFACES
@@ -137,13 +144,29 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
         `Running unit tests for ABAP object:\n\n` +
           `**Object:** ${objectName}\n` +
           `**Connection:** ${connectionId}\n\n` +
-          `Tests run only for the active version. If the object or its owning class has inactive changes, no tests will run and nothing will be activated. Results will be displayed in the Testing view.`
+          (noAutoActivate()
+            ? `Tests run only for the active version. If the object or its owning class has inactive changes, no tests will run and nothing will be activated. Results will be displayed in the Testing view.`
+            : `Results will be displayed in the Testing view.`)
       )
     }
 
     return {
       invocationMessage: `Running unit tests for ${objectName}`,
       confirmationMessages
+    }
+  }
+
+  private async activate(path: PathItem, connectionId: string) {
+    const object = isAbapFile(path?.file) && path?.file?.object
+    if (!object) throw new Error("Failed to retrieve object for unit test run")
+    const main = isAbapClassInclude(object) ? object.parent : object
+    const struct = await main.loadStructure()
+    if (struct?.metaData["adtcore:version"] === "inactive") {
+      const uri = createUri(connectionId, path.path)
+      const activator = AdtObjectActivator.get(connectionId)
+      const result = await activator.activate(main, uri, false)
+      showHideActivate(vscode.window.activeTextEditor, true)
+      if (!result.ok) throw new Error(result.summary || "Activation failed before running tests")
     }
   }
 
@@ -194,7 +217,8 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
 
       const workspaceUri = vscode.Uri.parse(`adt://${connectionId.toLowerCase()}${result.path}`)
 
-      await this.ensureActive(result, objectName)
+      if (noAutoActivate()) await this.ensureActive(result, objectName)
+      else await this.activate(result, connectionId) // if was saved recently we need to activate first. Activation errors will bubble up
 
       // Use the new method that returns results
       const testResults = await UnitTestRunner.get(connectionId.toLowerCase()).addResultsWithReturn(

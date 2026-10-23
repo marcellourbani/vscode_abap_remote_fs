@@ -1,4 +1,11 @@
+const { mockNoAutoActivate } = vi.hoisted(() => ({ mockNoAutoActivate: vi.fn() }))
+
 vi.mock("vscode", () => ({
+  workspace: {
+    getConfiguration: vi.fn(function () {
+      return { get: (_key: string, def: unknown) => mockNoAutoActivate() ?? def }
+    })
+  },
   LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
     return { parts }
   }),
@@ -280,6 +287,7 @@ describe("RunUnitTestsTool", () => {
     ;(getOrCreateRoot as Mock).mockResolvedValue(mockRoot)
     mockAddResultsWithReturn.mockResolvedValue(makeTestResults())
     mockActivate.mockResolvedValue({ ok: true })
+    mockNoAutoActivate.mockReturnValue(undefined)
     ;(isAbapClassInclude as unknown as Mock).mockReturnValue(false)
   })
 
@@ -611,7 +619,37 @@ describe("RunUnitTestsTool", () => {
         expect(result.parts[0].text).toContain("Failed to run unit tests")
       })
 
+      it("activates an inactive object without dialogs before running tests by default", async () => {
+        setupInvokeToRunner({ version: "inactive" })
+
+        const result: any = await tool.invoke(
+          makeOptions({ objectName: "ZCL_TEST", connectionId: "dev100" }),
+          mockToken
+        )
+
+        expect(mockActivate).toHaveBeenCalledWith(expect.anything(), undefined, false)
+        expect(mockAddResultsWithReturn).toHaveBeenCalled()
+        expect(result.parts[0].text).toContain("Unit Test Results")
+      })
+
+      it("does not run tests when activation fails by default", async () => {
+        setupInvokeToRunner({ version: "inactive" })
+        mockActivate.mockResolvedValue({
+          ok: false,
+          summary: "Activation failed: 1 error in ZCL_TEST"
+        })
+
+        const result: any = await tool.invoke(
+          makeOptions({ objectName: "ZCL_TEST", connectionId: "dev100" }),
+          mockToken
+        )
+
+        expect(mockAddResultsWithReturn).not.toHaveBeenCalled()
+        expect(result.parts[0].text).toContain("1 error in ZCL_TEST")
+      })
+
       it("runs tests without activating an active object", async () => {
+        mockNoAutoActivate.mockReturnValue(true)
         setupInvokeToRunner()
 
         const result: any = await tool.invoke(
@@ -625,6 +663,7 @@ describe("RunUnitTestsTool", () => {
       })
 
       it("does not run or activate tests for an inactive object", async () => {
+        mockNoAutoActivate.mockReturnValue(true)
         setupInvokeToRunner({ version: "inactive" })
 
         const result: any = await tool.invoke(
@@ -640,6 +679,7 @@ describe("RunUnitTestsTool", () => {
       })
 
       it("does not run or activate tests for an inactive include with an active owning class", async () => {
+        mockNoAutoActivate.mockReturnValue(true)
         const owningClass = {
           loadStructure: vi.fn().mockResolvedValue({
             metaData: { "adtcore:version": "active" }

@@ -2950,7 +2950,7 @@
       {
         "name": "abapfs_run_unit_tests",
         "displayName": "Run ABAP Unit Tests",
-        "modelDescription": "Run ABAP unit tests for an object only when its active version is current. If the object has saved inactive changes, no tests are run and nothing is activated; activate the required objects explicitly, then retry. Results are shown in the VS Code Testing panel with pass/fail.",
+        "modelDescription": "Run ABAP unit tests for an object. Inactive changes are activated first by default; if the user enabled abapfs.unitTests.noAutoActivate, no tests are run and nothing is activated when the object has saved inactive changes, so activate the required objects explicitly, then retry. Results are shown in the VS Code Testing panel with pass/fail.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_run_unit_tests",
         "icon": "$(beaker)",
@@ -4243,6 +4243,12 @@
         "command": "abapfs.acp.showTraffic",
         "title": "Show Protocol Traffic",
         "category": "ABAP FS Agents"
+      },
+      {
+        "command": "abapfs.acp.togglePet",
+        "title": "Toggle Max the Chat Pet",
+        "category": "ABAP FS Agents",
+        "toggled": "abapfs.acp.petVisible"
       },
       {
         "command": "abapfs.acp.setMode",
@@ -5932,6 +5938,11 @@
           "when": "view == abapfs.views.agentChat"
         },
         {
+          "command": "abapfs.acp.togglePet",
+          "when": "view == abapfs.views.agentChat",
+          "group": "pet@1"
+        },
+        {
           "command": "abapfs.createInEditor",
           "group": "navigation@3",
           "when": "view == workbench.explorer.fileView && abapfs:extensionActive"
@@ -6770,6 +6781,11 @@
           "type": "boolean",
           "default": false,
           "description": "Log all ACP protocol traffic to the 'ABAP FS Agents Traffic' output channel."
+        },
+        "abapfs.unitTests.noAutoActivate": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Control how the `abapfs_run_unit_tests` tool handles objects with saved inactive changes. When off (default), the tool activates the object first and then runs the tests. When on, the tool only checks the active state: if the object or its owning class has inactive changes, no tests are run and nothing is activated."
         },
         "abapfs.editReview.enabled": {
           "type": "boolean",
