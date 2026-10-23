@@ -93,10 +93,7 @@ function registerAgentManagementCommands(): vscode.Disposable {
       }
     }),
     vscode.commands.registerCommand("abapfs.acp.manageAgents", () =>
-      vscode.commands.executeCommand(
-        "workbench.action.openSettings",
-        `${ACP_CONFIG_SECTION}.agents`
-      )
+      vscode.commands.executeCommand("workbench.action.openSettings", `${ACP_CONFIG_SECTION}`)
     )
   )
 }

@@ -4285,7 +4285,7 @@
       },
       {
         "command": "abapfs.acp.manageAgents",
-        "title": "Manage Agents (Settings)",
+        "title": "Manage Agent Settings",
         "category": "ABAP FS Agents",
         "icon": "$(gear)"
       },
