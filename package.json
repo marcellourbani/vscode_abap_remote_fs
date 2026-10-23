@@ -6601,7 +6601,7 @@
         },
         "abapfs.acp.enabled": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "markdownDescription": "**Experimental.** Enable the ABAP FS Agents chat panel, which talks to external coding agents over the Agent Client Protocol (ACP). Agents read SAP objects through ABAP FS. Turn on `#abapfs.acp.provideMcpServer#` to also give them the ABAP FS tools for searching, editing and activating objects."
         },
         "abapfs.acp.agents": {

@@ -2100,7 +2100,7 @@ ${CHAT_MASCOT_STYLES}
           <span class="codicon codicon-add"></span> Add Agent
         </button>
       </div>
-      <div class="hint">AI responses may be inaccurate. Agents are configured in <code>abapfs.acp.agents</code>.</div>
+      <div class="hint">AI responses may be inaccurate. Agents are configured in <code>abapfs.acp.agents</code>. Disable this panel in Settings: <code>abapfs.acp.enabled</code>.</div>
     </div>
   </div>
   <div class="progress-row" id="progressRow">
