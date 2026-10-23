@@ -186,6 +186,20 @@ describe("ACP Max watching the prompt", () => {
     expect(harness.position()).toBeGreaterThan(caretPercent(harness))
   })
 
+  it("turns toward a caret when Max starts to its right on a wide stage", () => {
+    const harness = createMascotHarness()
+    harness.stage.clientWidth = 2800
+    harness.stage.rect.width = 2800
+    harness.prompt!.clientWidth = 2800
+    harness.prompt!.rect.width = 2800
+    harness.pet.setState({ position: 90 })
+    harness.type("x".repeat(25))
+    harness.until(() => harness.facing.style.transform === "scaleX(-1)", 1500)
+    harness.advance(800)
+    expect(harness.position()).toBeLessThan(90)
+    expect(harness.facing.style.transform).toBe("scaleX(-1)")
+  })
+
   it("uses the start of a backwards selection as the caret", () => {
     const harness = createMascotHarness()
     harness.prompt!.focus()

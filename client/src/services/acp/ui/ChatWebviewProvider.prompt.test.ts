@@ -35,7 +35,7 @@ describe("ChatWebviewProvider: sending a prompt", () => {
     await send({ type: "sendPrompt", text: "hi" })
     expect(last("error")).toEqual({
       type: "error",
-      message: "No active session. Create a session first."
+      message: "No agent connected. Connect to an agent before sending a message."
     })
     expect(sessions.sendPrompt).not.toHaveBeenCalled()
   })

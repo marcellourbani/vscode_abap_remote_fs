@@ -1404,7 +1404,6 @@
 
     // Wait for the extension's live connection state, not the persisted webview flag.
     document.body.classList.add('disconnected');
-    if (inputArea) inputArea.classList.add('disabled');
     let currentAssistantEl = null;
     let currentAssistantText = '';
     let pendingThinkText = '';
@@ -3080,8 +3079,6 @@
       saveState();
       if (sessionBanner) sessionBanner.classList.remove('visible');
       if (emptyState) emptyState.style.display = '';
-      if (inputArea) inputArea.classList.add('disabled');
-      promptInput.disabled = true;
       modePickerWrap.classList.add('hidden');
       modelPickerWrap.classList.add('hidden');
       setConfigOptionsState([]);
@@ -3201,9 +3198,7 @@
           messagesEl.appendChild(emptyState);
           if (emptyState) emptyState.style.display = '';
           if (sessionBanner) sessionBanner.classList.remove('visible');
-          if (inputArea) inputArea.classList.add('disabled');
           document.body.classList.add('disconnected');
-          promptInput.disabled = true;
           modePickerWrap.classList.add('hidden');
           modelPickerWrap.classList.add('hidden');
           setConfigOptionsState([]);

@@ -267,7 +267,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     if (!activeId) {
       this.postMessage({
         type: "error",
-        message: "No active session. Create a session first."
+        message: "No agent connected. Connect to an agent before sending a message."
       })
       return
     }

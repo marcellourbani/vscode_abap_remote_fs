@@ -922,7 +922,7 @@ export const CHAT_MASCOT_SCRIPT = `
         const me = position / 100 * width, edge = Math.min(width / 2, 44);
         // Hysteresis: once on the left-facing side, the caret has to clear the wall zone by a margin before turning back.
         const wall = edge + gaze.stand + (direction < 0 ? ZONE_HYST : 0);
-        const face = caretPx < wall ? -1 : 1;
+        const face = caretPx < wall || me > caretPx ? -1 : 1;
         const spotPct = clampPos((caretPx - face * gaze.stand) / width * 100);
         const fwd = (spotPct / 100 * width - me) * face;
         if (face !== direction) {
