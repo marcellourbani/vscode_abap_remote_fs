@@ -209,6 +209,18 @@ To view a copy of this license, visit https://creativecommons.org/licenses/by/3.
 
 Changes made: The original human-oriented style guide (~5000 lines) was distilled into a compact, AI-optimized ruleset (~350 rules) suitable for automated code generation and review. All rationale, discussion, and verbose examples were removed; only the actionable rules and minimal code examples were retained.
 
+## Visual Studio Code Codicons
+
+The agent chat webview displays the VS Code product icons (codicon font and stylesheet), redistributed unmodified in `client/dist/media/codicons/`.
+
+**Source:** https://github.com/microsoft/vscode-codicons  
+**License:** Creative Commons Attribution 4.0 International (CC BY 4.0)  
+**Copyright:** © Microsoft Corporation
+
+To view a copy of this license, visit https://creativecommons.org/licenses/by/4.0/
+
+The license text ships alongside the font as `client/dist/media/codicons/LICENSE`.
+
 ## ABAP MCP Server (Authentication Architecture Reference)
 
 The multi-method authentication implementation in this extension (Kerberos/SPNEGO, X.509 Certificate, Browser SSO, OAuth 2.0 on-premise) was designed using the authentication architecture from the ABAP MCP Server project as a reference.
@@ -243,6 +255,38 @@ SOFTWARE.
 ```
 
 The implementation in this extension is a clean-room rewrite adapted for the VS Code extension context (PasswordVault integration, webview connection manager, language server IPC, debugger client), but the overall authentication strategy architecture — particularly the PowerShell SSPI approach for Kerberos/SPNEGO, the cookie-capture pattern for Browser SSO, and the PKCE flow for on-premise OAuth — was informed by the ABAP MCP Server's design.
+
+## vscode-acp
+
+The ACP chat client in this extension is adapted from the vscode-acp project.
+
+**Source:** https://github.com/formulahendry/vscode-acp  
+**License:** MIT License  
+**Copyright:** (c) 2026 Jun Han
+
+```
+MIT License
+
+Copyright (c) 2026 Jun Han
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ## Additional Dependencies
 

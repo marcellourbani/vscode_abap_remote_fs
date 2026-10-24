@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
 /**
  * Tests for mcpServer.ts
  * Tests the JSON Schema to Zod converter (jsonSchemaPropertyToZod/jsonSchemaToZod),
@@ -98,13 +100,30 @@ import {
   startMcpServerCommand,
   jsonSchemaPropertyToZod,
   jsonSchemaToZod,
-  validateApiKey
+  validateApiKey,
+  isMcpExposedTool
 } from "./mcpServer"
 import type { Mock } from "vitest"
 
 vi.mock("../langClient", () => ({
   triggerSyntaxCheck: vi.fn()
 }))
+
+describe("isMcpExposedTool", () => {
+  const edit = { name: "replace_string_in_abap_object", tags: ["abap-fs"] }
+  const read = { name: "abapfs_get_object_source", tags: ["abap-fs"] }
+
+  it("only exposes ABAP FS tools", () => {
+    expect(isMcpExposedTool({ name: "other_tool", tags: ["other"] }, true)).toBe(false)
+    expect(isMcpExposedTool(read, true)).toBe(true)
+  })
+
+  it("exposes the edit tool only when allowed", () => {
+    expect(isMcpExposedTool(edit, true)).toBe(true)
+    expect(isMcpExposedTool(edit, false)).toBe(false)
+    expect(isMcpExposedTool(read, false)).toBe(true)
+  })
+})
 
 describe("mcpServer", () => {
   const mockContext = {

@@ -112,6 +112,13 @@ nav:
       - Communication Log: developer-tools/communication-log.md
       - Tool Grouping Fix: developer-tools/tool-grouping-fix.md
   - MCP Server: mcp-server.md
+  - Agent Chat (ACP):
+      - Overview: agent-chat/index.md
+      - Setup: agent-chat/setup.md
+      - Using Agent Chat: agent-chat/using.md
+      - Settings Reference: agent-chat/settings.md
+      - ABAP FS Tools for Agents (MCP): agent-chat/mcp.md
+      - Troubleshooting: agent-chat/troubleshooting.md
   - Reference:
       - Important Considerations: reference/important-considerations.md
       - Commands vs Tools: reference/commands-vs-tools.md

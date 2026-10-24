@@ -97,7 +97,7 @@ export class GetAbapObjectWorkspaceUriTool implements vscode.LanguageModelTool<I
         `Description: ${exactMatch["adtcore:description"] || "none"}\n` +
         `ADT URI: ${exactMatch["adtcore:uri"]}\n` +
         `Workspace URI: ${workspaceUri}\n` +
-        `Use workspace URI with standard VS Code file ops.`
+        `Use workspace URI with standard VS Code file ops or replace_string_in_abap_object (preferred)`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     } catch (error) {

@@ -65,6 +65,11 @@ function copyClientAssets() {
   if (existsSync(at("media"))) copyDir(at("media"), at("dist/media"))
   // documentationTool.ts reads this at runtime — fail the build if it's missing.
   copyFile(at("../DOCUMENTATION.md"), at("dist/media/DOCUMENTATION.md"))
+  // The agent chat webview renders VS Code's codicons, which webviews don't get from the host.
+  const codiconsPkg = packageDir("@vscode/codicons")
+  for (const file of ["codicon.css", "codicon.ttf"])
+    copyFile(resolve(codiconsPkg, "dist", file), at(`dist/media/codicons/${file}`))
+  copyFile(resolve(codiconsPkg, "LICENSE"), at("dist/media/codicons/LICENSE"))
   // The Playwright vendor config + globalSetup are built from templates/*.ts by their own
   // tsdown entries (below) into dist/vendor/*.js. Keep the boundary ESM so import.meta.dirname
   // works both when the source is tested and when Playwright loads the emitted config.
@@ -131,6 +136,15 @@ export default defineConfig([
     minify: minifyKeepClasses,
     inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/] },
     plugins: [copyClientAssetsPlugin]
+  },
+  {
+    ...shared,
+    entry: { mcpStdioBridge: "src/services/acp/mcpStdioBridge.ts" },
+    outDir: "dist",
+    tsconfig: "tsconfig.json",
+    sourcemap: false,
+    minify: minifyKeepClasses,
+    inputOptions: { external: ["vscode"] }
   },
   {
     ...shared,

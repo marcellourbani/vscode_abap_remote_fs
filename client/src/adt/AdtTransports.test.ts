@@ -25,10 +25,13 @@ import {
   TransportStatus,
   transportValidators,
   selectTransport,
+  selectTransportIfNeeded,
   pickTransportProgrammatically,
   pickTransportForExistingObjectWrite,
   TransportPickerError
 } from "./AdtTransports"
+import { getClient, uriRoot } from "./conections"
+import { isAbapStat } from "abapfs"
 import { funWindow as window } from "../services/funMessenger"
 import { withp } from "../lib"
 import type { Mocked, Mock } from "vitest"
@@ -142,6 +145,7 @@ describe("selectTransport", () => {
     const result = await selectTransport("/path", "DEVC", mockClient)
     expect(result.transport).toBe("")
     expect(result.cancelled).toBe(false)
+    expect(mockWindow.showInputBox).not.toHaveBeenCalled()
   })
 
   it("prompts user for transport selection when no lock/match", async () => {
@@ -202,6 +206,97 @@ describe("selectTransport", () => {
     const result = await selectTransport("/path", "ZDEV", mockClient)
     expect(result.cancelled).toBe(true)
   })
+
+  it("prompts for a request number when transportInfo fails", async () => {
+    mockClient.transportInfo.mockRejectedValue(new Error("CTS endpoint unavailable"))
+    mockWindow.showInputBox.mockResolvedValue(" DEVK900123 " as any)
+
+    const result = await selectTransport("/path", "ZDEV", mockClient)
+
+    expect(result).toEqual({ cancelled: false, transport: "DEVK900123" })
+    expect(mockWindow.showInputBox).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: "TR check failed. Enter TR (blank if local)",
+        ignoreFocusOut: true
+      })
+    )
+    expect(mockWindow.showQuickPick).not.toHaveBeenCalled()
+  })
+
+  it("uses an empty transport when the fallback prompt is submitted blank", async () => {
+    mockClient.transportInfo.mockRejectedValue(new Error("CTS endpoint unavailable"))
+    mockWindow.showInputBox.mockResolvedValue("   " as any)
+
+    const result = await selectTransport("/path", "ZDEV", mockClient)
+
+    expect(result).toEqual({ cancelled: false, transport: "" })
+  })
+
+  it("cancels when the fallback request-number prompt is dismissed", async () => {
+    mockClient.transportInfo.mockRejectedValue(new Error("CTS endpoint unavailable"))
+    mockWindow.showInputBox.mockResolvedValue(undefined)
+
+    const result = await selectTransport("/path", "ZDEV", mockClient)
+
+    expect(result).toEqual({ cancelled: true, transport: "" })
+  })
+
+  it("uses server-reported local status for $TMP when the check succeeds", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      LOCKS: null,
+      TRANSPORTS: [],
+      DLVUNIT: "LOCAL"
+    })
+
+    const result = await selectTransport("/path", "$TMP", mockClient)
+
+    expect(result).toEqual({ cancelled: false, transport: "" })
+    expect(mockClient.transportInfo).toHaveBeenCalledTimes(1)
+    expect(mockWindow.showInputBox).not.toHaveBeenCalled()
+  })
+
+  it("uses local fallback for $TMP only when transportInfo fails", async () => {
+    mockClient.transportInfo.mockRejectedValue(new Error("CTS endpoint unavailable"))
+
+    const result = await selectTransport("/path", "$TMP", mockClient)
+
+    expect(result).toEqual({ cancelled: false, transport: "" })
+    expect(mockClient.transportInfo).toHaveBeenCalledTimes(1)
+    expect(mockWindow.showInputBox).not.toHaveBeenCalled()
+  })
+})
+
+describe("selectTransportIfNeeded", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("reuses the transport from the existing lock without a CTS lookup", async () => {
+    const file = { object: { contentsPath: () => "/source/main" } }
+    const root = {
+      getNode: vi.fn().mockReturnValue(file),
+      lockManager: {
+        lockStatus: vi.fn().mockReturnValue({
+          status: "locked",
+          IS_LOCAL: "",
+          CORRNR: "DEVK900123"
+        })
+      }
+    }
+    const client = { transportInfo: vi.fn() }
+    vi.mocked(isAbapStat).mockReturnValue(true)
+    vi.mocked(uriRoot).mockReturnValue(root as any)
+    vi.mocked(getClient).mockReturnValue(client as any)
+
+    const result = await selectTransportIfNeeded({
+      path: "/ZPROG.prog.abap",
+      authority: "test"
+    } as any)
+
+    expect(result).toEqual({ cancelled: false, transport: "DEVK900123" })
+    expect(getClient).not.toHaveBeenCalled()
+    expect(client.transportInfo).not.toHaveBeenCalled()
+  })
 })
 
 describe("pickTransportProgrammatically", () => {
@@ -214,7 +309,7 @@ describe("pickTransportProgrammatically", () => {
     }
   })
 
-  it("returns empty transport for LOCAL package and ignores request", async () => {
+  it("returns empty transport when the server identifies the package as LOCAL", async () => {
     mockClient.transportInfo.mockResolvedValue({
       DLVUNIT: "LOCAL",
       TRANSPORTS: [],
@@ -228,10 +323,59 @@ describe("pickTransportProgrammatically", () => {
       ""
     )
     expect(result).toEqual({ cancelled: false, transport: "" })
+    expect(mockClient.transportInfo).toHaveBeenCalledTimes(1)
     expect(mockClient.createTransport).not.toHaveBeenCalled()
   })
 
+  it("uses local fallback for $TMP only when transportInfo fails", async () => {
+    mockClient.transportInfo.mockRejectedValue(new Error("CTS endpoint unavailable"))
+
+    const result = await pickTransportProgrammatically(
+      mockClient,
+      { type: "existing", number: "IGNORED" },
+      "/path",
+      "$TMP",
+      ""
+    )
+
+    expect(result).toEqual({ cancelled: false, transport: "" })
+    expect(mockClient.transportInfo).toHaveBeenCalledTimes(1)
+  })
+
   describe("type: existing", () => {
+    it("trusts an explicit request only when transportInfo fails", async () => {
+      mockClient.transportInfo.mockRejectedValue(new Error("CTS endpoint unavailable"))
+
+      const result = await pickTransportProgrammatically(
+        mockClient,
+        { type: "existing", number: " DEV1K900123 " },
+        "/path",
+        "ZDEV",
+        ""
+      )
+
+      expect(result).toEqual({ cancelled: false, transport: "DEV1K900123" })
+      expect(mockClient.transportInfo).toHaveBeenCalledTimes(1)
+    })
+
+    it("does not trust an explicit request when transportInfo succeeds", async () => {
+      mockClient.transportInfo.mockResolvedValue({
+        DLVUNIT: "HOME",
+        TRANSPORTS: [{ TRKORR: "DEV1K900999" }],
+        LOCKS: undefined
+      })
+
+      await expect(
+        pickTransportProgrammatically(
+          mockClient,
+          { type: "existing", number: "DEV1K900123" },
+          "/path",
+          "ZDEV",
+          ""
+        )
+      ).rejects.toThrow(/DEV1K900123.*not in the modifiable list/)
+    })
+
     it("uses the requested transport when in the modifiable list", async () => {
       mockClient.transportInfo.mockResolvedValue({
         DLVUNIT: "HOME",
@@ -312,6 +456,22 @@ describe("pickTransportProgrammatically", () => {
   })
 
   describe("type: new", () => {
+    it("does not trust a new request description when transportInfo fails", async () => {
+      const error = new Error("CTS endpoint unavailable")
+      mockClient.transportInfo.mockRejectedValue(error)
+
+      await expect(
+        pickTransportProgrammatically(
+          mockClient,
+          { type: "new", description: "New TR from agent" },
+          "/path",
+          "ZDEV",
+          ""
+        )
+      ).rejects.toBe(error)
+      expect(mockClient.createTransport).not.toHaveBeenCalled()
+    })
+
     it("creates a new transport with the caller's description and returns it", async () => {
       mockClient.transportInfo.mockResolvedValue({
         DLVUNIT: "HOME",

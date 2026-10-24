@@ -25,10 +25,7 @@ import { log } from "../lib"
 import { toolRegistry } from "./lm-tools/toolRegistry"
 import { createMcpAuthorizedOptions } from "./lm-tools/toolGuard"
 import { funWindow as window } from "./funMessenger"
-import { executeReplace } from "./lm-tools/mcpReplaceStringTool"
 import { getDiagnosticsForUri } from "./lm-tools/mcpGetDiagnosticsTool"
-import type { ObjectSaveTransportChoice } from "./transportIntentService"
-
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -212,6 +209,15 @@ export function jsonSchemaToZod(
 
 // Tag used to identify ABAP FS tools
 const ABAP_FS_TAG = "abap-fs"
+const EDIT_TOOL_NAMES = new Set(["replace_string_in_abap_object"])
+
+export function isMcpExposedTool(
+  tool: { name: string; tags: readonly string[] },
+  exposeEditTools: boolean
+): boolean {
+  if (!tool.tags.includes(ABAP_FS_TAG)) return false
+  return exposeEditTools || !EDIT_TOOL_NAMES.has(tool.name)
+}
 
 /**
  * Create an MCP server that dynamically wraps all VS Code LM tools
@@ -223,8 +229,10 @@ function createMcpServer(): McpServer {
   })
 
   // Get all registered LM tools and filter to only ABAP FS tools
-  const allTools = vscode.lm.tools
-  const abapTools = allTools.filter(tool => tool.tags.includes(ABAP_FS_TAG))
+  const exposeEditTools = vscode.workspace
+    .getConfiguration("abapfs.mcpServer")
+    .get<boolean>("exposeEditTool", true)
+  const abapTools = vscode.lm.tools.filter(tool => isMcpExposedTool(tool, exposeEditTools))
 
   for (const tool of abapTools) {
     const toolName = tool.name
@@ -318,106 +326,6 @@ function createMcpServer(): McpServer {
   // MCP-ONLY TOOLS (not available as VS Code LM tools)
   // ============================================================================
 
-  // Replace String in ABAP Object - enables MCP clients to edit ABAP source code
-  server.registerTool(
-    "replace_string_in_abap_object",
-    {
-      title: "Replace String In ABAP Object",
-      description:
-        "Edit ABAP source code by replacing a specific text string with new text. " +
-        "This tool performs a find-and-replace operation on an ABAP source file identified by its workspace URI. " +
-        "The oldString must match EXACTLY ONE occurrence in the file - include 3-5 lines of surrounding context to ensure uniqueness. " +
-        "The file is automatically locked, saved to SAP, and unlocked.\n\n" +
-        "Prerequisites: First call abapfs_get_workspace_uri to get the fileUri. " +
-        "Then call abapfs_get_object_source or abapfs_search_object_source to read current content before editing.\n\n" +
-        "IMPORTANT: oldString is mandatory whenever the file has any content. An empty oldString is accepted ONLY when the file is currently completely blank (e.g. a freshly created ABAP object with no source yet) - in that case the entire newString becomes the file content.\n\n" +
-        "First call abapfs_get_object_transport_status for the exact object. Never invent a transport number or description. Use an existing request only after the user approves it, or create a request only when the user explicitly asks and supplies or approves the description. " +
-        "This tool verifies that SAP's inactive source matches the requested replacement. After editing, call abapfs_get_object_source with version inactive when inspecting pending source, then call get_abap_diagnostics with the same fileUri.",
-      inputSchema: {
-        fileUri: z
-          .string()
-          .describe(
-            "The full workspace URI of the ABAP source file." +
-              "Get this using the abapfs_get_workspace_uri tool."
-          ),
-        oldString: z
-          .string()
-          .describe(
-            "The exact literal text to find and replace. Must match exactly one occurrence in the file. " +
-              "Include at least 3-5 lines of surrounding context to ensure uniqueness. " +
-              "Must match whitespace and indentation precisely. " +
-              "May be an empty string ONLY if the target file is currently completely blank; otherwise it is mandatory."
-          ),
-        newString: z
-          .string()
-          .describe("The replacement text. Ensure the resulting code is syntactically valid ABAP."),
-        transportChoice: z
-          .discriminatedUnion("type", [
-            z.object({
-              type: z.literal("existing"),
-              number: z.string().describe("Exact user-approved existing transport request")
-            }),
-            z.object({
-              type: z.literal("new"),
-              description: z
-                .string()
-                .describe("User-supplied or explicitly approved new request description")
-            })
-          ])
-          .optional()
-          .describe(
-            "Optional explicit transport for this write. Never choose one without user direction. Omit to preserve the normal interactive transport picker."
-          )
-      }
-    },
-    async (args: Record<string, unknown>) => {
-      try {
-        const fileUri = args.fileUri as string
-        const oldString = args.oldString as string
-        const newString = args.newString as string
-        const transportChoice = args.transportChoice as
-          Exclude<ObjectSaveTransportChoice, { type: "local" }> | undefined
-
-        if (!fileUri) {
-          throw new Error("fileUri is required")
-        }
-        if (newString === undefined || newString === null) {
-          throw new Error("newString is required (use empty string to delete text)")
-        }
-        // Note: empty oldString is allowed only when the file is blank.
-        // That check happens inside executeReplace/findAndReplace once the
-        // current file content is known.
-
-        await executeReplace(fileUri, oldString, newString, transportChoice)
-
-        const oldLineCount = oldString.split("\n").length
-        const newLineCount = newString.split("\n").length
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text:
-                `✅ Successfully replaced ${oldLineCount} line(s) with ${newLineCount} line(s) in ${fileUri}\n\n` +
-                `The file has been saved and synced to SAP.`
-            }
-          ]
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `❌ Error: ${errorMessage}`
-            }
-          ],
-          isError: true
-        }
-      }
-    }
-  )
-
   // Get Diagnostics - returns syntax errors/warnings for a given ABAP file
   server.registerTool(
     "get_abap_diagnostics",
@@ -426,26 +334,57 @@ function createMcpServer(): McpServer {
       description:
         "Get syntax errors, warnings, and other diagnostics for an ABAP source file. " +
         "Returns all problems detected by the ABAP language server (syntax check results). " +
+        "Optionally filter by source (abapfs or abaplint) and severity (error, warning, info, or hint). " +
+        "Results are paged; use the returned resultId and nextStart to read subsequent pages. " +
         "Use this after editing code with replace_string_in_abap_object to verify there are no syntax errors. " +
         "Always call this after making code changes.\n\n" +
         "Prerequisite: Use abapfs_get_workspace_uri to get the fileUri.",
       inputSchema: {
         fileUri: z
           .string()
+          .optional()
           .describe(
             "The full workspace URI of the ABAP source file. " +
-              "Get this using the abapfs_get_workspace_uri tool."
-          )
+              "Get this using abapfs_get_workspace_uri. Required when starting a new request."
+          ),
+        source: z
+          .enum(["abapfs", "abaplint", "all"])
+          .optional()
+          .describe("Filter by Diagnostic.source. Defaults to all sources."),
+        severity: z
+          .enum(["error", "warning", "info", "hint", "all"])
+          .optional()
+          .describe("Filter by VS Code diagnostic severity. Defaults to all severities."),
+        resultId: z
+          .string()
+          .optional()
+          .describe(
+            "Continue reading a previously returned result. When paging, omit fileUri, source, and severity; the cached result retains the original file and filters."
+          ),
+        resultStart: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("One-based first result to return."),
+        resultEnd: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("One-based inclusive last result to return.")
       }
     },
     async (args: Record<string, unknown>) => {
       try {
-        const fileUri = args.fileUri as string
-        if (!fileUri) {
-          throw new Error("fileUri is required")
-        }
-
-        const result = await getDiagnosticsForUri(fileUri)
+        const result = await getDiagnosticsForUri({
+          fileUri: args.fileUri as string | undefined,
+          source: args.source as "abapfs" | "abaplint" | "all" | undefined,
+          severity: args.severity as "error" | "warning" | "info" | "hint" | "all" | undefined,
+          resultId: args.resultId as string | undefined,
+          resultStart: args.resultStart as number | undefined,
+          resultEnd: args.resultEnd as number | undefined
+        })
 
         return {
           content: [{ type: "text" as const, text: result }]

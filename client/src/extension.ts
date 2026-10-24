@@ -73,6 +73,7 @@ import { funWindow as window } from "./services/funMessenger"
 import { initializeReviewPrompt } from "./services/reviewPrompt"
 import { registerBdefType } from "./adt/operations/BdefCreator"
 import { registerDecisionModels } from "./services/systemOne/register"
+import { registerAcpFeature } from "./services/acp/activation"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -434,6 +435,12 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     log(`⚠️ Blame gutter initialization failed: ${error}`)
   }
   registerChatTools(context)
+
+  try {
+    registerAcpFeature(context)
+  } catch (error) {
+    log(`⚠️ ACP agent chat failed to start: ${error}`)
+  }
 
   // Walkthrough helper: open Copilot chat with a pre-filled query
   sub.push(

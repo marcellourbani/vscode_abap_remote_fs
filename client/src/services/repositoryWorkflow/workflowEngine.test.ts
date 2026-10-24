@@ -98,7 +98,8 @@ const repositoryRecord = (name: string): RepositoryObjectRecord => ({
 
 const snapshotFolder = (key: string) => createHash("sha256").update(key).digest("hex").slice(0, 20)
 
-describe("RepositoryWorkflowEngine", () => {
+// Real temp-folder I/O is slowed down a lot by parallel test workers and antivirus scans on Windows
+describe("RepositoryWorkflowEngine", { timeout: 20_000 }, () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     mocks.root = await fs.mkdtemp(path.join(os.tmpdir(), "repository-engine-"))
@@ -136,7 +137,9 @@ describe("RepositoryWorkflowEngine", () => {
     })
   })
 
-  afterEach(async () => fs.rm(mocks.root, { recursive: true, force: true }))
+  afterEach(async () =>
+    fs.rm(mocks.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
+  )
 
   it("persists two discoveries then compares existence locally", async () => {
     mocks.runQuery.mockResolvedValueOnce({

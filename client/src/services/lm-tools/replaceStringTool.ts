@@ -1,13 +1,10 @@
 /**
- * MCP Replace String in ABAP Object Tool
+ * Replace String in ABAP Object Tool
  *
- * This tool is MCP-only (not a VS Code LM tool). It enables external AI clients
- * (Cursor, Claude Code, Cline, etc.) to edit ABAP source code by performing
- * find-and-replace operations on files identified by their workspace URI.
- *
- * When VS Code Copilot edits ABAP files, it uses its built-in replace_string_in_file
- * tool which operates on the adt:// filesystem. External MCP clients don't have
- * access to those built-in tools, so this tool provides equivalent functionality.
+ * Edits ABAP source code by performing find-and-replace operations on files identified
+ * by their workspace URI. Registered as an LM tool tagged abap-fs, so it serves Copilot
+ * (including harnesses whose built-in edit tools cannot write adt:// files) and, through
+ * the ABAP FS MCP server, external clients such as Claude Code or Cursor.
  *
  * Flow:
  * 1. AI gets workspace URI via abapfs_get_workspace_uri tool
@@ -22,12 +19,16 @@ import { isAbapFile } from "abapfs"
 import { getClient, getOrCreateRoot } from "../../adt/conections"
 import { TransportIntentService, type ObjectSaveTransportChoice } from "../transportIntentService"
 import { RE_READ_ADVICE, verifyInactiveSource } from "../inactiveSourceVerification"
+import { serializeObjectWrite } from "../objectWriteQueue"
+import { recordAbapEdit } from "../editReview"
+import { registerToolWithRegistry } from "./toolRegistry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
 // ============================================================================
 
-export interface IMcpReplaceStringParams {
+export interface IReplaceStringParams {
   /** The full workspace URI of the ABAP source file (e.g. 'adt://dev100/path/to/file.prog.abap').
    * Get this URI using the abapfs_get_workspace_uri tool. */
   fileUri: string
@@ -114,7 +115,12 @@ function assertUniqueMatch(count: number): void {
   }
 }
 
-const replacementQueues = new Map<string, Promise<void>>()
+/** Called inside the per-object write queue, so concurrent edits are reported in the order they were saved */
+export type ReplaceAppliedCallback = (
+  uri: vscode.Uri,
+  before: string,
+  after: string
+) => Promise<void> | void
 
 /**
  * Execute the replace operation against the VS Code filesystem.
@@ -125,7 +131,8 @@ export async function executeReplace(
   fileUri: string,
   oldString: string,
   newString: string,
-  transportChoice?: Exclude<ObjectSaveTransportChoice, { type: "local" }>
+  transportChoice?: Exclude<ObjectSaveTransportChoice, { type: "local" }>,
+  onApplied?: ReplaceAppliedCallback
 ): Promise<string> {
   const uri = vscode.Uri.parse(fileUri)
 
@@ -137,28 +144,17 @@ export async function executeReplace(
     )
   }
 
-  const key = JSON.stringify([uri.authority.toLowerCase(), uri.path])
-  const previous = replacementQueues.get(key) ?? Promise.resolve()
-  const operation = previous.then(() =>
-    replaceAndVerify(uri, oldString, newString, transportChoice)
+  return serializeObjectWrite(uri, () =>
+    replaceAndVerify(uri, oldString, newString, transportChoice, onApplied)
   )
-  const settled = operation.then(
-    () => undefined,
-    () => undefined
-  )
-  replacementQueues.set(key, settled)
-  try {
-    return await operation
-  } finally {
-    if (replacementQueues.get(key) === settled) replacementQueues.delete(key)
-  }
 }
 
 async function replaceAndVerify(
   uri: vscode.Uri,
   oldString: string,
   newString: string,
-  transportChoice?: Exclude<ObjectSaveTransportChoice, { type: "local" }>
+  transportChoice?: Exclude<ObjectSaveTransportChoice, { type: "local" }>,
+  onApplied?: ReplaceAppliedCallback
 ): Promise<string> {
   // Read current file content
   const contentBytes = await vscode.workspace.fs.readFile(uri)
@@ -183,6 +179,8 @@ async function replaceAndVerify(
     if (intent) TransportIntentService.get().fail(intent.intentId, error)
     throw error
   }
+  // SAP has the new source even if the verification below fails, so it must be reviewable
+  await onApplied?.(uri, currentContent, updatedContent)
 
   const connectionId = uri.authority.toLowerCase()
   const path = await savedSourcePath(connectionId, uri.path).catch(error => {
@@ -204,4 +202,49 @@ async function savedSourcePath(connectionId: string, path: string) {
   if (!isAbapFile(node)) throw new Error("the saved ABAP resource could not be resolved")
   if (!node.object.structure) await node.object.loadStructure()
   return node.object.contentsPath()
+}
+
+// ============================================================================
+// TOOL CLASS
+// ============================================================================
+
+export const REPLACE_STRING_TOOL_NAME = "replace_string_in_abap_object"
+
+export class ReplaceStringInAbapObjectTool implements vscode.LanguageModelTool<IReplaceStringParams> {
+  async prepareInvocation(
+    options: vscode.LanguageModelToolInvocationPrepareOptions<IReplaceStringParams>,
+    _token: vscode.CancellationToken
+  ) {
+    const name = options.input.fileUri?.split("/").pop() || options.input.fileUri
+    return { invocationMessage: `Editing ${name}` }
+  }
+
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<IReplaceStringParams>,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
+    const { fileUri, oldString, newString, transportChoice } = options.input
+    if (!fileUri) throw new Error("fileUri is required")
+    if (newString === undefined || newString === null) {
+      throw new Error("newString is required (use empty string to delete text)")
+    }
+
+    await executeReplace(fileUri, oldString ?? "", newString, transportChoice, recordAbapEdit)
+
+    const oldLineCount = (oldString ?? "").split("\n").length
+    const newLineCount = newString.split("\n").length
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        `Successfully replaced ${oldLineCount} line(s) with ${newLineCount} line(s) in ${fileUri}\n\n` +
+          "The file has been saved and synced to SAP."
+      )
+    ])
+  }
+}
+
+export function registerReplaceStringTool(context: vscode.ExtensionContext): void {
+  context.subscriptions.push(
+    registerToolWithRegistry(REPLACE_STRING_TOOL_NAME, new ReplaceStringInAbapObjectTool())
+  )
 }

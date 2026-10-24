@@ -50,6 +50,8 @@ Google Antigravity, Cline, Codex, Kiro**, AND all other
 MCP-compatible clients, which these days is all of them.
 See [MCP Server](mcp-server.md) for setup.
 
+Prefer to chat with Claude Code, Codex, Gemini CLI or another ACP agent inside VS Code? See [Agent Chat (ACP)](agent-chat/index.md) (experimental).
+
 ---
 
 > **Tip:** GitHub Copilot (and any AI connected via MCP) has access to this documentation. Just ask your AI assistant about any feature and it can guide you.

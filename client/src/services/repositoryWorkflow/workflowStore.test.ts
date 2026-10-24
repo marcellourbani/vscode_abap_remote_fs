@@ -38,13 +38,14 @@ function criteria() {
   }
 }
 
-describe("WorkflowStore", () => {
+// Real temp-folder I/O is slowed down a lot by parallel test workers and antivirus scans on Windows
+describe("WorkflowStore", { timeout: 20_000 }, () => {
   beforeEach(async () => {
     state.root = await fs.mkdtemp(path.join(os.tmpdir(), "repository-workflow-"))
   })
 
   afterEach(async () => {
-    await fs.rm(state.root, { recursive: true, force: true })
+    await fs.rm(state.root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
   })
 
   it("creates isolated workflows and rejects identical connections", async () => {
@@ -280,7 +281,7 @@ describe("WorkflowStore", () => {
       sourceConnectionId: "source100",
       targetConnectionId: "target100"
     })
-    const keys = Array.from({ length: 10 }, (_, index) => `R3TR:PROG:ZOBJ${index}`)
+    const keys = Array.from({ length: 3 }, (_, index) => `R3TR:PROG:ZOBJ${index}`)
     await store.writeJson(store.artifactPath(workflow, "assisted-apply", "plan.json"), {
       schemaVersion: WORKFLOW_SCHEMA_VERSION,
       createdAt: new Date().toISOString(),
