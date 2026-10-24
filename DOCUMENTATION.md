@@ -50,6 +50,8 @@ Google Antigravity, Cline, Codex, Kiro**, AND all other
 MCP-compatible clients, which these days is all of them.
 See [MCP Server](#mcp-server-for-external-ai-tools) for setup.
 
+Prefer to chat with Claude Code, Codex, Gemini CLI or another ACP agent inside VS Code? See [Agent Chat (ACP)](#agent-chat-acp) (experimental).
+
 ---
 
 > **Tip:** GitHub Copilot (and any AI connected via MCP) has access to this documentation. Just ask your AI assistant about any feature and it can guide you.
@@ -248,6 +250,7 @@ Open VS Code Settings (`Ctrl+,`) and search for `abapfs.mcpServer`:
 | ---------------------------- | --------------------------------------------------------------------------- |
 | `abapfs.mcpServer.port`      | Default `4847` — change if there's a port conflict                          |
 | `abapfs.mcpServer.apiKey`    | Optional. Recommended on shared machines to prevent unauthorized SAP access |
+| `abapfs.mcpServer.exposeEditTool` | Default `true`. Turn off to give MCP clients read-only tools, without `replace_string_in_abap_object` |
 
 Or add directly to your `settings.json`:
 
@@ -342,7 +345,7 @@ MCP clients can now edit ABAP source code directly. The workflow:
 5. **Verify** — read `version: "inactive"` when inspecting pending source, then call
    `get_abap_diagnostics` with the same URI to check for syntax errors.
 
-Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlocking automatically). There is no keep/undo UI — changes are applied directly.
+Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlocking automatically). The same tool is available to Copilot in VS Code. Enable `abapfs.editReview.enabled` to get a per-file Keep/Undo review in VS Code: the edited object opens with its changes highlighted, **Keep** acknowledges them and **Undo** writes the source from before the edits back to SAP. Leave it off when you drive ABAP FS from a client outside VS Code and don't watch the editor.
 
 
 ## Limitations
@@ -372,6 +375,519 @@ Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlock
 
 - Check that `Authorization: Bearer <key>` is configured in your MCP client
 - Confirm the key in the client exactly matches `abapfs.mcpServer.apiKey` in VS Code settings
+
+# Agent Chat (ACP)
+
+> ⚠️ **EXPERIMENTAL FEATURE** - On by default; turn it off with `abapfs.acp.enabled`. Please report any issues.
+
+**Agent Chat** lets you use external coding agents such as Claude Code, Codex, Gemini CLI or GitHub Copilot's CLI agent from a chat panel inside VS Code, working on your SAP systems through ABAP FS.
+
+It uses the [Agent Client Protocol (ACP)](https://agentclientprotocol.com), an open standard for connecting editors to coding agents. ABAP FS is the ACP _client_: it starts the agent as a local process, shows its conversation, answers its file and terminal requests, and hands it the ABAP FS tools.
+
+**Use this if** you prefer another agent over GitHub Copilot, but want to work inside VS Code with live SAP access, instead of switching to a separate terminal or app.
+
+**Don't need this if** you only use GitHub Copilot Chat. All ABAP FS tools are already available there natively.
+
+## Pages in this guide
+
+| Page | What it covers |
+| ---- | -------------- |
+| [Setup](#agent-chat-setup) | Enable the feature, add an agent, connect |
+| [Using Agent Chat](#using-agent-chat) | The panel, context, history, modes, permissions, edit review |
+| [Settings Reference](#agent-chat-settings-reference) | Every `abapfs.acp.*` setting and related settings |
+| [ABAP FS Tools for Agents (MCP)](#abap-fs-tools-for-agents-mcp) | How agents get the ABAP FS tools, HTTP vs stdio, manual setup |
+| [Troubleshooting](#agent-chat-troubleshooting) | What to check when something doesn't work |
+
+## How it works
+
+```text
+┌──────────────── VS Code ────────────────┐
+│                                         │        stdin/stdout (ACP)       ┌──────────────┐
+│  Agent Chat panel ◄──► ABAP FS ACP client ◄──────────────────────────────► │ Agent process│
+│                          │      │       │                                 │ (Claude Code,│
+│                          │      │       │      MCP (HTTP or stdio bridge) │  Codex, ...) │
+│                          │   ABAP FS MCP server ◄─────────────────────────┤              │
+│                          │      │       │                                 └──────┬───────┘
+│                    ABAP FS file system  │                                        │
+│                    + 40 SAP tools       │                                        ▼
+│                          │              │                                  Agent's own AI
+└──────────────────────────┼──────────────┘                                  provider
+                           ▼
+                       SAP system
+```
+
+1. **The agent runs locally.** When you connect, ABAP FS starts the agent's command (for example `npx -y @agentclientprotocol/claude-agent-acp@latest`) as a child process and talks ACP to it over stdin/stdout. Closing the panel's connection or VS Code stops the process.
+2. **Your prompt goes to the agent.** The agent sends it to its own AI provider with its own login or API key. ABAP FS does not see or choose the model; it only shows what the agent reports.
+3. **The agent reads files through ABAP FS.** ABAP FS announces that it can read and write files and run terminals. When the agent reads a file, the request comes back to VS Code, so it gets the live SAP source, including unsaved changes in open editors.
+4. **The agent uses the ABAP FS tools.** With [`abapfs.acp.provideMcpServer`](#abap-fs-tools-for-agents-mcp) on, ABAP FS gives the agent its MCP server for each session, with the same tools Copilot has: search objects, read source, edit, activate, run unit tests, query tables, and more.
+5. **Edits go to SAP.** ABAP source edits are saved to SAP immediately as inactive versions, with locking and transport handling done by ABAP FS. Turn on [edit review](using.md#reviewing-edits-keep--undo) to see and undo them.
+
+## How SAP objects appear to the agent
+
+Agents only understand local file paths. ABAP FS maps every `adt://<system>/<path>` resource to a path under a private folder of the extension (`.../acp-workspace/adt/<system>/<path>`). Requests for those paths are routed to the ABAP FS file system; **nothing is stored on your disk**.
+
+With its first prompt, the agent gets a short note explaining this, listing the connected systems and their folders, and telling it to use the ABAP FS tools to find and edit objects.
+
+Because the folders are virtual:
+
+- The agent's shell commands, `grep`, `glob` and "does this file exist" checks do not see SAP objects.
+- Agents' built-in edit tools often check the local disk before editing, and then fail with "file does not exist". The `replace_string_in_abap_object` tool works for every agent, so ABAP edits should go through it. See [ABAP FS Tools for Agents](#abap-fs-tools-for-agents-mcp).
+- Local files in your workspace work normally.
+
+## Limitations
+
+- **VS Code must stay open.** The agent, the MCP server and the SAP connection all live in VS Code.
+- **One active conversation at a time** in the panel. You can switch between past conversations from history.
+- **Agent features vary.** History, modes, model selection, slash commands and images only appear when the agent supports them.
+- **Edits are not in Copilot's "changed files" list.** Use [edit review](using.md#reviewing-edits-keep--undo) instead.
+
+# Agent Chat Setup
+
+> **Prerequisites:** Complete the [Installation Steps](#installation-steps) first and connect to at least one SAP system (`ABAP FS: Connect to an ABAP system`).
+
+## 1. Open Agent Chat
+
+Agent Chat is on by default (`abapfs.acp.enabled`). The **ABAP FS - Agent Chat** view appears in the secondary side bar (the right-hand side, next to Copilot Chat) and opens automatically.
+
+To turn it off, open Settings (`Ctrl+,`), search for `abapfs.acp.enabled` and untick it, or add to `settings.json`:
+
+```json
+{
+  "abapfs.acp.enabled": false
+}
+```
+
+Turning it off stops all agents and hides the panel. Tick it again to bring the panel back.
+
+## 2. Turn on the ABAP FS tools for agents (recommended)
+
+```json
+{
+  "abapfs.acp.provideMcpServer": true
+}
+```
+
+With this on, every agent session gets the ABAP FS tools, and ABAP FS starts its MCP server when needed. Without it, the agent can only read files and can't search, edit, activate or test ABAP objects, unless you add the MCP server in the agent's own configuration.
+
+> If GitHub Copilot is installed, the first start of the MCP server asks whether you still need it. Choose to start it: Agent Chat needs it.
+
+Details and alternatives: [ABAP FS Tools for Agents (MCP)](#abap-fs-tools-for-agents-mcp).
+
+## 3. Add an agent
+
+Click **Connect** in the panel, or run **ABAP FS Agents: Add Agent** from the panel's `...` menu or the Command Palette. A list of built-in agents opens:
+
+| Agent | Command that is run |
+| ----- | ------------------- |
+| Claude Code | `npx -y @agentclientprotocol/claude-agent-acp@latest` |
+| GitHub Copilot | `npx -y @github/copilot-language-server@latest --acp` |
+| Codex CLI | `npx -y @zed-industries/codex-acp@latest` |
+| Gemini CLI | `npx -y @google/gemini-cli@latest --experimental-acp` |
+| Qwen Code | `npx -y @qwen-code/qwen-code@latest --acp --experimental-skills` |
+| Auggie CLI | `npx -y @augmentcode/auggie@latest --acp` |
+| Qoder CLI | `npx -y @qoder-ai/qodercli@latest --acp` |
+| OpenCode | `npx -y opencode-ai@latest acp` |
+
+Pick one and it is saved to your user settings. Agents you already added are not listed again.
+
+**Built-in agents need:**
+
+- **Node.js with `npx` on your `PATH`.** The first connect downloads the agent from npm, so it takes a while. Later connects use npm's cache, but `@latest` checks for a newer version each time.
+- **Access to the npm registry.** Behind a corporate proxy, npm must be configured for it (`npm config get registry`, `npm config get proxy`).
+- **The agent's own login.** For example, Claude Code needs a Claude login or `ANTHROPIC_API_KEY`, and Codex needs an OpenAI login or API key. Follow the agent's own documentation. ABAP FS does not handle these credentials.
+
+### Custom agents
+
+Choose **Custom agent...** in the list to enter:
+
+1. A display name, for example `My Agent`.
+2. The command line that starts it in ACP mode, for example `my-agent --acp`. Quotes are honoured for arguments with spaces.
+3. Optional environment variables as `NAME=value`, separated by `;`.
+
+Any agent that speaks ACP over stdio works. The [ACP website](https://agentclientprotocol.com) lists known agents and adapters.
+
+### Editing agents in settings.json
+
+Agents are stored in `abapfs.acp.agents`, keyed by display name:
+
+```json
+{
+  "abapfs.acp.agents": {
+    "Claude Code": {
+      "command": "npx",
+      "args": ["-y", "@agentclientprotocol/claude-agent-acp@latest"],
+      "env": {}
+    },
+    "My Agent": {
+      "command": "my-agent",
+      "args": ["--acp"],
+      "env": { "MY_AGENT_LOG_LEVEL": "debug" }
+    }
+  }
+}
+```
+
+When the value is empty, autocomplete in `settings.json` offers each built-in agent as a snippet. **ABAP FS Agents: Manage Agents (Settings)** opens the setting, and **Remove Agent** deletes one.
+
+> To pin a version instead of `@latest`, edit the entry, for example `@agentclientprotocol/claude-agent-acp@1.2.3`. If the agent is installed globally, you can use its command directly instead of `npx`.
+
+## 4. Connect
+
+Click **Connect** (plug icon) in the panel. With a single agent configured, it connects straight away; with several, you pick one. A notification shows progress while the agent starts.
+
+Once connected, the panel shows the agent's name, and its modes and models if it has any. Type a prompt and press `Enter`.
+
+## 5. Check that the tools arrived
+
+Ask the agent:
+
+> _List the ABAP FS tools you have._
+
+or something SAP-specific:
+
+> _Search for classes starting with ZCL_DEMO._
+
+If the agent says it has no `abapfs_*` tools, see [Agent doesn't see ABAP FS tools](troubleshooting.md#agent-doesnt-see-abap-fs-tools).
+
+## Optional: review edits
+
+To see and undo the agent's ABAP edits in VS Code:
+
+```json
+{
+  "abapfs.editReview.enabled": true
+}
+```
+
+See [Reviewing edits](using.md#reviewing-edits-keep--undo).
+
+# Using Agent Chat
+
+## The panel
+
+| Element | What it does |
+| ------- | ------------ |
+| **Prompt box** | Type your request; `Enter` sends it. Typing `/` shows the slash commands the agent offers, if any. |
+| **Add Context...** (paperclip) | Attach files to the next prompt |
+| **Mode picker** | Switch the agent's mode (for example plan / code), when the agent has modes |
+| **Model picker** | Switch the agent's model, when the agent lets the client choose |
+| **Send / Stop** | Send the prompt, or stop the running turn |
+| **Title bar: New Chat** (`+`) | Start a fresh conversation with the same agent |
+| **Title bar: Show Chats...** (history) | Reopen a previous conversation (only while connected) |
+| **Title bar: Attach File / Cancel Turn / Disconnect** | Same as the commands of the same name |
+| **Title bar `...` menu** | Connect, Add / Remove / Manage Agents, Restart, Show Log, Show Protocol Traffic |
+
+All commands are also in the Command Palette under **ABAP FS Agents**.
+
+The agent's replies stream in as they arrive. Tool calls, plans and sub-agent activity are shown inline. Some agents also show extra session options, such as on/off switches.
+
+## Giving the agent context
+
+- **Current file:** the file in the active editor shows as a faded chip above the prompt. Click it to attach it.
+- **Selection:** when you select lines in an editor, the selection is attached to your next prompt automatically, like in Copilot Chat. The chip shows the file and line range, for example `ZCL_DEMO.clas.abap:12-30`. Click `x` to drop it. After you send, it is detached, so the next prompt doesn't carry it again unless you select something new.
+- **Files:** use **Add Context...** or **Attach File** to add up to 10 files. Small files are sent inline when the agent supports it, otherwise as a reference to read.
+
+Attached SAP objects are passed as paths the agent can read through ABAP FS. You can also just name the object, for example "explain ZCL_DEMO's method GET_DATA", and the agent will find it with the ABAP FS tools.
+
+## Conversation history
+
+**Show Chats...** lists the agent's previous conversations, newest first, with a readable label (your first prompt) instead of an ID. Choose one to reopen it:
+
+- If the agent can **load** sessions, the conversation is replayed into the panel.
+- If it can only **resume**, the agent continues with its context, but earlier messages may not be shown again.
+- If it supports neither, the history button shows nothing to reopen.
+
+History is only offered while an agent is connected, and only for that agent. Conversations without any prompt are hidden.
+
+**New Chat** starts a new conversation with the connected agent. The old one stays in history.
+
+## Permissions
+
+Agents ask before running tools that change things, for example a shell command. A picker appears with the agent's options, such as _Allow once_, _Always allow_ and _Reject_. Pressing `Esc` cancels the request.
+
+To approve everything without asking, set `abapfs.acp.autoApprovePermissions` to `allowAll`. Only do this when you trust the agent with your SAP access and your machine.
+
+## Terminal commands
+
+ABAP FS lets agents run shell commands. They run in the agent's working directory (see [`abapfs.acp.defaultWorkingDirectory`](#agent-chat-settings-reference)), and their output is returned to the agent. SAP folders are virtual, so shell commands can't see them.
+
+## Editing ABAP code
+
+Ask for the change in plain words, for example:
+
+> _In ZCL_DEMO, make GET_DATA return an empty table when the key is initial. Then check syntax and activate._
+
+A typical agent flow with the ABAP FS tools is:
+
+1. Locate the object (`abapfs_search_objects`, `abapfs_get_workspace_uri`).
+2. Read the source (`abapfs_get_object_source`).
+3. Edit with `replace_string_in_abap_object`. This saves an **inactive** version to SAP. ABAP FS handles the lock, and the transport request is the one you approve, either an existing one or a new one.
+4. Check syntax (`get_abap_diagnostics`) and activate (`abapfs_activate_object`).
+
+> Agents' own "edit file" tools often fail on SAP objects with "file does not exist", because they check the local disk first. If that happens, tell the agent to use `replace_string_in_abap_object`.
+
+### Reviewing edits (Keep / Undo)
+
+With `abapfs.editReview.enabled` on, these ABAP edits can be reviewed in VS Code: every edit made through `replace_string_in_abap_object` (by Agent Chat, Copilot or any MCP client), and every edit an Agent Chat agent makes with its own file edit tools.
+
+- The edited object opens, with added and changed lines highlighted.
+- A **Keep | Undo | Show Changes** line appears above the first change, and the same actions are in the editor title bar.
+- **Keep** accepts the edits and removes the highlights.
+- **Undo** writes the source from before the agent's first pending edit back to SAP, as an inactive version. If you changed the file yourself since then, you are asked first.
+- **Show Changes** opens a diff between the original and the current source.
+
+Review is per file. Several edits to the same object are combined into one review, and edits to different objects are tracked separately, even when the agent makes them in parallel.
+
+Edits are in SAP as soon as they are made. Review only decides whether you keep them; it doesn't hold them back.
+
+## Switching agents and restarting
+
+- **Connect** while another agent is connected asks whether to switch. Switching disconnects the current agent and clears the panel.
+- **Restart** stops and restarts the current agent, for example after changing its settings or logging in again.
+- **Disconnect** stops the agent process. The conversation stays in that agent's history.
+
+# Agent Chat Settings Reference
+
+All settings are in VS Code Settings (`Ctrl+,`). Search for `abapfs.acp`.
+
+## Agent Chat settings
+
+| Setting | Default | What it does |
+| ------- | ------- | ------------ |
+| `abapfs.acp.enabled` | `true` | Turns Agent Chat on. When off, the panel is hidden and no agent runs. Turning it off stops running agents. |
+| `abapfs.acp.agents` | `{}` | The agents you can connect to, keyed by display name. Each entry has `command` (required), `args` and `env`. **Add Agent** fills this in for you. See [Setup](setup.md#editing-agents-in-settingsjson). |
+| `abapfs.acp.provideMcpServer` | `false` | Hands the ABAP FS MCP server, and with it all ABAP FS tools, to every agent session, starting the server when needed. See [ABAP FS Tools for Agents](#abap-fs-tools-for-agents-mcp). |
+| `abapfs.acp.autoApprovePermissions` | `ask` | `ask`: every permission request from the agent shows a picker. `allowAll`: allows everything automatically. |
+| `abapfs.acp.defaultWorkingDirectory` | `""` | Local folder the agent process starts in, also used for its terminal commands. When empty, it's the first local (non-SAP) workspace folder, or a private ABAP FS folder if the workspace only has SAP systems. Other local workspace folders are offered as additional directories when the agent supports ACP multi-root sessions. SAP folders remain virtual and are provided through the ABAP FS context and tools. |
+| `abapfs.acp.logTraffic` | `false` | Logs every ACP message to the **ABAP FS Agents Traffic** output channel. Useful for troubleshooting; it includes prompts and file contents. |
+
+## Related settings
+
+| Setting | Default | What it does for Agent Chat |
+| ------- | ------- | --------------------------- |
+| `abapfs.editReview.enabled` | `false` | Keep / Undo review in VS Code for ABAP edits made through `replace_string_in_abap_object` or by the agent's own file edit tools. See [Reviewing edits](using.md#reviewing-edits-keep--undo). |
+| `abapfs.mcpServer.port` | `4847` | Port of the ABAP FS MCP server that agents use. |
+| `abapfs.mcpServer.apiKey` | `""` | Optional key for the MCP server. With `provideMcpServer` on, ABAP FS passes it to the agent automatically. |
+| `abapfs.mcpServer.exposeEditTool` | `true` | Offers the `replace_string_in_abap_object` edit tool to agents and MCP clients. Turn off for read-only ABAP FS tools; agents can still edit with their own file tools. Applies to new sessions. |
+| `abapfs.mcpServer.autoStart` | `false` | Starts the MCP server when VS Code starts. It's not needed for Agent Chat with `provideMcpServer` on, because the server is started when an agent connects. |
+
+## Where settings are stored
+
+- Agents added with **Add Agent** go to your **user** settings, unless `abapfs.acp.agents` is already set in the workspace; then they go to the workspace.
+- `abapfs.acp.agents` replaces as a whole: an entry in workspace settings hides all agents from user settings. Keep your agents in one place.
+- Conversation labels for history are stored per workspace.
+
+## Example
+
+```json
+{
+  "abapfs.acp.enabled": true,
+  "abapfs.acp.provideMcpServer": true,
+  "abapfs.editReview.enabled": true,
+  "abapfs.acp.autoApprovePermissions": "ask",
+  "abapfs.acp.agents": {
+    "Claude Code": {
+      "command": "npx",
+      "args": ["-y", "@agentclientprotocol/claude-agent-acp@latest"],
+      "env": {}
+    }
+  }
+}
+```
+
+# ABAP FS Tools for Agents (MCP)
+
+Agents get the ABAP FS tools (search, read, edit, activate, unit tests, ATC, SQL, transports, debugging and more) through the ABAP FS [MCP server](#mcp-server-for-external-ai-tools). There are two ways to set this up:
+
+| | Automatic: `abapfs.acp.provideMcpServer` | Manual: in the agent's own config |
+| --- | --- | --- |
+| Setup | One setting in VS Code | Edit the agent's MCP config file |
+| Works for | Agents that accept MCP servers from the client (most do) | Every MCP-capable agent |
+| Tools available | Only in Agent Chat sessions | Also when you use the agent outside VS Code (VS Code must still be open) |
+| Server start | Started automatically when an agent connects | Start it yourself, or set `abapfs.mcpServer.autoStart` |
+
+Use **one** of them per agent. With both, the agent sees every tool twice.
+
+## Automatic: provideMcpServer
+
+```json
+{
+  "abapfs.acp.provideMcpServer": true
+}
+```
+
+When a session is created, loaded or resumed, ABAP FS:
+
+1. Starts the MCP server on `abapfs.mcpServer.port` (default `4847`) if it isn't running.
+2. Adds a server named `abap-fs` to the session's `mcpServers`, using one of two transports:
+
+### Over HTTP
+
+If the agent says during the ACP handshake that it accepts HTTP MCP servers (`mcpCapabilities.http`), it gets the URL directly:
+
+```text
+http://localhost:4847/mcp
+```
+
+With `abapfs.mcpServer.apiKey` set, the matching `Authorization: Bearer <key>` header is sent along.
+
+### Over stdio (bridge)
+
+ACP only guarantees stdio MCP servers, so agents that don't announce HTTP support get a small **stdio bridge** instead. It's bundled with ABAP FS and runs on VS Code's own Node.js runtime, so nothing extra needs to be installed. The agent starts it like any local MCP server; the bridge relays every message to the HTTP server and passes on the API key if one is set.
+
+The **ABAP FS Agents** output channel shows which transport was used:
+
+- `Passing ABAP FS MCP server to agent over HTTP: ...`
+- `Agent did not advertise mcpCapabilities.http over ACP; passing ABAP FS MCP through the stdio bridge to ...`
+
+## Manual: add ABAP FS to the agent's config
+
+Use this when the agent ignores MCP servers sent by the client (some do), or when you also want the tools outside Agent Chat. Turn `abapfs.acp.provideMcpServer` **off** for that agent's sessions to avoid duplicate tools.
+
+**1. Start the MCP server:** run **ABAP FS: Start MCP Server**. This also turns on `abapfs.mcpServer.autoStart` for this workspace. The notification shows the URL; the default is `http://localhost:4847/mcp`.
+
+**2. Add it to the agent.** Check your agent's documentation for the exact format. Common examples:
+
+**Claude Code:**
+
+```bash
+claude mcp add --transport http abap-fs http://localhost:4847/mcp
+```
+
+With an API key:
+
+```bash
+claude mcp add --transport http abap-fs http://localhost:4847/mcp --header "Authorization: Bearer your-secret-key"
+```
+
+**Gemini CLI**, in `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "abap-fs": {
+      "httpUrl": "http://localhost:4847/mcp"
+    }
+  }
+}
+```
+
+**Agents that take a URL**, for example in an `mcpServers` / `mcp.json` file:
+
+```json
+{
+  "mcpServers": {
+    "abap-fs": {
+      "url": "http://localhost:4847/mcp",
+      "headers": { "Authorization": "Bearer your-secret-key" }
+    }
+  }
+}
+```
+
+Leave out `headers` when no API key is set.
+
+**Agents that only support stdio MCP servers:** run the bundled bridge with Node.js. For example, in Codex's `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.abap-fs]
+command = "node"
+args = ["<extension folder>/client/dist/mcpStdioBridge.js", "http://localhost:4847/mcp"]
+env = { ABAPFS_MCP_TOKEN = "your-secret-key" }
+```
+
+- `<extension folder>` is the installed ABAP FS extension, for example `~/.vscode/extensions/murbani.vscode-abap-remote-fs-<version>`. The folder name changes with every extension update, so update the path after updating ABAP FS.
+- `ABAPFS_MCP_TOKEN` is only needed when `abapfs.mcpServer.apiKey` is set.
+- Any Node.js 18 or later works.
+
+**3. Restart the agent** in Agent Chat (**Restart** in the panel's `...` menu) so it reads its new config.
+
+## Which tools are there
+
+The same tools GitHub Copilot gets in VS Code. See [MCP Server - Available Tools](../mcp-server.md#available-tools). The most important ones for agents:
+
+| Tool | Use |
+| ---- | --- |
+| `abapfs_search_objects` | Find objects by name pattern |
+| `abapfs_get_workspace_uri` | Get the `adt://` URI of an object for editing |
+| `abapfs_get_object_source` | Read source code |
+| `replace_string_in_abap_object` | Edit ABAP source (find and replace), saved as inactive |
+| `get_abap_diagnostics` | Syntax check after an edit |
+| `abapfs_activate_object` | Activate edited objects |
+| `abapfs_run_unit_tests` | Run ABAP unit tests |
+
+Tools need a connected SAP system, so connect before you start the agent.
+
+# Agent Chat Troubleshooting
+
+Start with the logs. Both are in the panel's `...` menu:
+
+- **Show Log** (**ABAP FS Agents** output channel): agent start, connection, file requests and MCP hand-over, plus the agent's own error output.
+- **Show Protocol Traffic** (**ABAP FS Agents Traffic**): every ACP message, after you turn on `abapfs.acp.logTraffic`. It contains prompts and file contents, so be careful when sharing it.
+
+## The panel doesn't appear
+
+- Check that `abapfs.acp.enabled` is on. It's on by default, so look for a user or workspace setting that turned it off.
+- Look in the secondary side bar (right side). If it's closed, use **View → Appearance → Secondary Side Bar**, or run **ABAP FS Agents: Open Chat**.
+
+## Agent fails to connect
+
+**"Failed to connect" right away, or the agent exits immediately**
+
+- Run the agent's command in a terminal, for example `npx -y @agentclientprotocol/claude-agent-acp@latest`. A working ACP agent starts and then waits silently for input; stop it with `Ctrl+C`. Any error you see there is the real problem.
+- `npx` not found: install Node.js, then restart VS Code so it picks up the new `PATH`.
+- Network or registry errors from npm: configure npm for your proxy or internal registry, or install the agent globally and use its command instead of `npx`.
+
+**Connecting takes very long the first time**
+
+The first start of a built-in agent downloads it from npm. Later starts are faster.
+
+**The agent connects but every prompt fails with an authentication error**
+
+The agent isn't logged in to its AI provider. Log in the way that agent expects, for example by running the agent's CLI once in a terminal, or set its API key in the agent's `env` in `abapfs.acp.agents`. Then use **Restart**.
+
+**It worked before, now it doesn't**
+
+With `@latest`, a new agent version may have changed its command-line flags. Check the agent's release notes, or pin a known-good version in `abapfs.acp.agents`.
+
+## Agent doesn't see ABAP FS tools
+
+1. **Is `abapfs.acp.provideMcpServer` on?** It's off by default. Turn it on, then start a **New Chat**: the tools are passed when a session is created.
+2. **Did the MCP server start?** Show Log should contain `Passing ABAP FS MCP server to agent over HTTP` or `... through the stdio bridge`. If it says `ABAP FS MCP server is not running; continuing without it`, run **ABAP FS: Start MCP Server** and look at the **ABAP FS** output channel. The usual cause is that port `4847` is already in use; change `abapfs.mcpServer.port`.
+3. **Is a SAP system connected?** Connect with `ABAP FS: Connect to an ABAP system` before starting the agent.
+4. **Does the agent ignore client-provided MCP servers?** Some agents accept the `mcpServers` list from the client and then don't use it. If the log shows the server was passed but the agent still has no `abapfs_*` tools, add ABAP FS to the agent's own MCP config instead, and turn `provideMcpServer` off. See [Manual setup](mcp.md#manual-add-abap-fs-to-the-agents-config).
+5. **Stdio bridge errors:** the agent starts the bridge itself, so its messages, which start with `abap-fs mcp bridge:`, end up wherever that agent logs its MCP servers. `401` means the API key doesn't match `abapfs.mcpServer.apiKey`, and `ECONNREFUSED` means the MCP server isn't running.
+
+## The agent sees every tool twice
+
+ABAP FS is configured both through `provideMcpServer` and in the agent's own MCP config. Remove one of them.
+
+## Edits fail with "file does not exist"
+
+The agent used its built-in edit tool, which checks the local disk. SAP objects only exist virtually, so that check fails. Tell the agent to use `replace_string_in_abap_object`, or add that to your agent's instructions file (for example `CLAUDE.md` or `AGENTS.md` in the working directory).
+
+## Shell commands, grep or glob find no SAP objects
+
+Expected: SAP systems are not on disk. Ask the agent to use `abapfs_search_objects` and `abapfs_search_object_source` instead.
+
+## Edits don't show Keep / Undo
+
+- Check that `abapfs.editReview.enabled` is on.
+- Only ABAP objects are tracked, not local files.
+- Edits are tracked when they go through `replace_string_in_abap_object` or the agent's own file tools in Agent Chat. Edits an external MCP client makes with its own tools outside ABAP FS can't be seen.
+
+## History is empty or a chat can't be reopened
+
+- History is shown only while an agent is connected, and only that agent's conversations.
+- The agent has to support listing sessions. Reopening needs load or resume support. Some agents keep history only for the same working directory, so keep `abapfs.acp.defaultWorkingDirectory` stable.
+
+## Permission prompts keep appearing
+
+Choose the agent's _Always allow_ option where it offers one, or set `abapfs.acp.autoApprovePermissions` to `allowAll`. That approves everything, including shell commands.
+
+## Reporting a problem
+
+Include the **ABAP FS Agents** log, the agent name and version, and your VS Code and ABAP FS versions. Remove system names, users and any other sensitive data first.
 
 # ABAP Language Model Tools (AI Assistant Features)
 
