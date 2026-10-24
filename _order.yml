@@ -6,6 +6,12 @@
 - getting-started/walkthrough.md
 - getting-started/connection-manager.md
 - mcp-server.md
+- agent-chat/index.md
+- agent-chat/setup.md
+- agent-chat/using.md
+- agent-chat/settings.md
+- agent-chat/mcp.md
+- agent-chat/troubleshooting.md
 - ai/language-model-tools.md
 - ai/decision-models.md
 - ai/subagents.md
