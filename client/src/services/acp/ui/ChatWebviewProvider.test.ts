@@ -87,7 +87,11 @@ describe("ChatWebviewProvider: ready / state", () => {
   it("toggles mascot visibility on command", () => {
     const { provider, last } = createChatHarness()
     provider.setMascotEnabled(false)
-    expect(last("mascotVisibility")).toEqual({ type: "mascotVisibility", enabled: false })
+    expect(last("mascotVisibility")).toEqual({
+      type: "mascotVisibility",
+      enabled: false,
+      animate: true
+    })
   })
 
   it("broadcasts mascot activity", () => {

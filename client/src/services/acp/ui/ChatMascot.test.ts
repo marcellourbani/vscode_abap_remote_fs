@@ -77,6 +77,62 @@ describe("ACP Max lifecycle", () => {
     expect(harness.frames.size).toBe(1)
   })
 
+  it("walks to the far border, looks back at the user, then leaves when switched off with animation", () => {
+    const harness = createMascotHarness()
+    harness.pet.setEnabled(false, true)
+    expect(harness.row.hidden).toBe(false)
+    harness.advance(32)
+    expect(harness.pose()).toBe("leave")
+    const speeds: number[] = []
+    let last = harness.position()
+    let looked = false
+    while (!harness.row.hidden && harness.now() < 20000) {
+      harness.advance(16)
+      const here = harness.position()
+      speeds.push(here - last)
+      last = here
+      if (
+        /rotate\(/.test(harness.attr("headG", "transform")) &&
+        harness.attr("headG", "transform").includes("scale(0.62")
+      )
+        looked = true
+    }
+    expect(harness.row.hidden).toBe(true)
+    expect(Math.max(...speeds)).toBeGreaterThan(0)
+    expect(looked).toBe(true)
+    expect(harness.onChange).toHaveBeenLastCalledWith({ enabled: false, position: 18 })
+    expect(harness.frames.size).toBe(0)
+  })
+
+  it("keeps Max in place when re-enabled mid-exit", () => {
+    const harness = createMascotHarness()
+    harness.pet.setEnabled(false, true)
+    harness.advance(500)
+    harness.pet.setEnabled(true)
+    expect(harness.row.hidden).toBe(false)
+    harness.advance(32)
+    expect(harness.pose()).not.toBe("leave")
+  })
+
+  it("walks in from a border and settles at his saved spot when switched on with animation", () => {
+    for (const [random, startSide] of [
+      [0.2, "left"],
+      [0.8, "right"]
+    ] as const) {
+      const harness = createMascotHarness()
+      harness.pet.setEnabled(false)
+      harness.setRandom(random)
+      harness.pet.setEnabled(true, true)
+      expect(harness.row.hidden).toBe(false)
+      expect(startSide === "left" ? harness.position() < 0 : harness.position() > 100).toBe(true)
+      harness.advance(32)
+      expect(harness.pose()).toBe("enter")
+      harness.until(() => harness.pose() !== "enter", 20000)
+      expect(harness.position()).toBeCloseTo(18, 0)
+      expect(harness.onChange).toHaveBeenLastCalledWith({ enabled: true, position: 18 })
+    }
+  })
+
   it("keeps the global visibility when restoring a saved position", () => {
     const harness = createMascotHarness()
     harness.pet.setEnabled(false)
