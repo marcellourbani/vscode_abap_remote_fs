@@ -283,6 +283,9 @@ export const CHAT_MASCOT_SCRIPT = `
 
       let enabled = true, position = 18, activity = 'idle', frame = 0, timer = 0;
       let travel = null, action = null, turn = null;
+      // Set while Max walks off to the far border after being switched off.
+      let leaving = null;
+      const EXIT_STOP = 64, EXIT_OFF = 56, EXIT_CRUISE = 105, EXIT_CREEP = 20, EXIT_LOOK_MS = 1100, EXIT_GO = 95;
       let lastInteraction = clock(), talkingUntil = 0, disposed = false, direction = 1;
       let speed = 0, phase = 0, lastNow = 0, wagPh = 0, blinkAt = 0, blinkStart = -1000;
       let prevRide = 0, prevHeadD = 0, lastAria = -1;
@@ -427,6 +430,75 @@ export const CHAT_MASCOT_SCRIPT = `
         l.heel = LEGS[i].hind ? 40 : -30;
       }
       function wag(amount, hz) { T.wag = amount; T.wagHz = hz; }
+      // Pausing at the border to glance back at the user: the head yaws towards the viewer while the body keeps facing the exit.
+      function exitLook() {
+        T.yaw = 58; T.neck = 62; T.head = 8; T.eye = 1.1; T.gx = .3; T.brow = .4; T.earN = 6; T.earF = 10; T.tail = 44; wag(12, 2.8);
+      }
+      function beginExit(home) {
+        leaving = { dir: position < 50 ? 1 : -1, phase: 'walk', start: home, since: 0 };
+        action = null; travel = null; watchUntil = 0;
+        mark.textContent = '';
+        closeMenu();
+        schedule();
+      }
+      function finishExit() {
+        const home = leaving ? leaving.start : position;
+        leaving = null; turn = null; turnBody = turnHead = 0;
+        enabled = false;
+        position = clampPos(home);
+        applyState();
+        remember();
+      }
+      // Switching on: Max comes in from a random border and slows to a stop at his saved spot.
+      function beginEnter() {
+        const width = Math.max(1, stage.clientWidth), dir = Math.random() < .5 ? 1 : -1;
+        leaving = { dir, phase: 'in', home: position, since: 0 };
+        action = travel = turn = null; turnBody = turnHead = 0;
+        direction = dir; facing.style.transform = 'scaleX(' + dir + ')';
+        position = (dir > 0 ? -EXIT_OFF : width + EXIT_OFF) / width * 100;
+        speed = EXIT_CRUISE;
+        stepDogPosition();
+        schedule();
+      }
+      function finishEnter() {
+        position = clampPos(leaving.home);
+        leaving = null;
+        remember();
+        idleLater();
+      }
+      // Walks to the far border, slowing as it nears, pauses to look back, then keeps going until it is clipped out of sight.
+      function driveExit(now, dt) {
+        const L = leaving, dir = L.dir, width = Math.max(1, stage.clientWidth);
+        backing = false;
+        if (L.phase === 'in') {
+          const dist = Math.max(0, (L.home / 100 * width - position / 100 * width) * dir);
+          speed += lim(lim(dist * 1.2, EXIT_CREEP, EXIT_CRUISE) - speed, -500 * dt, 300 * dt);
+          position += dir * Math.min(speed * dt, dist) / width * 100;
+          if (dist <= 2.5) finishEnter();
+          return;
+        }
+        if (!turn && direction !== dir) {
+          turn = { from: direction, to: dir, start: now, p: 0, dur: TURN_MS };
+        }
+        const me = position / 100 * width;
+        const stopAt = dir > 0 ? width - EXIT_STOP : EXIT_STOP;
+        const standing = sp.hp.v > HP0 - 5 && sp.hs.v > HS0 - 5 && air.y < .5;
+        if (L.phase === 'walk') {
+          const dist = Math.max(0, (stopAt - me) * dir);
+          const vmax = turn || !standing ? 0 : lim(dist * 1.2, EXIT_CREEP, EXIT_CRUISE);
+          speed += lim(vmax - speed, -500 * dt, 300 * dt);
+          if (!turn) position += dir * Math.min(speed * dt, dist) / width * 100;
+          if (!turn && dist <= 2.5) { L.phase = 'look'; L.since = now; }
+        } else if (L.phase === 'look') {
+          speed = speed < .5 ? 0 : speed * Math.exp(-dt * 14);
+          if (now - L.since >= EXIT_LOOK_MS) L.phase = 'go';
+        } else {
+          speed += lim(EXIT_GO - speed, -500 * dt, 260 * dt);
+          position += dir * speed * dt / width * 100;
+          const off = dir > 0 ? width + EXIT_OFF : -EXIT_OFF;
+          if ((position / 100 * width - off) * dir >= 0) finishExit();
+        }
+      }
 
       const DUR = { sniff: 2.8, stretch: 3.4, scratch: 2.8, shake: 1.9, shakeoff: 1.9, bow: 2.2, look: 2, roll: 3.8, belly: 4.2, paw: 3, sit: 4.8,
         sneeze: 1.6, pounce: 3, nap: 14, sad: 3.4, celebrate: 2.5, pet: 2, tilt: 2.2, investigate: 1.8, beg: 4 };
@@ -615,7 +687,8 @@ export const CHAT_MASCOT_SCRIPT = `
         T.neck += Math.sin(sec * .65) * 2.2;
         T.head += Math.sin(sec * .83 + 1.2) * 3;
         T.earN += Math.sin(sec * 1.7) * 2;
-        if (travel || speed > 5) { run(now, sec); if (watchOn && gaze) watchHead(sec); }
+        if (leaving && leaving.phase === 'look' && speed <= 5) exitLook();
+        else if (travel || speed > 5 || leaving) { run(now, sec); if (watchOn && gaze) watchHead(sec); }
         else if (action) ACTIONS[action.kind](action, sec);
         else if (watchOn) watchPose(sec);
         else if (investigating) investigate(sec);
@@ -626,7 +699,7 @@ export const CHAT_MASCOT_SCRIPT = `
           T.leg[0].x = -4; T.leg[1].x = -5; T.leg[0].y = T.leg[1].y = up ? 6 : 2.5; T.leg[0].heel = T.leg[1].heel = 38;
           T.neck += up ? 8 : -2; T.tail = 50;
         }
-        if (!travel && !action && !watchOn && now < pointerUntil) {
+        if (!travel && !action && !watchOn && !leaving && now < pointerUntil) {
           T.gx = lim(pointerRel / 100, -1, 1) * .9;
           T.head -= lim(pointerRel / 150, -1, 1) * 5;
         }
@@ -825,7 +898,7 @@ export const CHAT_MASCOT_SCRIPT = `
       // ---- control ----
       function stepDogPosition() {
         dog.style.left = position + '%';
-        const rounded = Math.round(position);
+        const rounded = Math.round(lim(position, 0, 100));
         if (rounded !== lastAria) { lastAria = rounded; stage.setAttribute('aria-valuenow', String(rounded)); }
       }
       // ---- watching the prompt ----
@@ -894,7 +967,7 @@ export const CHAT_MASCOT_SCRIPT = `
         return !!promptBox && (promptBox.value || '').trim() !== '';
       }
       function noteTyping(typed) {
-        if (!active() || motion.matches) return;
+        if (!active() || motion.matches || leaving) return;
         if (!promptHasText()) { watchUntil = 0; return; }
         const now = clock();
         const starting = now >= watchUntil;
@@ -957,7 +1030,7 @@ export const CHAT_MASCOT_SCRIPT = `
         if (action) action.t = (now - action.start) / 1000;
         trackTools(now);
         if (enabled) pollCaret();
-        const typing = enabled && now < watchUntil && activity !== 'connecting' && promptHasText();
+        const typing = enabled && !leaving && now < watchUntil && activity !== 'connecting' && promptHasText();
         if (typing && caretDirty) { caretDirty = false; haveCaret = measureCaret(); }
         watchOn = typing && haveCaret;
         if (watchPrev && !watchOn) { remember(); idleLater(); }
@@ -971,7 +1044,8 @@ export const CHAT_MASCOT_SCRIPT = `
           direction = turnBody < Math.PI / 2 ? turn.from : turn.to;
           if (p >= 1) { turn = null; turnBody = turnHead = 0; facing.style.transform = 'scaleX(' + direction + ')'; }
         }
-        if (travel) {
+        if (leaving) driveExit(now, dt);
+        else if (travel) {
           const standing = sp.hp.v > HP0 - 5 && sp.hs.v > HS0 - (travel.watch ? 9 : 5) && air.y < .5;
           const width = Math.max(1, stage.clientWidth);
           const remain = (travel.to - position) / 100 * width;
@@ -1003,11 +1077,11 @@ export const CHAT_MASCOT_SCRIPT = `
             position = clampPos(position + Math.sign(remain) * Math.min(stepPx, dist) / width * 100);
           }
         } else speed = speed < .5 ? 0 : speed * Math.exp(-dt * 14);
-        if (!travel && !turn && !action && activity === 'connecting') move(position > 50 ? 8 : 92, false, 'gallop');
+        if (!leaving && !travel && !turn && !action && activity === 'connecting') move(position > 50 ? 8 : 92, false, 'gallop');
         const g = gaitFor(speed);
         if (speed > 1) phase = (phase + (backing ? -1 : 1) * speed * dt / SCALE * g.duty / Math.max(g.stride, 4)) % 1;
         row.dataset.gait = speed > 150 ? 'gallop' : speed > 80 ? 'trot' : speed > 5 ? 'walk' : 'rest';
-        row.dataset.pose = action ? action.kind : travel ? 'run' : watchOn ? 'watch' : investigating ? 'investigate' : begging(now) ? 'beg' : 'idle';
+        row.dataset.pose = action ? action.kind : leaving ? (leaving.phase === 'in' ? 'enter' : 'leave') : travel ? 'run' : watchOn ? 'watch' : investigating ? 'investigate' : begging(now) ? 'beg' : 'idle';
         row.dataset.activity = pendingTools.size ? 'tool' : now < talkingUntil ? 'talking' : activity;
         if (now >= blinkAt) { blinkStart = now; blinkAt = now + 2200 + Math.random() * 3800; }
         stepDogPosition();
@@ -1097,6 +1171,7 @@ export const CHAT_MASCOT_SCRIPT = `
         if (!active() || motion.matches) return;
         timer = window.setTimeout(() => {
           const now = clock();
+          if (leaving) return;
           if (activity !== 'idle' || travel || turn || action || pendingTools.size || investigating || now < watchUntil || now < talkingUntil) { idleLater(500); return; }
           if (now - lastInteraction > NAP_AFTER && now - lastNap > NAP_EVERY) { lastNap = now; wandered = false; react('nap'); return; }
           // Alternate: stroll somewhere, then (usually) do something there; sometimes stroll twice or trick twice.
@@ -1114,7 +1189,7 @@ export const CHAT_MASCOT_SCRIPT = `
         }, delay === undefined ? IDLE_MIN + Math.random() * IDLE_SPAN : delay);
       }
       function move(nextPosition, fetch, gait, face) {
-        if (!active()) return;
+        if (!active() || leaving) return;
         action = null;
         mark.textContent = '';
         const destination = clampPos(nextPosition);
@@ -1137,7 +1212,7 @@ export const CHAT_MASCOT_SCRIPT = `
         schedule();
       }
       function react(kind) {
-        if (!active()) return;
+        if (!active() || leaving) return;
         travel = null;
         turn = null;
         turnBody = turnHead = 0;
@@ -1162,6 +1237,11 @@ export const CHAT_MASCOT_SCRIPT = `
       }
       function interact() { lastInteraction = clock(); }
       function applyState() {
+        if (leaving) {
+          if (!document.hidden && !disposed && !motion.matches) return;
+          if (leaving.phase === 'in') { position = leaving.home; leaving = null; }
+          else { finishExit(); return; }
+        }
         row.hidden = !enabled;
         row.dataset.paused = String(!active());
         if (!active()) { closeMenu(); stop(); return; }
@@ -1214,7 +1294,7 @@ export const CHAT_MASCOT_SCRIPT = `
       }
       stage.addEventListener('contextmenu', event => {
         event.preventDefault();
-        if (!active()) return;
+        if (!active() || leaving) return;
         interact();
         const bounds = stage.getBoundingClientRect();
         openMenu(event.clientX, event.clientY, ((event.clientX - bounds.left) / Math.max(1, bounds.width)) * 100);
@@ -1261,7 +1341,7 @@ export const CHAT_MASCOT_SCRIPT = `
         }
       });
       const resize = new ResizeObserver(() => {
-        if (!active() || !stage.clientWidth) return;
+        if (!active() || !stage.clientWidth || leaving) return;
         if (travel) { if (!travel.watch) { const destination = travel.to; move(destination, travel.fetch); } }
         else { position = clampPos(position); stepDogPosition(); }
         if (watchOn) caretDirty = true;
@@ -1287,7 +1367,25 @@ export const CHAT_MASCOT_SCRIPT = `
           position = Number.isFinite(savedPosition) ? clampPos(savedPosition) : 18;
           applyState();
         },
-        setEnabled(value) { enabled = !!value; applyState(); remember(); },
+        // With animate, Max walks out of view when switched off and in from a random border when switched on.
+        setEnabled(value, animate) {
+          const next = !!value;
+          if (leaving) {
+            const entering = leaving.phase === 'in';
+            if (!next && entering && animate) { beginExit(leaving.home); return; }
+            if (!next !== entering) return;
+            if (entering) position = leaving.home;
+            leaving = null; turn = null; turnBody = turnHead = 0;
+            facing.style.transform = 'scaleX(' + direction + ')';
+          } else if (!next && animate && enabled && active() && !motion.matches) { beginExit(position); return; }
+          else if (next && animate && !enabled && activity !== 'connecting' && !motion.matches) {
+            enabled = true; applyState();
+            if (active()) beginEnter();
+            remember();
+            return;
+          }
+          enabled = next; applyState(); remember();
+        },
         setActivity(value) {
           const previous = activity;
           activity = value;

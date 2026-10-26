@@ -280,6 +280,10 @@ export function createMascotHarness(options: MascotHarnessOptions = {}) {
 
   return {
     ...harness,
+    /** Drives Math.random inside the mascot script; assigning to `random` on the result has no effect */
+    setRandom(value: number) {
+      harness.random = value
+    },
     row,
     stage,
     dog,

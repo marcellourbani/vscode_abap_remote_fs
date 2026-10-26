@@ -466,7 +466,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
   setMascotEnabled(enabled: boolean): void {
     this.mascotEnabled = enabled
-    this.postMessage({ type: "mascotVisibility", enabled })
+    this.postMessage({ type: "mascotVisibility", enabled, animate: true })
   }
 
   notifyMascotActivity(activity: "connecting" | "idle" | "error"): void {

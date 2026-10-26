@@ -3089,7 +3089,7 @@
       const msg = event.data;
       switch (msg.type) {
         case 'mascotVisibility':
-          chatMascot.setEnabled(msg.enabled);
+          chatMascot.setEnabled(msg.enabled, msg.animate);
           break;
         case 'mascotActivity':
           chatMascot.setActivity(msg.activity);
