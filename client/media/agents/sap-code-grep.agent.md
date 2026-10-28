@@ -26,8 +26,8 @@ Before any grep:
 1. Reject if `Downloaded source folder` was not provided or is not an absolute path.
 2. Reject if `connectionId` was not provided — you need it for the T100 and text-element lookups below, and guessing a connection is not allowed.
 3. Reject if the folder is missing or unreadable.
-4. Identify the local main-object source recursively. For a report, require the report-named child folder created by `abapfs_download_object`; reject a flat, manually reconstructed report file. Reject any missing or ambiguous main source. **Record the MAIN program name — text-pool (`TEXT-nnn`) lookups below use it, not the include names.**
-5. Open every source file recursively under the snapshot folder, including the report child folder and direct include files. Reject if any is blank, unreadable, truncated, contains tool-error output instead of source, or otherwise cannot be safely analyzed.
+4. Identify the local main-object source recursively. For a report, require exactly one downloaded `<REPORT_NAME>.prog.abap` main source anywhere under the snapshot folder; reject a missing, ambiguous, or manually reconstructed main source. The file's location does not matter. **Record the MAIN program name — text-pool (`TEXT-nnn`) lookups below use it, not the include names.**
+5. Open every source file recursively under the snapshot folder, including the main report and include files wherever they are located. Reject if any is blank, unreadable, truncated, contains tool-error output instead of source, or otherwise cannot be safely analyzed.
 6. Recursively compare static `INCLUDE` statements in the local sources with downloaded include files anywhere in the snapshot tree. Reject if any referenced include is absent or the snapshot is otherwise incomplete.
 
 Never re-read the SOURCE CODE via `abapfs_download_object`, `abapfs_get_object_source`, `abapfs_search_object_source`, or any other SAP source-reading tool — analyze only the local snapshot files. (Resolving message TEXT is different and expected: T100 via `abapfs_run_sql_query`, and program text-pool elements via `abapfs_manage_text_elements` — see below.) Never create or repair source files.
