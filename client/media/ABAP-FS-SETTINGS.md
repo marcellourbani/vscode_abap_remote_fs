@@ -110,6 +110,14 @@ The main setting for configuring SAP system connections. This is an object where
 
 ## 2. Fun Notifications
 
+### `abapfs.nativeNotifications`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `nativeNotifications` | boolean | `false` | Also show ABAP FS information, warning and error messages as OS notifications while VS Code is minimized or not focused. Enable in User Settings; messages and action buttons remain available inside VS Code. |
+
+Works in local desktop windows, not remote extension hosts. The extension includes the Windows and macOS notification helpers; Linux uses the desktop's `notify-send` utility. Status bar messages and progress updates are not mirrored.
+
 ### `abapfs.copilot.professionalNotifications`
 
 | Property | Type | Default | Description |

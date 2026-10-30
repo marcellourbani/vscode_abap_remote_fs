@@ -63,6 +63,10 @@ function copyFile(src: string, dest: string, optional = false) {
 
 function copyClientAssets() {
   if (existsSync(at("media"))) copyDir(at("media"), at("dist/media"))
+  // The notifier's native executables cannot be inlined into the JavaScript bundle.
+  const notifierPkg = packageDir("node-notifier")
+  copyDir(resolve(notifierPkg, "vendor"), at("dist/vendor/node-notifier"))
+  copyFile(resolve(notifierPkg, "LICENSE"), at("dist/vendor/node-notifier/LICENSE"))
   // documentationTool.ts reads this at runtime — fail the build if it's missing.
   copyFile(at("../DOCUMENTATION.md"), at("dist/media/DOCUMENTATION.md"))
   // The agent chat webview renders VS Code's codicons, which webviews don't get from the host.

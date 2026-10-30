@@ -5,6 +5,7 @@
  */
 
 import * as vscode from "vscode"
+import { showNativeNotification } from "./nativeNotifications"
 
 // ============================================================================
 // MESSAGE PATTERNS & DETECTION
@@ -266,17 +267,23 @@ function enhanceMessage(message: string, type: "info" | "error" | "warning"): st
 export const funWindow = {
   showInformationMessage: (message: string, ...items: any[]) => {
     const enhanced = enhanceMessage(message, "info")
-    return vscode.window.showInformationMessage(enhanced, ...items)
+    const result = vscode.window.showInformationMessage(enhanced, ...items)
+    showNativeNotification(enhanced, "Information")
+    return result
   },
 
   showErrorMessage: (message: string, ...items: any[]) => {
     const enhanced = enhanceMessage(message, "error")
-    return vscode.window.showErrorMessage(enhanced, ...items)
+    const result = vscode.window.showErrorMessage(enhanced, ...items)
+    showNativeNotification(enhanced, "Error")
+    return result
   },
 
   showWarningMessage: (message: string, ...items: any[]) => {
     const enhanced = enhanceMessage(message, "warning")
-    return vscode.window.showWarningMessage(enhanced, ...items)
+    const result = vscode.window.showWarningMessage(enhanced, ...items)
+    showNativeNotification(enhanced, "Warning")
+    return result
   },
 
   setStatusBarMessage: (message: string, hideAfterTimeout?: number | Thenable<any>) => {

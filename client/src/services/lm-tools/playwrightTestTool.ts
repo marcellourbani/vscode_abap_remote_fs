@@ -19,6 +19,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as os from "os"
 import { spawn } from "child_process"
+import { funWindow } from "../funMessenger"
 
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
@@ -340,7 +341,7 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
 
     const browser = await timed("resolve browser executable", () => resolveBrowserExecutable())
     if (browser.warning) {
-      vscode.window.showWarningMessage(browser.warning)
+      funWindow.showWarningMessage(browser.warning)
     }
 
     const loginUrl = await tryLoginUrl(connectionId, url)
