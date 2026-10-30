@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.13.1
+
+### Patch Changes
+
+- 97f4e4c: update testing subagents
+- 36cb370: update readme
+- 97f4e4c: add option to permanently dismiss plaintext password warning
+- 5c9548c: remove object creation interceptor
+
 ## 2.13.0
 
 ### Minor Changes
