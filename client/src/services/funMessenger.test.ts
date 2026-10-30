@@ -111,11 +111,7 @@ describe("funMessenger", () => {
 
       expect(funWindow[method]("Activation failed", options, action)).toBe(result)
       const message = (mockVscode.window[method] as Mock).mock.calls[0][0]
-      expect(mockVscode.window[method]).toHaveBeenCalledExactlyOnceWith(
-        message,
-        options,
-        action
-      )
+      expect(mockVscode.window[method]).toHaveBeenCalledExactlyOnceWith(message, options, action)
       expect(showNativeNotification).toHaveBeenCalledExactlyOnceWith(message, severity)
     })
 

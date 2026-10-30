@@ -113,23 +113,17 @@ describe("native notifications", () => {
     }
   )
 
-  it.each(["x64", "arm64", "ia32"] as const)(
-    "uses the packaged Windows helper for %s",
-    arch => {
-      mocks.enabled = true
-      mocks.arch = arch
-      showNativeNotification("Done", "Information")
-      const suffix = arch === "x64" ? "64" : "86"
-      expect(mocks.windows).toHaveBeenCalledWith({
-        customPath: fileURLToPath(
-          new URL(
-            `./vendor/node-notifier/snoreToast/snoretoast-x${suffix}.exe`,
-            import.meta.url
-          )
-        )
-      })
-    }
-  )
+  it.each(["x64", "arm64", "ia32"] as const)("uses the packaged Windows helper for %s", arch => {
+    mocks.enabled = true
+    mocks.arch = arch
+    showNativeNotification("Done", "Information")
+    const suffix = arch === "x64" ? "64" : "86"
+    expect(mocks.windows).toHaveBeenCalledWith({
+      customPath: fileURLToPath(
+        new URL(`./vendor/node-notifier/snoreToast/snoretoast-x${suffix}.exe`, import.meta.url)
+      )
+    })
+  })
 
   it("uses the packaged macOS helper", () => {
     mocks.enabled = true

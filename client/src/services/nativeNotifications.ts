@@ -31,10 +31,7 @@ function createNotifier() {
     const suffix = arch() === "x64" ? "64" : "86"
     return new notifier.WindowsToaster({
       customPath: fileURLToPath(
-        new URL(
-          `./vendor/node-notifier/snoreToast/snoretoast-x${suffix}.exe`,
-          import.meta.url
-        )
+        new URL(`./vendor/node-notifier/snoreToast/snoretoast-x${suffix}.exe`, import.meta.url)
       )
     })
   }
