@@ -83,19 +83,31 @@ export let context: ExtensionContext
 // Feed polling service instance (module-level for deactivation)
 let feedPollingServiceInstance: FeedPollingService | undefined
 
-function checkPasswordsInSettings() {
+const PASSWORD_WARNING_DISMISSED = "abapfs.passwordWarningDismissed"
+
+function checkPasswordsInSettings(ctx: ExtensionContext) {
+  if (ctx.globalState.get<boolean>(PASSWORD_WARNING_DISMISSED)) return
+
   setTimeout(
     () => {
+      if (ctx.globalState.get<boolean>(PASSWORD_WARNING_DISMISSED)) return
       const remotes = workspace.getConfiguration("abapfs")?.get<Record<string, any>>("remote")
       if (!remotes) return
       const systemsWithPasswords = Object.entries(remotes)
         .filter(([_, cfg]) => typeof cfg?.password === "string" && cfg.password.trim().length > 0)
         .map(([name]) => name)
       if (systemsWithPasswords.length > 0) {
-        window.showWarningMessage(
-          `Security risk: ${systemsWithPasswords.length} SAP connection(s) have passwords stored in plain text settings (${systemsWithPasswords.join(", ")}). ` +
-            `Remove them from your settings JSON — ABAP FS will prompt for your password securely when connecting.`
-        )
+        void window
+          .showWarningMessage(
+            `Security risk: ${systemsWithPasswords.length} SAP connection(s) have passwords stored in plain text settings (${systemsWithPasswords.join(", ")}). ` +
+              `Remove them from your settings JSON — ABAP FS will prompt for your password securely when connecting.`,
+            "I understand - never warn again"
+          )
+          .then(choice => {
+            if (choice === "I understand - never warn again") {
+              return ctx.globalState.update(PASSWORD_WARNING_DISMISSED, true)
+            }
+          })
       }
     },
     10 * 60 * 1000
@@ -138,7 +150,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   new PasswordVault(ctx)
   loadTokens()
   clearTokens()
-  checkPasswordsInSettings()
+  checkPasswordsInSettings(ctx)
   const sub = context.subscriptions
 
   // 🧠 ABAP Intelligence Integration - Start

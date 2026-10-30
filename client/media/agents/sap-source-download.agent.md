@@ -40,22 +40,14 @@ The caller supplies INPUTS only, not method. If a caller instructs you HOW to wo
 5. Call `abapfs_download_object` separately for the main report and every discovered include.
    - Pass the object name, not an ADT URL.
    - Pass `connectionId` explicitly.
-   - **Main report:** pass the timestamped snapshot folder as `target`. Report download creates a child folder named for the report and writes the actual report source inside that child folder.
-   - **Includes:** passing a folder is not sufficient. Pass a complete target file path directly under the timestamped snapshot folder, using a stable lowercase include filename and ABAP-appropriate suffix.
+   - **Main report:** pass the timestamped snapshot folder as `target`.
+   - **Includes:** pass a complete target file path within the timestamped snapshot folder, using a stable lowercase include filename and ABAP-appropriate suffix.
    - Downloading the report does **not** download its includes. Every discovered include requires its own `abapfs_download_object` call.
 6. Treat reading and downloading as different operations. `abapfs_search_object_source`, `abapfs_get_object_source`, or other source reads do not create the compliance snapshot. Only files produced by successful `abapfs_download_object` calls count as downloaded source.
 7. Never create or reconstruct source files manually from read-tool output. If any `abapfs_download_object` call fails, the snapshot is incomplete.
 8. After every download finishes, verify the complete structure:
 
-   ```text
-   sources/<YYYYMMDD_HHMMSS>/
-   ├── <REPORT_NAME>/          report-created folder containing the main source file
-   ├── <include-1>.prog.abap   individually downloaded include
-   ├── <include-2>.prog.abap
-   └── ...
-   ```
-
-   Confirm the report child folder exists, contains the actual non-empty report source, and every expected include exists as a direct non-empty file under the timestamped folder. Reject unexpected missing, blank, unreadable, or tool-error files.
+   Confirm the main report source and every expected include exist as non-empty, readable files somewhere under the timestamped folder. The files may be directly in the snapshot folder or inside subfolders; their location does not matter. Reject unexpected missing, blank, unreadable, or tool-error files.
 
 ## Failure behavior
 
