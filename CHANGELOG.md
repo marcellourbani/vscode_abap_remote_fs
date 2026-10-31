@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.13.2
+
+### Patch Changes
+
+- b24695c: add OS level notifications
+
 ## 2.13.1
 
 ### Patch Changes
