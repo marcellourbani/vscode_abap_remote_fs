@@ -24,8 +24,11 @@ vi.mock("vscode", () => ({
   }
 }))
 
+vi.mock("./nativeNotifications", () => ({ showNativeNotification: vi.fn() }))
+
 import * as vscode from "vscode"
 import { funWindow } from "./funMessenger"
+import { showNativeNotification } from "./nativeNotifications"
 import type { Mocked, Mock } from "vitest"
 
 const mockVscode = vscode as Mocked<typeof vscode>
@@ -92,6 +95,30 @@ describe("funMessenger", () => {
       funWindow.showWarningMessage("Warning: multiple connections detected")
       const calledWith = (mockVscode.window.showWarningMessage as Mock).mock.calls[0][0] as string
       expect(calledWith).not.toBe("Warning: multiple connections detected")
+    })
+  })
+
+  describe("native notification forwarding", () => {
+    it.each([
+      ["showInformationMessage", "Information"],
+      ["showWarningMessage", "Warning"],
+      ["showErrorMessage", "Error"]
+    ] as const)("mirrors %s without changing its prompt or return value", (method, severity) => {
+      const result = Promise.resolve("Continue")
+      ;(mockVscode.window[method] as Mock).mockReturnValue(result)
+      const options = { modal: true, detail: "Review this message in VS Code" }
+      const action = { title: "Continue" }
+
+      expect(funWindow[method]("Activation failed", options, action)).toBe(result)
+      const message = (mockVscode.window[method] as Mock).mock.calls[0][0]
+      expect(mockVscode.window[method]).toHaveBeenCalledExactlyOnceWith(message, options, action)
+      expect(showNativeNotification).toHaveBeenCalledExactlyOnceWith(message, severity)
+    })
+
+    it("does not mirror status bar messages or progress updates", () => {
+      funWindow.setStatusBarMessage("Searching", 1000)
+      funWindow.withProgress({ location: 15, title: "Searching" }, vi.fn())
+      expect(showNativeNotification).not.toHaveBeenCalled()
     })
   })
 

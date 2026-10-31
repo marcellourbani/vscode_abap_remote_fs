@@ -17,6 +17,9 @@ vi.mock("vscode", () => ({
 
 vi.mock("./toolRegistry", () => ({ registerToolWithRegistry: vi.fn() }))
 vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("../funMessenger", () => ({
+  funWindow: { showWarningMessage: vi.fn() }
+}))
 vi.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: vi.fn() }))
 vi.mock("../../config", () => ({ formatKey: vi.fn(), RemoteManager: { get: vi.fn() } }))
 vi.mock("../../lib", () => ({ log: { debug: vi.fn() } }))
@@ -32,6 +35,7 @@ import { formatKey, RemoteManager } from "../../config"
 import { ssoLoginUrl } from "../../adt/sapgui/sapgui"
 import { getTestFolder, getWebGuiUrl } from "../testing/config"
 import { resolveBrowserExecutable } from "../testing/browserResolver"
+import { funWindow } from "../funMessenger"
 import {
   PlaywrightTestTool,
   cleanupStorageState,
@@ -294,7 +298,7 @@ describe("PlaywrightTestTool", () => {
       SAP_SYSTEM: "dev100",
       SAP_URL_DEV100: "http://sap/webgui"
     })
-    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith("browser warning")
+    expect(funWindow.showWarningMessage).toHaveBeenCalledWith("browser warning")
     expect(launcher.dispose).toHaveBeenCalledTimes(1)
   })
 

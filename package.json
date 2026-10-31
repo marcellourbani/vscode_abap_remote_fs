@@ -6594,6 +6594,12 @@
           "default": true,
           "markdownDescription": "Automatically open XML/metadata objects (like message classes, simple transformations, service bindings) in SAP GUI instead of as XML text files in the editor."
         },
+        "abapfs.nativeNotifications": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "markdownDescription": "Also show ABAP FS information, warning and error messages as operating-system notifications when VS Code is minimized or not focused. Messages still appear inside VS Code, and any action buttons must be used there. Off by default. Available in local desktop windows only; Linux requires the desktop's `notify-send` utility."
+        },
         "abapfs.copilot.professionalNotifications": {
           "type": "boolean",
           "default": false,
