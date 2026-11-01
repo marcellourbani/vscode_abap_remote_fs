@@ -559,6 +559,8 @@ export class SapConnectionManager {
     // Add optional fields only if they have values
     if (connection.atcapprover) cleaned.atcapprover = connection.atcapprover
     if (connection.atcVariant) cleaned.atcVariant = connection.atcVariant
+    if (connection.landscape) cleaned.landscape = connection.landscape
+    if (connection.clientType) cleaned.clientType = connection.clientType
     if (connection.maxDebugThreads) cleaned.maxDebugThreads = connection.maxDebugThreads
     if (connection.customCA) cleaned.customCA = connection.customCA
 
@@ -1911,6 +1913,16 @@ export class SapConnectionManager {
                     </div>
                 </div>
                 <div class="form-row">
+                    <div class="form-group">
+                        <label for="landscape">Landscape</label>
+                        <input type="text" id="landscape" name="landscape" placeholder="Optional, e.g. S4 Finance" title="Free text naming the landscape this system belongs to, so systems of the same landscape can be related">
+                    </div>
+                    <div class="form-group">
+                        <label for="clientType">Client Type</label>
+                        <input type="text" id="clientType" name="clientType" placeholder="Optional, e.g. Development, Unit Test, QA, Production" title="Free text describing the role of this system/client, e.g. Configuration, Development, Unit Test, QA, Pre-Prod, Production">
+                    </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group checkbox-group">
                         <input type="checkbox" id="allowSelfSigned" name="allowSelfSigned">
                         <label for="allowSelfSigned">Allow Self-Signed Certificates</label>
@@ -2190,6 +2202,8 @@ export class SapConnectionManager {
                                 <th>Auth</th>
                                 <th>Username</th>
                                 <th>Client</th>
+                                <th>Landscape</th>
+                                <th>Client Type</th>
                                 <th>Language</th>
                                 <th>GUI Type</th>
                                 <th>GUI Server</th>
@@ -2208,6 +2222,8 @@ export class SapConnectionManager {
                                     <td><span class="gui-badge">\${getAuthMethodLabel(conn.authMethod || (conn.oauth ? 'oauth' : 'basic'))}</span></td>
                                     <td>\${escapeHtml(conn.username || '')}</td>
                                     <td>\${escapeHtml(conn.client || '')}</td>
+                                    <td>\${formatValue(conn.landscape, '')}</td>
+                                    <td>\${formatValue(conn.clientType, '')}</td>
                                     <td>\${formatValue(conn.language, 'en')}</td>
                                     <td><span class="gui-badge">\${getGuiTypeLabel(conn.sapGui?.guiType || 'SAPGUI')}</span></td>
                                     <td>\${formatValue(conn.sapGui?.server, '')}</td>
@@ -2498,6 +2514,8 @@ export class SapConnectionManager {
                 // Clear optional fields, then set if they exist
                 document.getElementById('atcapprover').value = conn.atcapprover || '';
                 document.getElementById('atcVariant').value = conn.atcVariant || '';
+                document.getElementById('landscape').value = conn.landscape || '';
+                document.getElementById('clientType').value = conn.clientType || '';
                 document.getElementById('customCA').value = conn.customCA || '';
 
                 // SAP GUI fields
@@ -2639,6 +2657,8 @@ export class SapConnectionManager {
                         : (formData.get('authMethod') || 'basic')),
                     atcapprover: formData.get('atcapprover') || undefined,
                     atcVariant: formData.get('atcVariant') || undefined,
+                    landscape: formData.get('landscape') || undefined,
+                    clientType: formData.get('clientType') || undefined,
                     customCA: formData.get('customCA') || undefined,
                     certAuth: {
                         certPath: formData.get('certAuth.certPath') || '',

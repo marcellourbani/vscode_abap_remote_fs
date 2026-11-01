@@ -276,6 +276,42 @@ describe("message handling: saveConnection (new)", () => {
     expect(logTelemetry).toHaveBeenCalledWith("command_connection_manager_save_called")
   })
 
+  const saveAndGetStored = async (extra: Record<string, unknown>) => {
+    ;(validateNewConfigId as Mock).mockReturnValue((_id: string) => undefined)
+    const connection = { url: "https://host:8443", username: "user", client: "100", ...extra }
+    const cfg = {
+      inspect: vi
+        .fn()
+        .mockReturnValueOnce({ globalValue: {}, workspaceValue: {} })
+        .mockReturnValueOnce({ globalValue: { newConn: connection }, workspaceValue: {} }),
+      update: vi.fn().mockResolvedValue(undefined)
+    }
+    ;(vscode.workspace.getConfiguration as Mock).mockReturnValue(cfg)
+    createManager()
+    await receiveMessageHandler!({
+      type: "saveConnection",
+      connectionId: "newConn",
+      connection,
+      target: "user",
+      isEdit: false
+    })
+    return cfg.update.mock.calls[0][1].newConn
+  }
+
+  test("saves landscape and clientType when provided", async () => {
+    const stored = await saveAndGetStored({ landscape: "S4 Finance", clientType: "Unit Test" })
+
+    expect(stored.landscape).toBe("S4 Finance")
+    expect(stored.clientType).toBe("Unit Test")
+  })
+
+  test("omits landscape and clientType when empty", async () => {
+    const stored = await saveAndGetStored({ landscape: "", clientType: undefined })
+
+    expect(stored).not.toHaveProperty("landscape")
+    expect(stored).not.toHaveProperty("clientType")
+  })
+
   test("sends formValidationError when new connection id is invalid", async () => {
     ;(validateNewConfigId as Mock).mockReturnValue((_id: string) => "Key already in use")
 

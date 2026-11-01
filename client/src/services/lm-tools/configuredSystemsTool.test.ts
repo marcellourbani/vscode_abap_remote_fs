@@ -144,6 +144,32 @@ describe("ConfiguredSystemsTool", () => {
     expect(output).not.toHaveProperty("redactedSettings")
   })
 
+  it("exposes landscape and clientType without a tool change", async () => {
+    const landscapePackage = JSON.parse(JSON.stringify(packageJSON))
+    const properties =
+      landscapePackage.contributes.configuration.properties["abapfs.remote"].patternProperties[
+        "[a-zA-Z][a-zA-Z0-9_]+"
+      ].properties
+    properties.landscape = { default: "" }
+    properties.clientType = { default: "" }
+    const inspect = vi.fn(function (key: string) {
+      if (key === "remote") return { globalValue: { DEV100: { client: "100" } } }
+      if (key === "remote.DEV100.landscape") return { globalValue: "S4 Finance" }
+      if (key === "remote.DEV100.clientType") return { globalValue: "Unit Test" }
+      return {}
+    })
+    ;(getConfig as Mock).mockReturnValue({ inspect })
+
+    const result: any = await new ConfiguredSystemsTool(landscapePackage).invoke(
+      makeOptions({ connectionId: "DEV100" }),
+      mockToken
+    )
+    const { settings } = JSON.parse(result.parts[0].text)
+
+    expect(settings.landscape).toBe("S4 Finance")
+    expect(settings.clientType).toBe("Unit Test")
+  })
+
   it("returns an empty ID list when no remotes exist", async () => {
     ;(getConfig as Mock).mockReturnValue({
       inspect: vi.fn().mockReturnValue({ globalValue: {}, workspaceValue: {} })
