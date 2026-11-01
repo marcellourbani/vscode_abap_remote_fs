@@ -125,7 +125,7 @@ describe("writers", () => {
 
   test("CSV: one file per table, quoted, with BOM", () => {
     const files = writeCsvFiles(m)
-    expect(files.map(f => f.suffix)).toEqual(["_cell1_s1_define", "_cell2_summary"])
+    expect(files.map(f => f.suffix)).toEqual(["_s1_define", "_summary"])
     expect(files[1].content).toBe('﻿Status,Check,Finding\r\nRED,Auth,"a,""b"""\r\nGREEN,Menu,—\r\n')
   })
 
@@ -183,11 +183,87 @@ describe("writers", () => {
     const wb = new ExcelJS.Workbook()
     await wb.xlsx.load(buf as any)
     const names = wb.worksheets.map(w => w.name)
-    expect(names).toEqual(["Contents", "1_s1_define", "2_summary", "Code & Comments"])
-    const ws = wb.getWorksheet("2_summary")!
+    expect(names).toEqual(["Contents", "s1_define", "summary", "Code & Comments"])
+    const ws = wb.getWorksheet("summary")!
     expect(ws.getCell("A2").value).toBe("Status")
     expect(ws.getCell("A3").value).toBe("RED")
     expect((ws.getCell("A3").fill as any).fgColor.argb).toBe("FFF8C9CE")
+  })
+
+  test("titles from display.table name sheets and files, ahead of the cell name", async () => {
+    const rows = [{ A: "1" }]
+    const titled: ExportCellInput[] = [
+      {
+        index: 0,
+        kind: "javascript",
+        name: "calc",
+        source: "x",
+        result: {
+          result: rows,
+          display: [
+            display.table(rows, { title: "Open Orders" }),
+            display.table(rows, { title: "Closed Orders" })
+          ]
+        }
+      },
+      { index: 1, kind: "sql", source: "x", result: { result: rows } },
+      { index: 2, kind: "sql", name: "calc", source: "x", result: { result: rows } }
+    ]
+    const tm = buildExportModel(titled, ["data"], "T", "x.sapwb", date)
+    expect(writeCsvFiles(tm).map(f => f.suffix)).toEqual([
+      "_Open_Orders",
+      "_Closed_Orders",
+      "_cell1",
+      "_calc"
+    ])
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load((await writeXlsx(tm)) as any)
+    expect(wb.worksheets.map(w => w.name)).toEqual([
+      "Contents",
+      "Open Orders",
+      "Closed Orders",
+      "1_result",
+      "calc"
+    ])
+    expect(wb.getWorksheet("Open Orders")!.getCell("A1").value).toBe("Cell #0 · Open Orders")
+    const contents = wb.getWorksheet("Contents")!
+    expect(contents.getRow(5).values).toEqual([
+      undefined,
+      0,
+      "calc",
+      "",
+      "data",
+      "Open Orders (1 rows)"
+    ])
+  })
+
+  test("Excel: long or illegal titles become valid unique sheet names", async () => {
+    const rows = [{ A: "1" }]
+    const t = "Q3/Q4: Open [orders] by region and plant?"
+    const c: ExportCellInput[] = [
+      {
+        index: 0,
+        kind: "javascript",
+        source: "x",
+        result: {
+          result: rows,
+          display: [display.table(rows, { title: t }), display.table(rows, { title: t })]
+        }
+      }
+    ]
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load((await writeXlsx(buildExportModel(c, ["data"], "T"))) as any)
+    const names = wb.worksheets.map(w => w.name).slice(1)
+    expect(names).toEqual(["Q3_Q4_ Open _orders_ by region", "Q3_Q4_ Open _orders_ by reg_2"])
+  })
+
+  test("export of a single cell keeps only that cell", () => {
+    const one = buildExportModel(
+      cells.filter(c => c.index === 2),
+      ["data", "code"],
+      "T"
+    )
+    expect(one.items.map(i => `${i.index}:${i.kind}`)).toEqual(["2:code", "2:data"])
   })
 
   test("Word: produces a docx (zip) with the content", async () => {

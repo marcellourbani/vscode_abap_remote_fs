@@ -27,7 +27,7 @@ Alternatively, create any file with the `.sapwb` extension, or ask Copilot: *"Cr
 
 **Naming cells**
 
-Click `#n` in a cell's status bar to give it a name (letters, digits and `_`, unique in the workbook). Names are saved in the `.sapwb` file and keep working when cells are inserted, moved or deleted. When you rename a cell, ABAP FS offers to update the references in other cells.
+Click `#n` in a cell's status bar to give it a name (letters, digits and `_`, unique in the workbook). Names are saved in the `.sapwb` file and keep working when cells are inserted, moved or deleted. When you rename a cell, ABAP FS offers to update the references in other cells. The name is also used to label the cell's output when you [export](#exporting-a-workbook), so a short descriptive name makes the exported files easier to read.
 
 **Referencing results between cells**
 
@@ -104,8 +104,11 @@ Click **Export…** in the workbook toolbar (or run **SAP Data Workbook: Export�
 
 - **Excel:** one sheet per result table, plus *Contents* and *Code & Comments* sheets; status values are coloured.
 - **CSV:** data only, one file per result table.
+- **Names:** each output is labelled with its `display.*` `title` if it has one, otherwise the cell name, otherwise `<cell number>_result`. This is the Excel tab name (cut at 31 characters, `\ / ? * [ ] :` replaced by `_`, duplicates numbered), the CSV file suffix and the heading in the other formats. Name your cells, or give `display.table(rows, { title: "Open Orders" })` a title, and the exported file explains itself.
 - **PDF / Word:** landscape; tables over 3,000 (PDF) / 2,000 (Word) rows are cut with a note — use Excel or CSV for all rows. The PDF uses the standard PDF fonts, so characters outside Western European languages appear as `?`.
 - Results are kept in memory, so run the workbook before exporting data.
+
+**Exporting a single cell:** click the export icon in the cell's toolbar (or run **ABAP FS: Export Cell Output…** with the cell selected). Only that cell's output is exported, so you just pick the format. The file is named `<workbook>_<cell name>`.
 
 ## Example: Data Quality Check
 

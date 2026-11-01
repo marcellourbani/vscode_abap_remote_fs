@@ -95,16 +95,11 @@ export async function renderModel(
   }
 }
 
-export async function exportNotebook(controller: AbapNotebookController): Promise<void> {
-  const editor = vscode.window.activeNotebookEditor
-  if (!editor || editor.notebook.notebookType !== NOTEBOOK_TYPE) {
-    window.showWarningMessage("Open an SAP Data Workbook (.sapwb) to export it.")
-    return
-  }
-  const notebook = editor.notebook
-  const cells = collectCells(notebook, controller)
-  const withResults = cells.filter(c => c.result && !c.result.error).length
-
+/**
+ * Export the workbook, or - when `only` is given - just the output of that one cell
+ * (data only, so the "what to include" step is skipped).
+ */
+async function pickParts(withResults: number): Promise<ExportPart[] | undefined> {
   const partPick = await window.showQuickPick(
     PARTS.map(p => ({
       label: p.label,
@@ -118,8 +113,26 @@ export async function exportNotebook(controller: AbapNotebookController): Promis
       placeHolder: "Pick any one, two or all three"
     }
   )
-  if (!partPick || partPick.length === 0) return
-  const parts = partPick.map(p => p.part)
+  if (!partPick || partPick.length === 0) return undefined
+  return partPick.map(p => p.part)
+}
+
+export async function exportNotebook(
+  controller: AbapNotebookController,
+  only?: vscode.NotebookCell
+): Promise<void> {
+  const editor = vscode.window.activeNotebookEditor
+  if (!editor || editor.notebook.notebookType !== NOTEBOOK_TYPE) {
+    window.showWarningMessage("Open an SAP Data Workbook (.sapwb) to export it.")
+    return
+  }
+  const notebook = editor.notebook
+  const all = collectCells(notebook, controller)
+  const cells = only ? all.filter(c => c.index === only.index) : all
+  const withResults = cells.filter(c => c.result && !c.result.error).length
+
+  const parts = only ? ["data" as ExportPart] : await pickParts(withResults)
+  if (!parts) return
 
   const formatPick = await window.showQuickPick(
     (Object.keys(FORMAT_INFO) as ExportFormat[]).map(f => ({
@@ -128,13 +141,21 @@ export async function exportNotebook(controller: AbapNotebookController): Promis
       detail: FORMAT_INFO[f].description,
       format: f
     })),
-    { title: "Export SAP Data Workbook (2/2): format" }
+    {
+      title: only
+        ? `Export cell #${only.index} output: format`
+        : "Export SAP Data Workbook (2/2): format"
+    }
   )
   if (!formatPick) return
   const format = formatPick.format
 
-  const base = path.basename(notebook.uri.fsPath || notebook.uri.path, ".sapwb") || "workbook"
-  const title = (notebook.metadata?.title as string) || base
+  const workbookName =
+    path.basename(notebook.uri.fsPath || notebook.uri.path, ".sapwb") || "workbook"
+  const base = only
+    ? `${workbookName}_${(cellName(only) ?? `cell${only.index}`).replace(/[^\w-]/g, "_")}`
+    : workbookName
+  const title = (notebook.metadata?.title as string) || workbookName
   const model = buildExportModel(
     cells,
     parts,
@@ -145,7 +166,9 @@ export async function exportNotebook(controller: AbapNotebookController): Promis
   if (model.items.length === 0) {
     window.showWarningMessage(
       parts.includes("data") && withResults === 0
-        ? "Nothing to export: no cell has results yet. Run the workbook first, or export code/comments."
+        ? only
+          ? "Nothing to export: this cell has no result yet. Run it first."
+          : "Nothing to export: no cell has results yet. Run the workbook first, or export code/comments."
         : "Nothing to export for the selected parts."
     )
     return

@@ -16,7 +16,13 @@ import {
   WidthType
 } from "docx"
 import { statusKind, STATUS_COLORS } from "../display"
-import { cellLabel, type ExportItem, type ExportModel, type ExportTable } from "./exportModel"
+import {
+  cellLabel,
+  itemName,
+  type ExportItem,
+  type ExportModel,
+  type ExportTable
+} from "./exportModel"
 import {
   codeCaption,
   itemCodeLang,
@@ -33,7 +39,11 @@ export const DOCX_MAX_TABLE_ROWS = 2000
 // ------------------------------------------------------------------ Excel
 
 function sheetName(base: string, used: Set<string>): string {
-  const clean = base.replace(/[\\/?*[\]:]/g, "_").slice(0, 31) || "Sheet"
+  const clean =
+    base
+      .replace(/[\\/?*[\]:]/g, "_")
+      .slice(0, 31)
+      .trim() || "Sheet"
   let name = clean
   for (let n = 2; used.has(name.toLowerCase()); n++) name = `${clean.slice(0, 27)}_${n}`
   used.add(name.toLowerCase())
@@ -121,7 +131,7 @@ export async function writeXlsx(m: ExportModel): Promise<Buffer> {
   const textItems: ExportItem[] = []
   for (const i of m.items) {
     if (i.kind === "data" && i.table && i.table.columns.length > 0) {
-      const name = sheetName(`${i.index}_${i.name ?? "result"}`, used)
+      const name = sheetName(itemName(i) ?? `${i.index}_result`, used)
       addTableSheet(wb, name, i, i.table)
       contents.addRow([
         i.index,
@@ -151,7 +161,7 @@ export async function writeXlsx(m: ExportModel): Promise<Buffer> {
       const lang = itemCodeLang(i)
       const row = ws.addRow([
         i.index,
-        i.name ?? "",
+        itemName(i) ?? "",
         i.system ?? "",
         i.kind,
         lang ? LANG_LABEL[lang] : (i.language ?? i.contentType ?? ""),
