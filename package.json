@@ -6453,6 +6453,16 @@
                   "description": "Default ATC variant",
                   "default": ""
                 },
+                "landscape": {
+                  "type": "string",
+                  "description": "Optional free text naming the landscape this system belongs to, so systems of the same landscape can be related (e.g. \"S4 Finance\", \"ECC Sales\")",
+                  "default": ""
+                },
+                "clientType": {
+                  "type": "string",
+                  "description": "Optional free text describing the role of this system/client (e.g. \"Configuration\", \"Development\", \"Unit Test\", \"QA\", \"Pre-Prod\", \"Production\")",
+                  "default": ""
+                },
                 "allowSelfSigned": {
                   "type": "boolean",
                   "title": "Do not validate SSL certificates (lowers the connection security)",

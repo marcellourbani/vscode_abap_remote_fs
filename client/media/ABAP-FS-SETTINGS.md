@@ -58,6 +58,8 @@ The main setting for configuring SAP system connections. This is an object where
 | `language` | string | `"en"` | 2 chars | Login language code (ISO 639-1). |
 | `atcapprover` | string | `""` | - | Default ATC (ABAP Test Cockpit) approver username for exemption requests. |
 | `atcVariant` | string | `""` | - | Default ATC check variant to use for code quality checks. |
+| `landscape` | string | `""` | - | Optional free text naming the landscape this system belongs to (e.g. `S4 Finance`), so systems of the same landscape can be related. |
+| `clientType` | string | `""` | - | Optional free text describing the role of this system/client (e.g. `Configuration`, `Development`, `Unit Test`, `QA`, `Pre-Prod`, `Production`). |
 | `allowSelfSigned` | boolean | `false` | - | Accept self-signed SSL certificates. **Reduces connection security.** Use only for development servers. |
 | `customCA` | string | `"/secrets/myCA.pem"` | - | Path to custom Certificate Authority certificate file (PEM format) for corporate CAs. |
 | `diff_formatter` | string | `"ADT formatter"` | enum: `ADT formatter`, `AbapLint`, `simple` | Code formatter to use when comparing versions. |

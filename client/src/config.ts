@@ -63,6 +63,10 @@ type ClientSslConfig = ReturnType<typeof createSSLConfig> & {
 export interface RemoteConfig extends ClientConfiguration {
   atcapprover?: string
   atcVariant?: string
+  /** Free text: the landscape this system belongs to, so AI tools can relate systems (e.g. dev, QA and prod of one landscape). */
+  landscape?: string
+  /** Free text: the role of this system/client, e.g. Configuration, Development, Unit Test, QA, Pre-Prod, Production. */
+  clientType?: string
   maxDebugThreads?: number
   sapGui?: SapGuiConfig
   /** Off for systems reached through a gateway that authenticates on the user's behalf. */
