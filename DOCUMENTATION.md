@@ -162,6 +162,25 @@ The Connection Manager is a visual interface for adding, editing, and organizing
 | **SAP GUI** | Server, system number, router string, message server, GUI type (Desktop / Embedded WebGUI / Browser) |
 | **OAuth** | Client ID, secret, login URL |
 | **Advanced** | ATC approver, ATC check variant, max debug threads, diff formatter |
+| **Classification** | Landscape, client type (both optional free text) |
+
+## Classifying Systems (Landscape and Client Type)
+
+Two optional free-text fields describe what a system is for:
+
+- **Landscape** — the landscape the system belongs to, e.g. `S4 Finance`. Systems that share a landscape value belong together.
+- **Client Type** — the role of the system or client, e.g. `Configuration`, `Development`, `Unit Test`, `QA`, `Pre-Prod`, `Production`.
+
+The values are stored with the connection in `abapfs.remote`, and are also available as columns in the connection list:
+
+```json
+"abapfs.remote": {
+  "dev100": { "landscape": "S4 Finance", "clientType": "Development" },
+  "ut200": { "landscape": "S4 Finance", "clientType": "Unit Test" }
+}
+```
+
+The *Get Configured SAP Systems* tool reports these values for a connection, so AI assistants can read them. The tool does not explain what they mean, and ABAP FS does not act on them itself. If you want an assistant to use them (for example, to create unit tests only in the `Unit Test` client), say so in your own skill or instructions file.
 
 ## Self-Signed Certificates in VS Code
 
