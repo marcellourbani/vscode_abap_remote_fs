@@ -108,7 +108,7 @@ Click **Export…** in the workbook toolbar (or run **SAP Data Workbook: Export�
 - **PDF / Word:** landscape; tables over 3,000 (PDF) / 2,000 (Word) rows are cut with a note — use Excel or CSV for all rows. The PDF uses the standard PDF fonts, so characters outside Western European languages appear as `?`.
 - Results are kept in memory, so run the workbook before exporting data.
 
-**Exporting a single cell:** run the cell, then click the export icon in the cell's toolbar (**Export Cell Output…**, next to the cell name tag). Only that cell's output is exported, so you just pick the format. The file is named `<workbook>_<cell name>`, or `<workbook>_cell<n>` if the cell has no name.
+**Exporting a single cell:** run the cell, then click the export icon in the cell's toolbar (**Export Cell Output…**, next to the cell name tag). Only that cell is exported. Choose whether to include its **Data** (the output), its **Code** (the query or script that produced it), or both - both are ticked by default, so the exported file shows where its result came from. Then pick the format. The file is named `<workbook>_<cell name>`, or `<workbook>_cell<n>` if the cell has no name.
 
 ## Example: Data Quality Check
 

@@ -266,6 +266,26 @@ describe("writers", () => {
     expect(one.items.map(i => `${i.index}:${i.kind}`)).toEqual(["2:code", "2:data"])
   })
 
+  test("single cell with output and code: data tab plus the query on the code sheet", async () => {
+    const one = buildExportModel(
+      cells.filter(c => c.index === 1),
+      ["data", "code"],
+      "T"
+    )
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load((await writeXlsx(one)) as any)
+    expect(wb.worksheets.map(w => w.name)).toEqual(["Contents", "s1_define", "Code & Comments"])
+    const code = wb.getWorksheet("Code & Comments")!
+    expect(JSON.stringify(code.getRows(1, 5)?.map(r => r.values))).toContain("agr_define")
+  })
+
+  test("single cell that has not run: code can still be exported, data cannot", () => {
+    const unrun: ExportCellInput[] = [{ index: 7, kind: "sql", source: "SELECT 1 FROM t000" }]
+    const withCode = buildExportModel(unrun, ["data", "code"], "T")
+    expect(withCode.items.map(i => `${i.index}:${i.kind}`)).toEqual(["7:code"])
+    expect(buildExportModel(unrun, ["data"], "T").items).toEqual([])
+  })
+
   test("Word: produces a docx (zip) with the content", async () => {
     const buf = await writeDocx(m)
     expect(buf.subarray(0, 2).toString()).toBe("PK")

@@ -95,28 +95,40 @@ export async function renderModel(
   }
 }
 
-/**
- * Export the workbook, or - when `only` is given - just the output of that one cell
- * (data only, so the "what to include" step is skipped).
- */
-async function pickParts(withResults: number): Promise<ExportPart[] | undefined> {
+async function pickParts(
+  withResults: number,
+  only?: vscode.NotebookCell
+): Promise<ExportPart[] | undefined> {
+  const choices = only ? PARTS.filter(p => p.part !== "comments") : PARTS
   const partPick = await window.showQuickPick(
-    PARTS.map(p => ({
+    choices.map(p => ({
       label: p.label,
-      detail: p.part === "data" ? `${p.detail} — ${withResults} cell(s) have results` : p.detail,
+      detail: dataDetail(p, withResults, only),
       picked: p.part !== "data" || withResults > 0,
       part: p.part
     })),
     {
       canPickMany: true,
-      title: "Export SAP Data Workbook (1/2): what to include",
-      placeHolder: "Pick any one, two or all three"
+      title: only
+        ? `Export cell #${only.index} (1/2): what to include`
+        : "Export SAP Data Workbook (1/2): what to include",
+      placeHolder: only ? "Output, code, or both" : "Pick any one, two or all three"
     }
   )
   if (!partPick || partPick.length === 0) return undefined
   return partPick.map(p => p.part)
 }
 
+function dataDetail(p: (typeof PARTS)[number], withResults: number, only?: vscode.NotebookCell) {
+  if (p.part !== "data") return p.detail
+  if (!only) return `${p.detail} — ${withResults} cell(s) have results`
+  return withResults > 0 ? "Output of this cell" : "This cell has no result yet - run it first"
+}
+
+/**
+ * Export the workbook, or - when `only` is given - just that one cell: its output and/or its
+ * code (comments do not apply to a single cell).
+ */
 export async function exportNotebook(
   controller: AbapNotebookController,
   only?: vscode.NotebookCell
@@ -131,7 +143,7 @@ export async function exportNotebook(
   const cells = only ? all.filter(c => c.index === only.index) : all
   const withResults = cells.filter(c => c.result && !c.result.error).length
 
-  const parts = only ? ["data" as ExportPart] : await pickParts(withResults)
+  const parts = await pickParts(withResults, only)
   if (!parts) return
 
   const formatPick = await window.showQuickPick(
@@ -143,7 +155,7 @@ export async function exportNotebook(
     })),
     {
       title: only
-        ? `Export cell #${only.index} output: format`
+        ? `Export cell #${only.index} (2/2): format`
         : "Export SAP Data Workbook (2/2): format"
     }
   )
