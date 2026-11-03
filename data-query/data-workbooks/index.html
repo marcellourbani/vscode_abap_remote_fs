@@ -3854,7 +3854,7 @@
 <li>When a JavaScript cell fails, its error message is shown in the cell output and the following cells are skipped.</li>
 </ul>
 <p><strong>Naming cells</strong></p>
-<p>Click <code>#n</code> in a cell's status bar to give it a name (letters, digits and <code>_</code>, unique in the workbook). Names are saved in the <code>.sapwb</code> file and keep working when cells are inserted, moved or deleted. When you rename a cell, ABAP FS offers to update the references in other cells.</p>
+<p>Click <code>#n</code> in a cell's status bar to give it a name (letters, digits and <code>_</code>, unique in the workbook). Names are saved in the <code>.sapwb</code> file and keep working when cells are inserted, moved or deleted. When you rename a cell, ABAP FS offers to update the references in other cells. The name is also used to label the cell's output when you <a href="#exporting-a-workbook">export</a>, so a short descriptive name makes the exported files easier to read.</p>
 <p><strong>Referencing results between cells</strong></p>
 <ul>
 <li>In <strong>JavaScript</strong>: <code>cells.&lt;name&gt;.result</code> (also <code>cells["name"]</code>, or <code>cells[N]</code> by position: 0-based, counting markdown cells). Write references literally; only the cells you reference are passed to the cell. Each entry also has <code>.system</code> (the system an SQL cell ran on), <code>.index</code> and <code>.name</code>.</li>
@@ -3973,9 +3973,11 @@
 <ul>
 <li><strong>Excel:</strong> one sheet per result table, plus <em>Contents</em> and <em>Code &amp; Comments</em> sheets; status values are coloured.</li>
 <li><strong>CSV:</strong> data only, one file per result table.</li>
+<li><strong>Names:</strong> each output is labelled with its <code>display.*</code> <code>title</code> if it has one, otherwise the cell name, otherwise <code>&lt;cell number&gt;_result</code>. This is the Excel tab name (cut at 31 characters, <code>\ / ? * [ ] :</code> replaced by <code>_</code>, duplicates numbered), the CSV file suffix and the heading in the other formats. Name your cells, or give <code>display.table(rows, { title: "Open Orders" })</code> a title, and the exported file explains itself.</li>
 <li><strong>PDF / Word:</strong> landscape; tables over 3,000 (PDF) / 2,000 (Word) rows are cut with a note — use Excel or CSV for all rows. The PDF uses the standard PDF fonts, so characters outside Western European languages appear as <code>?</code>.</li>
 <li>Results are kept in memory, so run the workbook before exporting data.</li>
 </ul>
+<p><strong>Exporting a single cell:</strong> run the cell, then click the export icon in the cell's toolbar (<strong>Export Cell Output…</strong>, next to the cell name tag). Only that cell is exported. Choose whether to include its <strong>Data</strong> (the output), its <strong>Code</strong> (the query or script that produced it), or both - both are ticked by default, so the exported file shows where its result came from. Then pick the format. The file is named <code>&lt;workbook&gt;_&lt;cell name&gt;</code>, or <code>&lt;workbook&gt;_cell&lt;n&gt;</code> if the cell has no name.</p>
 <h2 id="example-data-quality-check">Example: Data Quality Check<a class="headerlink" href="#example-data-quality-check" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Cell 1 (Markdown):            # Material Data Quality Check
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Cell 2 (ABAP SQL, "fert"):    SELECT matnr, mtart, meins FROM mara WHERE mtart = 'FERT'
