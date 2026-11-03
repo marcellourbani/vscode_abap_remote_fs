@@ -42,6 +42,8 @@ export interface ExportTable {
 export interface ExportItem {
   index: number
   name?: string
+  /** Title given to the output with display.*(..., { title }). Preferred over the cell name. */
+  title?: string
   system?: string
   kind: "comment" | "code" | "data"
   language?: "sql" | "javascript" | "markdown"
@@ -81,8 +83,19 @@ export function toExportTable(rows: Record<string, unknown>[]): ExportTable {
   }
 }
 
-export function cellLabel(item: { index: number; name?: string; system?: string }): string {
-  return `Cell #${item.index}${item.name ? ` · ${item.name}` : ""}${item.system ? ` · ${item.system}` : ""}`
+/** Best human name of an item: the output title, else the cell name. */
+export function itemName(item: { name?: string; title?: string }): string | undefined {
+  return item.title || item.name
+}
+
+export function cellLabel(item: {
+  index: number
+  name?: string
+  title?: string
+  system?: string
+}): string {
+  const name = itemName(item)
+  return `Cell #${item.index}${name ? ` · ${name}` : ""}${item.system ? ` · ${item.system}` : ""}`
 }
 
 /**
@@ -118,7 +131,9 @@ function dataItems(cell: ExportCellInput): ExportItem[] {
 
 type DataBase = Pick<ExportItem, "index" | "name" | "system" | "kind">
 
-function displayItem(base: DataBase, d: DisplayValue): ExportItem | undefined {
+function displayItem(plain: DataBase, d: DisplayValue): ExportItem | undefined {
+  const title = d.options?.title?.trim()
+  const base = title ? { ...plain, title } : plain
   const kind = d[DISPLAY_MARKER]
   const c = d.content
   switch (kind) {

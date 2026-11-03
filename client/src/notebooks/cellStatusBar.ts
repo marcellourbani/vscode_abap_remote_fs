@@ -141,7 +141,7 @@ export function systemPickItems(current: string | undefined, hasMarker: boolean)
 }
 
 /** Resolve the target cell for commands invoked from the palette / toolbar without an argument. */
-function targetCell(arg: unknown): vscode.NotebookCell | undefined {
+export function targetCell(arg: unknown): vscode.NotebookCell | undefined {
   if (arg && typeof arg === "object" && "notebook" in arg && "index" in arg)
     return arg as vscode.NotebookCell
   const editor = vscode.window.activeNotebookEditor

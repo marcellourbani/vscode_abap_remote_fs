@@ -95,31 +95,56 @@ export async function renderModel(
   }
 }
 
-export async function exportNotebook(controller: AbapNotebookController): Promise<void> {
+async function pickParts(
+  withResults: number,
+  only?: vscode.NotebookCell
+): Promise<ExportPart[] | undefined> {
+  const choices = only ? PARTS.filter(p => p.part !== "comments") : PARTS
+  const partPick = await window.showQuickPick(
+    choices.map(p => ({
+      label: p.label,
+      detail: dataDetail(p, withResults, only),
+      picked: p.part !== "data" || withResults > 0,
+      part: p.part
+    })),
+    {
+      canPickMany: true,
+      title: only
+        ? `Export cell #${only.index} (1/2): what to include`
+        : "Export SAP Data Workbook (1/2): what to include",
+      placeHolder: only ? "Output, code, or both" : "Pick any one, two or all three"
+    }
+  )
+  if (!partPick || partPick.length === 0) return undefined
+  return partPick.map(p => p.part)
+}
+
+function dataDetail(p: (typeof PARTS)[number], withResults: number, only?: vscode.NotebookCell) {
+  if (p.part !== "data") return p.detail
+  if (!only) return `${p.detail} — ${withResults} cell(s) have results`
+  return withResults > 0 ? "Output of this cell" : "This cell has no result yet - run it first"
+}
+
+/**
+ * Export the workbook, or - when `only` is given - just that one cell: its output and/or its
+ * code (comments do not apply to a single cell).
+ */
+export async function exportNotebook(
+  controller: AbapNotebookController,
+  only?: vscode.NotebookCell
+): Promise<void> {
   const editor = vscode.window.activeNotebookEditor
   if (!editor || editor.notebook.notebookType !== NOTEBOOK_TYPE) {
     window.showWarningMessage("Open an SAP Data Workbook (.sapwb) to export it.")
     return
   }
   const notebook = editor.notebook
-  const cells = collectCells(notebook, controller)
+  const all = collectCells(notebook, controller)
+  const cells = only ? all.filter(c => c.index === only.index) : all
   const withResults = cells.filter(c => c.result && !c.result.error).length
 
-  const partPick = await window.showQuickPick(
-    PARTS.map(p => ({
-      label: p.label,
-      detail: p.part === "data" ? `${p.detail} — ${withResults} cell(s) have results` : p.detail,
-      picked: p.part !== "data" || withResults > 0,
-      part: p.part
-    })),
-    {
-      canPickMany: true,
-      title: "Export SAP Data Workbook (1/2): what to include",
-      placeHolder: "Pick any one, two or all three"
-    }
-  )
-  if (!partPick || partPick.length === 0) return
-  const parts = partPick.map(p => p.part)
+  const parts = await pickParts(withResults, only)
+  if (!parts) return
 
   const formatPick = await window.showQuickPick(
     (Object.keys(FORMAT_INFO) as ExportFormat[]).map(f => ({
@@ -128,13 +153,21 @@ export async function exportNotebook(controller: AbapNotebookController): Promis
       detail: FORMAT_INFO[f].description,
       format: f
     })),
-    { title: "Export SAP Data Workbook (2/2): format" }
+    {
+      title: only
+        ? `Export cell #${only.index} (2/2): format`
+        : "Export SAP Data Workbook (2/2): format"
+    }
   )
   if (!formatPick) return
   const format = formatPick.format
 
-  const base = path.basename(notebook.uri.fsPath || notebook.uri.path, ".sapwb") || "workbook"
-  const title = (notebook.metadata?.title as string) || base
+  const workbookName =
+    path.basename(notebook.uri.fsPath || notebook.uri.path, ".sapwb") || "workbook"
+  const base = only
+    ? `${workbookName}_${(cellName(only) ?? `cell${only.index}`).replace(/[^\w-]/g, "_")}`
+    : workbookName
+  const title = (notebook.metadata?.title as string) || workbookName
   const model = buildExportModel(
     cells,
     parts,
@@ -145,7 +178,9 @@ export async function exportNotebook(controller: AbapNotebookController): Promis
   if (model.items.length === 0) {
     window.showWarningMessage(
       parts.includes("data") && withResults === 0
-        ? "Nothing to export: no cell has results yet. Run the workbook first, or export code/comments."
+        ? only
+          ? "Nothing to export: this cell has no result yet. Run it first."
+          : "Nothing to export: no cell has results yet. Run the workbook first, or export code/comments."
         : "Nothing to export for the selected parts."
     )
     return

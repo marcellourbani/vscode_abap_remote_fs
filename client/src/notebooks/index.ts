@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { registerNotebookSerializer } from "./abapNotebookSerializer"
 import { AbapNotebookController } from "./abapNotebookController"
-import { registerCellStatusBar } from "./cellStatusBar"
+import { registerCellStatusBar, targetCell } from "./cellStatusBar"
 import { exportNotebook } from "./export/exportCommand"
 import { toggleCollapse } from "./toolbarCommands"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID } from "./types"
@@ -24,6 +24,10 @@ export function registerAbapNotebooks(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("abapfs.notebookExport", () =>
       controller ? exportNotebook(controller) : undefined
     ),
+    vscode.commands.registerCommand("abapfs.notebookExportCell", (arg?: unknown) => {
+      const cell = targetCell(arg)
+      return controller && cell ? exportNotebook(controller, cell) : undefined
+    }),
     vscode.commands.registerCommand("abapfs.notebookToggleInputs", () => toggleCollapse("inputs")),
     vscode.commands.registerCommand("abapfs.notebookToggleOutputs", () =>
       toggleCollapse("outputs")

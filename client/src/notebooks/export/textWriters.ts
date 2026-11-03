@@ -2,6 +2,7 @@
 import { escapeXml, statusKind, toXml, STATUS_COLORS } from "../display"
 import {
   cellLabel,
+  itemName,
   safeJson,
   type ExportItem,
   type ExportModel,
@@ -29,6 +30,7 @@ export function writeJson(m: ExportModel): string {
     items: m.items.map(i => ({
       cell: i.index,
       ...(i.name ? { name: i.name } : {}),
+      ...(i.title ? { title: i.title } : {}),
       ...(i.system ? { system: i.system } : {}),
       kind: i.kind,
       ...(i.language && i.language !== "markdown" ? { language: LANG_ID[langOf(i.language)] } : {}),
@@ -58,6 +60,7 @@ export function writeXml(m: ExportModel): string {
     const attrs =
       `cell="${i.index}"` +
       (i.name ? ` name="${escapeXml(i.name)}"` : "") +
+      (i.title ? ` title="${escapeXml(i.title)}"` : "") +
       (i.system ? ` system="${escapeXml(i.system)}"` : "") +
       (i.language
         ? ` language="${i.language === "markdown" ? "markdown" : LANG_ID[langOf(i.language)]}"`
@@ -261,7 +264,7 @@ export function writeCsvFiles(
   return m.items
     .filter(i => i.kind === "data" && i.table && i.table.columns.length > 0)
     .map(i => ({
-      suffix: `_cell${i.index}${i.name ? "_" + i.name.replace(/[^\w-]/g, "_") : ""}`,
+      suffix: `_${(itemName(i) ?? `cell${i.index}`).replace(/[^\w-]/g, "_")}`,
       content: csvTable(i.table!),
       item: i
     }))

@@ -3737,7 +3737,7 @@
                   },
                   "name": {
                     "type": "string",
-                    "description": "New cell name: letters, digits and _, starting with a letter or _, unique in the workbook. Other cells can then use cells.<name>."
+                    "description": "New cell name: letters, digits and _, starting with a letter or _, unique in the workbook. Other cells can then use cells.<name>. The name also labels the cell's output when the workbook is exported (Excel tab, CSV file name, report heading), so choose a short, descriptive one (Excel tabs are cut at 31 characters)."
                   },
                   "system": {
                     "type": "string",
@@ -5086,6 +5086,12 @@
         "icon": "$(export)"
       },
       {
+        "command": "abapfs.notebookExportCell",
+        "title": "Export Cell Output…",
+        "category": "ABAP FS",
+        "icon": "$(export)"
+      },
+      {
         "command": "abapfs.notebookToggleInputs",
         "title": "Collapse/Expand All Code",
         "category": "ABAP FS",
@@ -5645,6 +5651,10 @@
         },
         {
           "command": "abapfs.notebookSetCellName",
+          "when": "false"
+        },
+        {
+          "command": "abapfs.notebookExportCell",
           "when": "false"
         },
         {
@@ -6276,6 +6286,11 @@
           "command": "abapfs.notebookSetCellName",
           "when": "notebookType == sap-data-workbook",
           "group": "inline@1"
+        },
+        {
+          "command": "abapfs.notebookExportCell",
+          "when": "notebookType == sap-data-workbook && notebookCellType == code",
+          "group": "inline@2"
         }
       ]
     },
