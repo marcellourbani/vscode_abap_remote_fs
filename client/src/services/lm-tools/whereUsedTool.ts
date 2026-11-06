@@ -6,6 +6,7 @@
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
+import { normalizeUsageReferences } from "../whereUsedReferences"
 import { getOptimalObjectURI } from "./shared"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
@@ -280,10 +281,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
       }
 
       // Filter and group references
-      const goodRefs = references.filter((ref: any) => {
-        const rparts = ref.objectIdentifier?.split(";")
-        return rparts && rparts[1] && rparts[0] === "ABAPFullName"
-      })
+      const goodRefs = normalizeUsageReferences(references)
 
       if (goodRefs.length === 0) {
         return new vscode.LanguageModelToolResult([
@@ -309,9 +307,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
           const pattern = this.wildcardToRegex(filter.objectNamePattern)
           const beforeCount = filteredRefs.length
           filteredRefs = filteredRefs.filter((ref: any) => {
-            const rparts = ref.objectIdentifier?.split(";")
-            const objName = rparts[1] || ""
-            return pattern.test(objName)
+            return pattern.test(ref.fullName)
           })
           filterStats.byObjectName = beforeCount - filteredRefs.length
         }
@@ -330,9 +326,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
         if (filter.excludeSystemObjects) {
           const beforeCount = filteredRefs.length
           filteredRefs = filteredRefs.filter((ref: any) => {
-            const rparts = ref.objectIdentifier?.split(";")
-            const objName = rparts[1] || ""
-            return /^[ZY]/i.test(objName)
+            return /^[ZY]/i.test(ref.fullName)
           })
           filterStats.bySystemExclusion = beforeCount - filteredRefs.length
         }
@@ -413,8 +407,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
       // Group references by object
       const groups = new Map<string, any[]>()
       for (const ref of paginatedRefs) {
-        const rparts = ref.objectIdentifier.split(";")
-        const fullName = rparts[1]
+        const fullName = ref.fullName
         if (!groups.has(fullName)) {
           groups.set(fullName, [])
         }
@@ -461,11 +454,15 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
       }
 
       // Get usage snippets if requested - Copilot controls this via includeSnippets parameter
-      if (includeSnippets) {
+      const sourceReferences = paginatedRefs.filter(ref => {
+        const parts = ref.objectIdentifier?.split(";")
+        return parts?.[0] === "ABAPFullName" && parts[1]?.trim()
+      })
+      if (includeSnippets && sourceReferences.length) {
         try {
           resultText += `\nUsage Snippets:\n`
 
-          const snippets = await client.statelessClone.usageReferenceSnippets(paginatedRefs)
+          const snippets = await client.statelessClone.usageReferenceSnippets(sourceReferences)
 
           let snippetIndex = 1
           for (const s of snippets) {

@@ -42,6 +42,7 @@ import { ABAPWhereUsedTool } from "./whereUsedTool"
 import { getSearchService } from "../abapSearchService"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
+import { normalizeUsageReferences } from "../whereUsedReferences"
 import type { Mock } from "vitest"
 
 const mockToken = {} as any
@@ -82,6 +83,49 @@ function makeRef(
     uri: opts.uri || `/sap/bc/adt/programs/${fullName.toLowerCase()}`
   }
 }
+
+describe("where-used reference normalization", () => {
+  it.each([true, "true"])("accepts metadata-only results with isResult %s", isResult => {
+    const reference = {
+      objectIdentifier: "",
+      isResult,
+      uri: "/sap/bc/adt/ddic/dataelements/z_element",
+      "adtcore:name": "Z_ELEMENT",
+      "adtcore:type": "DTEL/DE"
+    }
+    expect(normalizeUsageReferences([reference])).toEqual([{ ...reference, fullName: "Z_ELEMENT" }])
+  })
+  it.each([false, "false"])(
+    "rejects hierarchy entries with isResult %s even with source identifiers",
+    isResult => {
+      expect(normalizeUsageReferences([{ ...makeRef("ZPACKAGE"), isResult }])).toEqual([])
+    }
+  )
+  it("keeps legacy source identifiers without requiring isResult or metadata", () => {
+    expect(
+      normalizeUsageReferences([{ objectIdentifier: "ABAPFullName;ZREPORT;ZINCLUDE" }])
+    ).toEqual([{ objectIdentifier: "ABAPFullName;ZREPORT;ZINCLUDE", fullName: "ZREPORT" }])
+  })
+  it("rejects incomplete or unconfirmed metadata results", () => {
+    const reference = {
+      objectIdentifier: "",
+      isResult: true,
+      uri: "/dataelements/z_element",
+      "adtcore:name": "Z_ELEMENT",
+      "adtcore:type": "DTEL/DE"
+    }
+    expect(
+      normalizeUsageReferences([
+        {},
+        { ...reference, isResult: undefined },
+        { ...reference, uri: "" },
+        { ...reference, "adtcore:name": "" },
+        { ...reference, "adtcore:type": "" },
+        { objectIdentifier: "OtherIdentifier;ZREPORT" }
+      ])
+    ).toEqual([])
+  })
+})
 
 describe("ABAPWhereUsedTool", () => {
   let tool: ABAPWhereUsedTool
@@ -178,6 +222,69 @@ describe("ABAPWhereUsedTool", () => {
   })
 
   describe("invoke", () => {
+    it("accepts metadata-only results but excludes package hierarchy nodes", async () => {
+      mockSearcher.searchObjects.mockResolvedValue([
+        { name: "ZDOMAIN", type: "DOMA/DD", uri: "/sap/bc/adt/ddic/domains/zdomain" }
+      ])
+      mockUsageReferences.mockResolvedValue([
+        {
+          objectIdentifier: "",
+          isResult: "true",
+          uri: "/sap/bc/adt/ddic/dataelements/z_element",
+          "adtcore:name": "Z_ELEMENT",
+          "adtcore:type": "DTEL/DE"
+        },
+        {
+          objectIdentifier: "",
+          isResult: "false",
+          uri: "/packages/zpackage",
+          "adtcore:name": "ZPACKAGE",
+          "adtcore:type": "DEVC/K"
+        }
+      ])
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZDOMAIN",
+          connectionId: "example",
+          includeSnippets: true,
+          filter: { objectNamePattern: "Z_*", objectTypes: ["DTEL/DE"], excludeSystemObjects: true }
+        }),
+        mockToken
+      )
+      expect(result.parts[0].text).toContain("Z_ELEMENT (1 reference)")
+      expect(result.parts[0].text).toContain("DTEL/DE")
+      expect(result.parts[0].text).toContain("Total references found: 1")
+      expect(result.parts[0].text).not.toContain("ZPACKAGE")
+      expect(mockUsageReferenceSnippets).not.toHaveBeenCalled()
+    })
+    it("requests snippets only for source references in mixed results", async () => {
+      mockSearcher.searchObjects.mockResolvedValue([
+        { name: "ZDOMAIN", type: "DOMA/DD", uri: "/sap/bc/adt/ddic/domains/zdomain" }
+      ])
+      mockUsageReferences.mockResolvedValue([
+        makeRef("ZSOURCE"),
+        {
+          objectIdentifier: "",
+          isResult: true,
+          uri: "/sap/bc/adt/ddic/dataelements/z_element",
+          "adtcore:name": "Z_ELEMENT",
+          "adtcore:type": "DTEL/DE"
+        }
+      ])
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZDOMAIN",
+          connectionId: "example",
+          includeSnippets: true
+        }),
+        mockToken
+      )
+      expect(result.parts[0].text).toContain("Results: 2 of 2 references")
+      expect(result.parts[0].text).toContain("Z_ELEMENT (1 reference)")
+      expect(mockUsageReferenceSnippets).toHaveBeenCalledWith([
+        expect.objectContaining({ objectIdentifier: "ABAPFullName;ZSOURCE" })
+      ])
+    })
     it("logs telemetry with connectionId", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
       await tool
