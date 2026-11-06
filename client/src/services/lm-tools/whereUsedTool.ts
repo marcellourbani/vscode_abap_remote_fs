@@ -121,7 +121,8 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
 
       // First, search for the object to get its URI
       const searcher = getSearchService(actualConnectionId)
-      const searchTypes = objectType ? [objectType] : undefined
+      const searchType = objectType === "FUGR/FF" ? "FUNC" : objectType?.split("/")[0]
+      const searchTypes = searchType ? [searchType] : undefined
       const searchResults = await searcher.searchObjects(objectName, searchTypes, 1)
 
       if (!searchResults || searchResults.length === 0) {
@@ -281,14 +282,22 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
       }
 
       // Filter and group references
-      const goodRefs = normalizeUsageReferences(references)
+      const normalizedRefs = normalizeUsageReferences(references)
+      const targetUri = objectInfo.uri?.split("#")[0]
+      const goodRefs = normalizedRefs.filter(ref => {
+        const referenceUri = ref.uri?.split("#")[0]
+        return !(
+          !ref.objectIdentifier &&
+          ref.fullName.toUpperCase() === objectInfo.name.toUpperCase() &&
+          referenceUri === targetUri
+        )
+      })
 
       if (goodRefs.length === 0) {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            `No valid references found for ${objectName}${searchTerm ? ` (${searchTerm})` : ""}.`
-          )
-        ])
+        const message = normalizedRefs.length
+          ? `No references found for ${objectName}${searchTerm ? ` (${searchTerm})` : ""}.`
+          : `No valid references found for ${objectName}${searchTerm ? ` (${searchTerm})` : ""}.`
+        return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(message)])
       }
 
       const totalRawReferences = goodRefs.length
@@ -481,6 +490,38 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
           }
         } catch (snippetError) {
           resultText += `\nCould not retrieve usage snippets: ${snippetError}\n`
+        }
+      }
+      if (includeSnippets) {
+        const metadataReferences = paginatedRefs.filter(ref => !sourceReferences.includes(ref))
+        const sourceByUri = new Map<string, string>()
+        for (const ref of metadataReferences) {
+          const location = ref.uri?.match(/^(.*\/source\/main)#start=(\d+),\d+/)
+          if (!location) {
+            resultText += `\nNo source snippet available for ${ref.fullName}.\n`
+            continue
+          }
+          const [, sourceUri, lineText] = location
+          try {
+            let source = sourceByUri.get(sourceUri)
+            if (source === undefined) {
+              source = await client.getObjectSource(sourceUri)
+              sourceByUri.set(sourceUri, source)
+            }
+            const lines = source.split(/\r?\n/)
+            const line = Number(lineText)
+            const start = Math.max(0, line - 3)
+            const end = Math.min(lines.length, line + 2)
+            if (line > lines.length || line < 1) {
+              resultText += `\nNo source snippet available for ${ref.fullName}.\n`
+              continue
+            }
+            resultText += `\nUsage Snippet: ${ref.fullName} (${sourceUri})\n`
+            resultText += `   Lines ${start + 1}-${end}:\n`
+            resultText += `${lines.slice(start, end).join("\n")}\n`
+          } catch {
+            resultText += `\nNo source snippet available for ${ref.fullName}.\n`
+          }
         }
       }
 
