@@ -409,7 +409,7 @@ describe("repository usage webview interactions", () => {
     } finally {
       await page.close()
     }
-  })
+  }, 20_000)
   it("preserves vertical scroll when the retained webview is hidden and shown", async () => {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
     try {

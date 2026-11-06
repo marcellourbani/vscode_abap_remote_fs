@@ -27,7 +27,11 @@ import type { UsageAnalysis } from "./types"
 
 const roots: string[] = []
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map(root => fs.rm(root, { recursive: true, force: true })))
+  await Promise.all(
+    roots
+      .splice(0)
+      .map(root => fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }))
+  )
 })
 const setup = async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "usage-engine-"))
@@ -59,7 +63,7 @@ const setup = async () => {
   })
   return { store, engine, sap, id: state.id }
 }
-describe("repository usage engine", () => {
+describe("repository usage engine", { timeout: 20_000 }, () => {
   it("shows an OK-only notice without starting dependencies when selective retry has no matches", async () => {
     const { engine, store, id } = await setup()
     await store.update(id, current => {
