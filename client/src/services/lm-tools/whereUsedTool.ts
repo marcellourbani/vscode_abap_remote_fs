@@ -6,6 +6,7 @@
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
+import { normalizeUsageReferences } from "../whereUsedReferences"
 import { getOptimalObjectURI } from "./shared"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
@@ -120,7 +121,8 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
 
       // First, search for the object to get its URI
       const searcher = getSearchService(actualConnectionId)
-      const searchTypes = objectType ? [objectType] : undefined
+      const searchType = objectType === "FUGR/FF" ? "FUNC" : objectType?.split("/")[0]
+      const searchTypes = searchType ? [searchType] : undefined
       const searchResults = await searcher.searchObjects(objectName, searchTypes, 1)
 
       if (!searchResults || searchResults.length === 0) {
@@ -280,17 +282,22 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
       }
 
       // Filter and group references
-      const goodRefs = references.filter((ref: any) => {
-        const rparts = ref.objectIdentifier?.split(";")
-        return rparts && rparts[1] && rparts[0] === "ABAPFullName"
+      const normalizedRefs = normalizeUsageReferences(references)
+      const targetUri = objectInfo.uri?.split("#")[0]
+      const goodRefs = normalizedRefs.filter(ref => {
+        const referenceUri = ref.uri?.split("#")[0]
+        return !(
+          !ref.objectIdentifier &&
+          ref.fullName.toUpperCase() === objectInfo.name.toUpperCase() &&
+          referenceUri === targetUri
+        )
       })
 
       if (goodRefs.length === 0) {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            `No valid references found for ${objectName}${searchTerm ? ` (${searchTerm})` : ""}.`
-          )
-        ])
+        const message = normalizedRefs.length
+          ? `No references found for ${objectName}${searchTerm ? ` (${searchTerm})` : ""}.`
+          : `No valid references found for ${objectName}${searchTerm ? ` (${searchTerm})` : ""}.`
+        return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(message)])
       }
 
       const totalRawReferences = goodRefs.length
@@ -309,9 +316,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
           const pattern = this.wildcardToRegex(filter.objectNamePattern)
           const beforeCount = filteredRefs.length
           filteredRefs = filteredRefs.filter((ref: any) => {
-            const rparts = ref.objectIdentifier?.split(";")
-            const objName = rparts[1] || ""
-            return pattern.test(objName)
+            return pattern.test(ref.fullName)
           })
           filterStats.byObjectName = beforeCount - filteredRefs.length
         }
@@ -330,9 +335,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
         if (filter.excludeSystemObjects) {
           const beforeCount = filteredRefs.length
           filteredRefs = filteredRefs.filter((ref: any) => {
-            const rparts = ref.objectIdentifier?.split(";")
-            const objName = rparts[1] || ""
-            return /^[ZY]/i.test(objName)
+            return /^[ZY]/i.test(ref.fullName)
           })
           filterStats.bySystemExclusion = beforeCount - filteredRefs.length
         }
@@ -413,8 +416,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
       // Group references by object
       const groups = new Map<string, any[]>()
       for (const ref of paginatedRefs) {
-        const rparts = ref.objectIdentifier.split(";")
-        const fullName = rparts[1]
+        const fullName = ref.fullName
         if (!groups.has(fullName)) {
           groups.set(fullName, [])
         }
@@ -461,11 +463,15 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
       }
 
       // Get usage snippets if requested - Copilot controls this via includeSnippets parameter
-      if (includeSnippets) {
+      const sourceReferences = paginatedRefs.filter(ref => {
+        const parts = ref.objectIdentifier?.split(";")
+        return parts?.[0] === "ABAPFullName" && parts[1]?.trim()
+      })
+      if (includeSnippets && sourceReferences.length) {
         try {
           resultText += `\nUsage Snippets:\n`
 
-          const snippets = await client.statelessClone.usageReferenceSnippets(paginatedRefs)
+          const snippets = await client.statelessClone.usageReferenceSnippets(sourceReferences)
 
           let snippetIndex = 1
           for (const s of snippets) {
@@ -484,6 +490,38 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
           }
         } catch (snippetError) {
           resultText += `\nCould not retrieve usage snippets: ${snippetError}\n`
+        }
+      }
+      if (includeSnippets) {
+        const metadataReferences = paginatedRefs.filter(ref => !sourceReferences.includes(ref))
+        const sourceByUri = new Map<string, string>()
+        for (const ref of metadataReferences) {
+          const location = ref.uri?.match(/^(.*\/source\/main)#start=(\d+),\d+/)
+          if (!location) {
+            resultText += `\nNo source snippet available for ${ref.fullName}.\n`
+            continue
+          }
+          const [, sourceUri, lineText] = location
+          try {
+            let source = sourceByUri.get(sourceUri)
+            if (source === undefined) {
+              source = await client.getObjectSource(sourceUri)
+              sourceByUri.set(sourceUri, source)
+            }
+            const lines = source.split(/\r?\n/)
+            const line = Number(lineText)
+            const start = Math.max(0, line - 3)
+            const end = Math.min(lines.length, line + 2)
+            if (line > lines.length || line < 1) {
+              resultText += `\nNo source snippet available for ${ref.fullName}.\n`
+              continue
+            }
+            resultText += `\nUsage Snippet: ${ref.fullName} (${sourceUri})\n`
+            resultText += `   Lines ${start + 1}-${end}:\n`
+            resultText += `${lines.slice(start, end).join("\n")}\n`
+          } catch {
+            resultText += `\nNo source snippet available for ${ref.fullName}.\n`
+          }
         }
       }
 
