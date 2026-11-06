@@ -21,6 +21,7 @@ This is a high-level summary. See the left navigation for full feature pages.
 | **AI-Powered Development** | 40 tools give Copilot deep SAP awareness — search objects, read code, run tests, explain dumps, all via natural language |
 | **Edit & Activate** | Browse, open, edit, and activate ABAP objects on the live system |
 | **Repository Comparison** | [Discover and compare scoped repositories](#repository-comparison) across two systems, export results, and prepare reviewed assisted-apply plans |
+| **Repository Usage** | [Review evidence of object usage](#repository-usage-analysis) from workload, jobs, and dependencies; investigate Unclear objects and export results or issues |
 | **Editor Experience** | Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels |
 | **Debug** | Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording |
 | **Test** | Run unit tests, create test classes, generate test documentation |
@@ -2934,6 +2935,447 @@ Workflow-changing tools open or focus the webview so progress and results remain
 - Staging supports reviewed text resources only.
 - There is no bulk stage, automatic save, automatic transport choice, or automatic activation.
 
+
+# Repository Usage Analysis
+
+Repository Usage Analysis helps you review which ABAP repository objects have evidence of use and which still need investigation. It combines an object inventory, workload and job evidence, and relationships between objects in one saved analysis.
+
+Use it to prepare a custom-code review, focus an application cleanup discussion, assess the coverage of available usage extracts, or produce a review list for application owners.
+
+It is a read-only analysis. It does not change, activate, transport, or delete SAP objects.
+
+## What the results mean
+
+| Status | Meaning |
+|---|---|
+| **Used** | The analysis found direct usage evidence, an included released/scheduled job, or a relationship from another Used object. Read the Reasons column to distinguish them. |
+| **Unclear** | The available evidence has not established usage. The object might be unused, outside the period covered by your extracts, dynamically called, ambiguous, or affected by an incomplete lookup. |
+
+!!! warning "Unclear is not approval to delete"
+    Missing usage evidence does not prove that an object is unused. Review data retention, infrequent business processes, unresolved issues, dynamic calls, and application-owner knowledge before making a retirement decision.
+
+## How it works
+
+The panel has four stages:
+
+1. **Discovery** lists the objects in your package scope, including individual function modules when their ownership data is available.
+2. **ST03N** matches manually uploaded transaction/report and RFC server names to the repository.
+3. **Jobs** adds programs found in job history and, optionally, released or scheduled jobs.
+4. **Dependencies** follows relationships from Used objects to identify more objects needed by them.
+
+Discovery comes first. ST03N and Jobs can run in either order; you can use either or both. Dependencies needs at least one usable usage match from a completed or partial ST03N/Jobs stage.
+
+The analysis keeps separate reasons from the different evidence sources. A repository key includes the program ID, object type, and object name, so objects sharing a name remain separate inventory rows.
+
+## Open the feature
+
+Open the Command Palette (`Ctrl+Shift+P`) and run:
+
+**ABAP FS: Repository Usage Analysis**
+
+Choose **Create analysis**, enter a name, and start with Discovery. Use the saved-analysis list or selector to return to an existing review. Each stage has a **Guide** button with its data preparation and control instructions.
+
+No AI setup is required to run the analysis.
+
+## Choose the right systems
+
+You do not have to connect production itself. You can upload production exports and use a matching production copy for repository matching and dependency checks.
+
+| System | Purpose |
+|---|---|
+| **Repository system** | Connected Discovery and lookup of transaction/program and function-module ownership information. It must be connected when processing ST03N or Jobs, even when those inputs are uploaded. |
+| **Job system** | Supplies job history when Jobs uses **Connected system**. Its job history must represent the workload you are reviewing. |
+| **Dependency system** | Supplies code relationships and where-used results. Its objects and code should match the landscape under review. |
+
+A QA system with matching code can be useful for dependency checks, but its own job history is not production usage history. Check both code alignment and evidence provenance before interpreting results.
+
+## Saved analyses and data handling
+
+Analyses and uploaded files are stored locally under `.abapfs/repository-usage` in your home directory. Systems, scope, progress, evidence, cached checks, and table choices are saved so you can continue later.
+
+Exports are separate review files. Deleting a saved analysis removes its local data, not SAP objects or exports you saved elsewhere. Treat uploads, saved analyses, and exports as SAP business/development data and apply your organization's access and retention rules.
+
+## Where to go next
+
+- [Run an analysis](#run-a-repository-usage-analysis): choose a scope, process evidence, and continue an existing review.
+- [Prepare input data](#prepare-repository-usage-input-data): file requirements, ST03N profiles, and job extracts.
+- [Run dependency checks](#run-repository-usage-dependency-checks): passes, cache choices, selective retry, and progress.
+- [Review and export results](#review-and-export-repository-usage-results): inventory filters, Issues, dates, and follow-up investigation.
+
+# Run a Repository Usage Analysis
+
+This workflow follows the four stages in **ABAP FS: Repository Usage Analysis**. Open a stage's **Guide** for detailed extraction instructions while you work.
+
+## 1. Create or open an analysis
+
+Run the command from the Command Palette and choose **Create analysis**, or open a saved analysis. Give each review a name that identifies its scope or review period.
+
+You can keep separate analyses for different application scopes or review exercises. Choose the correct saved analysis before changing inputs or exporting results.
+
+## 2. Discover the inventory
+
+Choose one Discovery source:
+
+- **Connected system**: select **Repository system**, enter package patterns such as `ZSALES, ZFINANCE*`, and decide whether to **Include subpackages**.
+- **Uploaded files**: add a TADIR extract for your scope and, where needed, an ENLFDIR extract for individual function modules.
+
+Click **Discover / Resume**. Objects appear as Discovery progresses and initially remain Unclear. Listing an object does not itself establish that it is used.
+
+Use a specific package scope. Do not enter unrestricted `*` or `/*` patterns. For uploaded discovery, filter the TADIR extract before uploading; its contents define the scope.
+
+Individual FMs inherit the package of their discovered function group. If their ownership extract is missing, the group can still appear without its individual FM rows.
+
+See [Prepare input data](#prepare-repository-usage-input-data) for the upload fields and file rules.
+
+## 3. Add usage evidence
+
+Use ST03N, Jobs, or both. You can process them independently after Discovery.
+
+### ST03N
+
+1. Export the relevant profiles manually from the system whose workload you are reviewing.
+2. Prepare one-column files using the **Download template** buttons.
+3. Optionally enter a **Period label** before adding the files.
+4. Upload each file under its matching profile and choose **Process / Resume ST03N**.
+
+ST03N is always an upload stage. Connecting the workload system does not make this stage collect its profiles automatically.
+
+### Jobs
+
+Choose **Uploaded extracts** to provide TBTCO headers and TBTCP steps, or **Connected system** to select a job system and actual-start-date range.
+
+Select **Consider released jobs** and/or **Consider scheduled jobs** when you want to include planned jobs as evidence. These choices are useful when short history retention would otherwise hide an infrequently run program. They do not prove execution.
+
+Choose **Process / Resume Jobs**. Both evidence stages need a connected Repository system for matching, regardless of how their input data was obtained.
+
+## 4. Follow dependencies
+
+Choose **Dependency system**, leave the default concurrency unless you need to adjust SAP load, and select **Analyse / Resume**.
+
+For a first run or after adding more usage evidence, leave both cache checkboxes clear. Successful cached checks are reused, failed checks can be retried, and newly needed relationships are read.
+
+Use [Run dependency checks](#run-repository-usage-dependency-checks) to choose between normal processing, selective retry, and a full cache refresh.
+
+## 5. Review the results and issues
+
+Use the **Inventory** tab to inspect Used/Unclear status and reasons. Use the **Issues** tab for unresolved input matches and failed collection checks. Each tab has independent filters and XLSX/CSV export controls.
+
+A partial stage can still contain useful completed results. Review its issues rather than assuming every input file or object failed. Resolve the cause and rerun the appropriate stage before drawing conclusions about remaining Unclear objects.
+
+See [Review and export results](#review-and-export-repository-usage-results) for dates, filtering examples, and suggested review steps.
+
+## Pause and continue
+
+Choose **Pause**, or close the panel, to stop an active operation. An in-flight SAP request may need to finish before the pause completes.
+
+Open the saved analysis and use that stage's **Resume** action. Completed work is retained. An interrupted or partially completed review can still be inspected and exported, but its gaps matter when interpreting the results.
+
+## Add more evidence later
+
+1. Reset only the evidence stage whose processed file list needs to change: ST03N or Jobs.
+2. Keep the existing files you still want, remove unwanted files, and add the new extracts.
+3. Reprocess that stage. Its own previous evidence is replaced; the other evidence stage is kept.
+4. Run Dependencies normally, with both cache checkboxes clear, to reassess all current evidence and obtain newly needed relationships.
+
+ST03N/Jobs resets preserve dependency caches and relationships. You do not need a full dependency refresh merely because you have more usage evidence from the same code landscape.
+
+Removing a processed input file resets the evidence for its entire stage, not only that file's contribution. Reprocess the retained files afterward.
+
+## Know what Reset clears
+
+| Action | Cleared | Kept |
+|---|---|---|
+| **Reset Discovery** | Inventory, usage evidence, dependency relationships, checks, and progress | Uploaded files, ready to process again |
+| **Reset ST03N** | ST03N evidence and dependency-pass progress | Inventory, job evidence, uploaded files, dependency caches and relationships |
+| **Reset Jobs** | Job evidence and dependency-pass progress | Inventory, ST03N evidence, uploaded files, dependency caches and relationships |
+| **Reset Dependencies** | Dependency lookups, their relationships, and pass progress | Inventory, ST03N/job evidence and their ownership/matching information |
+
+Reset Discovery before changing its repository system, package scope, or source after an inventory has been established. Reset Jobs before changing its completed source between uploads and a connected system.
+
+Changing a released/scheduled-job checkbox after processing asks for confirmation and resets job evidence and progress. Reprocess Jobs with the new selection, then run Dependencies again as needed.
+
+Changing **Dependency system** clears that system's previous dependency cache after confirmation. Use a fresh cache when code or the system copy has changed.
+
+# Prepare Repository Usage Input Data
+
+The analysis is only as complete as its inventory, matching system, and usage evidence. Choose exports from the right system and retain enough periods to cover the business processes you want to review.
+
+The **Guide** button in each stage provides the extraction steps next to the upload controls.
+
+## General file rules
+
+- Use the matching **Download template** and save as XLSX or CSV.
+- Keep the header in the first populated row. Do not add a report title above it.
+- An XLSX file must contain exactly one populated worksheet; other sheets must be empty.
+- Use plain cell values, not formulas or rich-text cells. Do not leave blank or duplicate column headings.
+- Heading matching ignores capitalization, spaces, and underscores. Column order does not matter for multi-column templates.
+- You can add several files for the same category, such as one file for each month.
+
+For ST03N, the one-column rule is stricter: extra columns are rejected. Downloaded SAP spreadsheets often contain descriptions and totals that must be removed before upload.
+
+## Discovery extracts
+
+For **Uploaded files** in Discovery, prepare these exports from one consistent repository system:
+
+| Upload | Fields | Purpose |
+|---|---|---|
+| **TADIR objects** | `PGMID`, `OBJECT`, `OBJ_NAME`, `DEVCLASS` | Defines the object inventory and package scope |
+| **ENLFDIR function modules** | `AREA`, `FUNCNAME` | Adds individual FMs belonging to discovered function groups |
+
+Filter TADIR to your intended scope before exporting. Package patterns in the connected-source controls do not filter an uploaded object list.
+
+ENLFDIR is optional, but omitting it leaves the function groups without their individual FM rows. The analysis matches `AREA` to the function-group name and assigns the group's package to each FM.
+
+Uploaded Discovery does not require a live connection. Processing ST03N or Jobs afterward still requires a connected **Repository system** containing matching objects and mappings.
+
+## ST03N extracts
+
+ST03N collection is manual, including for connected systems. Choose the workload period and relevant instances in SAP, then prepare separate lists:
+
+| SAP profile | Upload category | Values |
+|---|---|---|
+| Transaction Profile | **Transaction profile** | Transaction codes and report names |
+| RFC Server Profile, Function Module tab | **RFC server: Function Module** | Function-module names |
+| RFC Server Profile, Transaction tab | **RFC server: Transaction** | Transaction names shown by that tab |
+
+!!! warning "Use RFC Server, not RFC Client"
+    RFC Client Profile can describe calls to another SAP system. A same-name function module in the reviewed system is not proof of local execution.
+
+Every ST03N file must contain exactly one column headed `ObjectName`. `Object Name` and `OBJECT_NAME` are accepted equivalents. `Transaction` or `Function Module` is not an alternative heading.
+
+| ObjectName |
+|---|
+| ZSALES |
+| ZSALES_DAILY_REPORT |
+| ZMONTH_END_REPORT |
+
+Paste one name per row. Do not include totals, descriptions, or additional columns. For Transaction Profile, check the task-type selection; dialog-only data can omit other activity.
+
+Enter **Period label (optional)** before uploading if you want to record a description such as `January to March 2026`. It is stored with those files. It does not filter rows or establish a precise last-used date.
+
+Short retention limits what the extracts can establish. An object absent from three months of workload might still be part of a quarterly or annual process.
+
+## Job extracts
+
+### Choose the source
+
+**Connected system** reads job programs from the chosen **Job system**. **From** and **Through** are inclusive actual-start dates, not creation or scheduling dates.
+
+**Uploaded extracts** requires separate TBTCO and TBTCP files. You do not need to join them in Excel.
+
+| Upload | Fields | Notes |
+|---|---|---|
+| **TBTCO headers** | `JOBNAME`, `JOBCOUNT`, `STRTDATE`, `STRTTIME`, `STATUS` | Job identity is required. Actual start date is needed for statuses other than included released/scheduled jobs. Start time is optional. Status is needed to recognize released/scheduled jobs. |
+| **TBTCP steps** | `JOBNAME`, `JOBCOUNT`, `STEPCOUNT`, `PROGNAME` | Job identity and ABAP program are required. Step count is recommended. |
+
+Match both job name and job count. The same job name can have many occurrences; matching the name alone is not sufficient. Numeric job counts and missing leading zeros are handled during import.
+
+Keep all relevant ABAP steps, including failed/cancelled runs. External-command-only steps do not provide an ABAP program for this analysis.
+
+### Include released or scheduled jobs
+
+Both job sources offer two independent checkboxes, unchecked by default:
+
+| Option | SAP status | Effect |
+|---|---|---|
+| **Consider released jobs** | `S` | Includes jobs released and waiting for their start condition |
+| **Consider scheduled jobs** | `P` | Includes scheduled/planned jobs not yet released |
+
+These statuses can count as planned usage even without a valid actual start date. They are useful for monthly jobs whose previous run has already disappeared from retained history. They do not prove that the job executed or will execute successfully.
+
+In connected mode, included released/scheduled jobs are not restricted by the actual-start-date range. For uploads, export their TBTCO headers with status `S` and/or `P` **without a STRTDATE restriction**, and include their matching TBTCP steps. You can add these as extra files alongside the actual-run extracts.
+
+Uploaded files are evaluated locally. A checkbox cannot recover a job omitted from the export. For other statuses, blank, zero, or invalid start dates are reported as issues rather than treated as execution evidence.
+
+## Keep evidence consistent
+
+Use job headers and steps from the same system. Use a matching Repository system for name resolution and a matching Dependency system for relationships. Retain the origin and extraction period in your review records so other reviewers understand what the results cover.
+
+Continue with [Run an analysis](#run-a-repository-usage-analysis), then [Review and export results](#review-and-export-repository-usage-results).
+
+# Run Repository Usage Dependency Checks
+
+Dependencies extends the usage evidence by following relationships between repository objects. It answers a different question from workload collection: which additional objects are needed by code already considered Used?
+
+Finish Discovery and process ST03N or Jobs first. **Analyse / Resume** becomes available when one of those stages has completed or has partial results with at least one usable usage match.
+
+## How usage spreads
+
+Suppose a Used report calls a class, and the class uses a table. Dependency checks can establish the class and table as Used even when neither appears by name in your workload exports.
+
+The direction matters. A reference from object A to object B can establish B as Used when A is Used. Knowing B is Used does not, by itself, establish every caller of B as Used.
+
+Where-used and object relations contribute relationships where supported by the selected SAP system. The analysis chooses the available capabilities; you do not have to select an API.
+
+Some dynamically constructed calls and special activation/binding mechanisms might not be represented. An empty lookup does not prove the object is unused. Listing an object in Discovery also does not guarantee that its relationships can be read on that system.
+
+## Choose the system and load
+
+Select a connected **Dependency system** with objects and code matching the review. A recent production copy can be suitable even when the usage files came from production.
+
+**Concurrent SAP checks** controls the number of simultaneous lookups. Its default is `5`, with an allowed range of 1 to 20. Reduce it to lower SAP load or investigate slow requests. Increasing it does not change the evidence rules.
+
+## Choose a processing mode
+
+| Mode | SAP lookups | Existing results |
+|---|---|---|
+| Both checkboxes clear | Reuses successful checks, retries failures, and reads newly needed relationships | Retained and reassessed against current usage evidence |
+| **Only process failed/empty refs** | Retries previously recorded failures or empty lookups only | Other checks and existing relationships are retained |
+| **Refresh dependency cache** | Reads dependency information again after confirmation | Previous dependency cache and collected relationships are cleared; direct ST03N/job evidence remains |
+
+### Normal processing
+
+Use a normal run for the first dependency check and after adding ST03N or job evidence from the same code landscape. A newly Used object may need a relationship that has never been collected. Normal processing can obtain it without repeating successful cached lookups.
+
+### Selective retry
+
+Use **Only process failed/empty refs** to revisit missing or unsuccessful results while preserving the rest of the review. Empty means the earlier lookup returned no retained relationships; an empty result is not necessarily an error.
+
+The retry list is chosen when you start. Each selected check is retried once during that run, even if it is still empty or unsuccessful. Other cached relationships remain available for reassessing usage through subsequent passes.
+
+This mode does not request newly needed lookups that were never checked before. If you also need those relationships, follow with a normal run.
+
+If no matching checks exist, an OK-only notification appears and no run starts.
+
+### Full refresh
+
+Use **Refresh dependency cache** when code has changed or the dependency system has been refreshed from a different source. It deliberately discards dependency lookup results so SAP is queried again.
+
+Selecting a different Dependency system also clears the previous system's dependency cache after confirmation. Do not reuse relationships from an unrelated or differently versioned system as if they described the current code.
+
+Full refresh and selective retry are mutually exclusive. Their checkboxes automatically clear when a run starts because they are one-run requests. The chosen processing mode remains part of the active run; an unchecked box after starting does not cancel it.
+
+## Understand the passes and counters
+
+Each pass checks the selected relationships and reassesses the Used set. More Used objects can lead to another pass. Processing ends when a pass finds no further Used objects.
+
+| Display | Meaning |
+|---|---|
+| **Pass** | The current round of dependency reassessment |
+| **Checks** | Lookups in that pass, not unique inventory objects. Where-used and outgoing relationships are separate checks. |
+| **Used / Unclear** | Inventory counts from the latest reassessment; they update at pass boundaries |
+| **Cached checks reused** | Checks reused in the current pass, not the total cache stored for the analysis |
+| **Failed this pass** | Unsuccessful lookups in the current pass |
+| **Pass history** | The number of additional Used objects found in each completed pass |
+
+For selective retry, the check total is the saved retry-list size. It can differ from both the total inventory and the Unclear count. A zero reused-cache counter does not mean other cached relationships were deleted.
+
+## Pause, resume, and handle issues
+
+Choose **Pause**, or close the panel. In-flight requests can take time to settle. Resume continues saved progress, including a selective run's retry list and completed attempts.
+
+Open **Issues** to filter failed lookups by source, object, type, or message. Export a filtered XLSX/CSV review list if several objects share the same cause. Resolve connection, authorization, missing-object, or system-alignment problems before retrying.
+
+A successful retry removes its error row. A failed lookup does not erase independent evidence that already established an object as Used. A partial run keeps its successful results but still has review gaps.
+
+## Change evidence without discarding the cache
+
+Resetting or reprocessing ST03N/Jobs preserves dependency caches and relationships, but clears the old pass checkpoint. A normal dependency run then reassesses the current evidence and fetches only newly needed or unsuccessful checks.
+
+**Reset** in Dependencies clears the dependency lookup cache and collected relationships while keeping Discovery and direct evidence. See [Run an analysis](#run-a-repository-usage-analysis) for the full reset table, or [Review and export results](#review-and-export-repository-usage-results) for interpreting the outcome.
+
+# Review and Export Repository Usage Results
+
+Use the Inventory and Issues tabs together. Inventory shows the usage decision and its evidence. Issues shows input or lookup gaps that can affect that decision.
+
+## Read the Inventory tab
+
+| Column | What it tells you |
+|---|---|
+| **Object / Type / Package** | The discovered object identity and ownership scope |
+| **Function group** | The owner of an individual function module |
+| **Status** | Used or Unclear under the current evidence |
+| **Reasons** | Independent observations and relationships supporting the result, or an ambiguous match requiring review |
+| **Latest observed** | Latest available valid actual job-start date associated with the object |
+| **Observation periods** | Labels saved with uploaded workload files; not calculated execution dates |
+
+Objects with the same name but different types are separate rows. A transaction-profile name that matches a discovered transaction and another discovered type is ambiguous; that observation does not mark either Used. A uniquely discovered transaction can count without an identifiable underlying program. Independent evidence may still establish usage for an ambiguous object.
+
+A used FM marks its own row and its owning function group Used, not all sibling FMs. Likewise, a relationship from a Used object establishes a dependency's use, not the use of every caller of that dependency.
+
+An included released/scheduled job is planned-usage evidence. Read its reason rather than interpreting Used as proof of a successful execution.
+
+## Interpret dates carefully
+
+ST03N period labels describe the extracts you supplied. They do not establish an exact last-used date. Released/scheduled evidence with no valid actual start date also leaves Latest observed blank unless other direct evidence supplies a date.
+
+Dependency propagation does not copy a caller's observed date to every object it uses. A blank date alongside Used can therefore be expected.
+
+## Filter and sort the review list
+
+Choose **All**, **Used**, or **Unclear** in **View**. Add column-header filters to narrow the selected view and click a column heading to sort it.
+
+Header filters match prefixes by default. Add a trailing space for an exact match, or use `*` and `?` wildcards.
+
+| Filter | Example result |
+|---|---|
+| `CL` in Type | Types starting with CL |
+| `CLAS ` in Type | Exactly CLAS |
+| `ZSALES*` in Object | Names starting with ZSALES |
+
+**Showing ... of ...** reports the number of visible rows against the table total. **Clear filters** removes the inventory filters and returns View to All.
+
+Filters and sorting are saved per analysis. The Inventory and Issues tabs keep separate table choices.
+
+## Export inventory
+
+Choose one export scope:
+
+- **All objects** exports the inventory, regardless of current filters.
+- **Filtered objects** exports the rows currently visible under the view and column filters.
+- **Unclear objects** exports all Unclear inventory rows, regardless of current table filters.
+
+Select **XLSX** or **CSV**, choose **Export**, and select a destination. The export includes repository identity, ownership, status, reasons, observed dates, and period labels. Use CSV for a review set that exceeds Excel's worksheet limits.
+
+You can export while work is incomplete, but the file is a snapshot of the results available at that time, not proof the review finished successfully.
+
+## Investigate the Issues tab
+
+The Issues tab is a separate, filterable table, not a history of every past failure.
+
+| Column | Use it to find |
+|---|---|
+| **Stage** | Discovery, ST03N, Jobs, or Dependencies problems |
+| **Source** | A particular upload category, where-used lookup, or relations check |
+| **Object / Type / Package** | Affected repository objects where that information is available |
+| **File** | The input extract requiring attention |
+| **Issue** | The diagnostic explaining the unresolved match or failed collection |
+
+Some collection messages have no object or file context, so those cells can be blank. Filter the Stage, Source, or Issue text instead.
+
+Use the Issues tab's own **Clear filters**, **All issues / Filtered issues**, format selector, and **Export** controls. XLSX and CSV exports include the structured columns, making it easier to group repeated causes or share a focused list with the responsible team.
+
+### What to do with common issues
+
+| Issue | Suggested action |
+|---|---|
+| Missing or unexpected headings | Use the matching template and the [input-data rules](#prepare-repository-usage-input-data). ST03N requires exactly one ObjectName column. |
+| Unresolved or ambiguous workload name | Check the profile, object type, repository scope, and matching Repository system. Do not assume one same-name object proves usage of another type. |
+| Job header or step cannot be matched | Check that both exports came from the same system and contain matching JOBNAME and JOBCOUNT values. |
+| Missing or invalid job start date | Supply valid actual-run data, or include eligible released/scheduled jobs with their matching status option. |
+| Dependency object cannot be resolved | Check existence and type in the chosen Dependency system. A discovered object can exist in the inventory but be absent or unavailable in that system's lookup. |
+| Authorization, connection, or lookup failure | Resolve the reported cause, then retry normally or use selective retry. |
+
+Successful dependency retries remove their error rows. Input issues are updated as their stage is processed. Saved unresolved ST03N matches are also reassessed while the analysis is idle; resolved matches clear, while ambiguity remains visible. An active run is not silently rewritten to clear diagnostics.
+
+## Understand completion status
+
+- **Complete** means that stage finished without outstanding recorded issues; it does not mean every inventory object became Used.
+- **Partial** means results are available but there are unresolved input or lookup issues. All uploaded files may still have been processed.
+- **Paused / Interrupted** means work can continue from saved progress.
+- **Failed** means the stage stopped with an error that should be reviewed before retrying.
+
+Review the individual issues and evidence coverage, not just the completion label. An error-free, empty where-used result is not proof of non-use.
+
+## Build a defensible review
+
+1. Record the inventory scope, evidence systems, workload periods, and job retention limits.
+2. Review Used reasons, especially planned-job evidence and inferred dependencies.
+3. Resolve broad collection or matching issues before treating the remaining Unclear list as a cleanup candidate list.
+4. Check infrequent, seasonal, dynamic, externally triggered, and specially bound functionality with its owners.
+5. Export the agreed review set and preserve the decision context outside the tool.
+
+The analysis supports investigation. It does not perform deletion or replace your organization's approval and change-management process.
 
 # ABAP Test Cockpit (ATC) Analysis
 
