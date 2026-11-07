@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.14.0
+
+### Minor Changes
+
+- c5d1504: SAP Data Workbook: export a single cell's output, and name exported outputs (Excel tabs, CSV files, headings) after the cell name or `display.*` title
+- 6d7e40b: add optional landscape and clientType fields to connection settings and the Connection Manager, so AI tools can tell systems apart
+- 9e67743: Repository Usage Analysis
+
+### Patch Changes
+
+- d51bda5: fix ci
+- b24695c: add OS level notifications
+
 ## 2.13.1
 
 ### Patch Changes
