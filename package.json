@@ -66,6 +66,7 @@
     "clean": "node scripts/clean.mjs && pnpm -r --if-present run clean",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "postinstall": "pnpm --filter vscode-abap-remote-fs-client exec playwright install chromium",
     "prepare": "husky"
   },
   "devDependencies": {
