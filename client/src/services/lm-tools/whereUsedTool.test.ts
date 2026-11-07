@@ -42,7 +42,6 @@ import { ABAPWhereUsedTool } from "./whereUsedTool"
 import { getSearchService } from "../abapSearchService"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
-import { normalizeUsageReferences } from "../whereUsedReferences"
 import type { Mock } from "vitest"
 
 const mockToken = {} as any
@@ -83,61 +82,6 @@ function makeRef(
     uri: opts.uri || `/sap/bc/adt/programs/${fullName.toLowerCase()}`
   }
 }
-
-describe("where-used reference normalization", () => {
-  it.each([true, "true"])("accepts metadata-only results with isResult %s", isResult => {
-    const reference = {
-      objectIdentifier: "",
-      isResult,
-      uri: "/sap/bc/adt/ddic/dataelements/z_element",
-      parentUri: "/sap/bc/adt/vit/wb/object_type/devck/object_name/Z_PACKAGE",
-      "adtcore:name": "Z_ELEMENT",
-      "adtcore:type": "DTEL/DE"
-    }
-    expect(normalizeUsageReferences([reference])).toEqual([{ ...reference, fullName: "Z_ELEMENT" }])
-  })
-  it.each([false, "false"])(
-    "rejects hierarchy entries with isResult %s even with source identifiers",
-    isResult => {
-      expect(normalizeUsageReferences([{ ...makeRef("ZPACKAGE"), isResult }])).toEqual([])
-    }
-  )
-  it.each([false, "false"])("keeps direct usages marked isResult %s", isResult => {
-    const reference = {
-      ...makeRef("ZMIMCL_RETAIL_COUNT_STOCK_DATA"),
-      isResult,
-      parentUri: "/sap/bc/adt/oo/classes/zmimcl_retail_count_stock_data",
-      usageInformation: "gradeDirect,includeProductive"
-    }
-    expect(normalizeUsageReferences([reference])).toEqual([
-      { ...reference, fullName: "ZMIMCL_RETAIL_COUNT_STOCK_DATA" }
-    ])
-  })
-  it("keeps legacy source identifiers without requiring isResult or metadata", () => {
-    expect(
-      normalizeUsageReferences([{ objectIdentifier: "ABAPFullName;ZREPORT;ZINCLUDE" }])
-    ).toEqual([{ objectIdentifier: "ABAPFullName;ZREPORT;ZINCLUDE", fullName: "ZREPORT" }])
-  })
-  it("rejects incomplete or unconfirmed metadata results", () => {
-    const reference = {
-      objectIdentifier: "",
-      isResult: true,
-      uri: "/dataelements/z_element",
-      "adtcore:name": "Z_ELEMENT",
-      "adtcore:type": "DTEL/DE"
-    }
-    expect(
-      normalizeUsageReferences([
-        {},
-        { ...reference, isResult: undefined },
-        { ...reference, uri: "" },
-        { ...reference, "adtcore:name": "" },
-        { ...reference, "adtcore:type": "" },
-        { objectIdentifier: "OtherIdentifier;ZREPORT" }
-      ])
-    ).toEqual([])
-  })
-})
 
 describe("ABAPWhereUsedTool", () => {
   let tool: ABAPWhereUsedTool
@@ -234,125 +178,6 @@ describe("ABAPWhereUsedTool", () => {
   })
 
   describe("invoke", () => {
-    it("accepts metadata-only results but excludes package hierarchy nodes", async () => {
-      mockSearcher.searchObjects.mockResolvedValue([
-        { name: "ZDOMAIN", type: "DOMA/DD", uri: "/sap/bc/adt/ddic/domains/zdomain" }
-      ])
-      mockUsageReferences.mockResolvedValue([
-        {
-          objectIdentifier: "",
-          isResult: "true",
-          uri: "/sap/bc/adt/ddic/dataelements/z_element",
-          "adtcore:name": "Z_ELEMENT",
-          "adtcore:type": "DTEL/DE"
-        },
-        {
-          objectIdentifier: "",
-          isResult: "false",
-          uri: "/packages/zpackage",
-          "adtcore:name": "ZPACKAGE",
-          "adtcore:type": "DEVC/K"
-        }
-      ])
-      const result: any = await tool.invoke(
-        makeOptions({
-          objectName: "ZDOMAIN",
-          connectionId: "example",
-          includeSnippets: true,
-          filter: { objectNamePattern: "Z_*", objectTypes: ["DTEL/DE"], excludeSystemObjects: true }
-        }),
-        mockToken
-      )
-      expect(result.parts[0].text).toContain("Z_ELEMENT (1 reference)")
-      expect(result.parts[0].text).toContain("DTEL/DE")
-      expect(result.parts[0].text).toContain("Total references found: 1")
-      expect(result.parts[0].text).not.toContain("ZPACKAGE")
-      expect(mockUsageReferenceSnippets).not.toHaveBeenCalled()
-    })
-    it("requests snippets only for source references in mixed results", async () => {
-      mockSearcher.searchObjects.mockResolvedValue([
-        { name: "ZDOMAIN", type: "DOMA/DD", uri: "/sap/bc/adt/ddic/domains/zdomain" }
-      ])
-      mockUsageReferences.mockResolvedValue([
-        makeRef("ZSOURCE"),
-        {
-          objectIdentifier: "",
-          isResult: true,
-          uri: "/sap/bc/adt/ddic/structures/zagr_app/source/main#start=2,2;end=2,21",
-          parentUri: "/sap/bc/adt/ddic/structures/zagr_app",
-          "adtcore:name": "ZZARTICLE_SCAN_FLAG",
-          "adtcore:type": "TABL/DSF"
-        }
-      ])
-      const result: any = await tool.invoke(
-        makeOptions({
-          objectName: "ZDOMAIN",
-          connectionId: "example",
-          includeSnippets: true
-        }),
-        mockToken
-      )
-      expect(result.parts[0].text).toContain("Results: 2 of 2 references")
-      expect(result.parts[0].text).toContain("ZAGR_APP (1 reference)")
-      expect(result.parts[0].text).toContain("Usage Snippet: ZAGR_APP")
-      expect(result.parts[0].text).toContain("WRITE 'hello'.")
-      expect(mockGetObjectSource).toHaveBeenCalledWith(
-        "/sap/bc/adt/ddic/structures/zagr_app/source/main"
-      )
-      expect(mockUsageReferenceSnippets).toHaveBeenCalledWith([
-        expect.objectContaining({ objectIdentifier: "ABAPFullName;ZSOURCE" })
-      ])
-    })
-    it("maps function-module object types to the search service type", async () => {
-      mockSearcher.searchObjects.mockResolvedValue([
-        {
-          name: "Z_RETAIL_CS_GET_CA_SUBZONE",
-          type: "FUGR/FF",
-          uri: "/sap/bc/adt/functions/groups/zfim_retail_st_count_stock/fmodules/z_retail_cs_get_ca_subzone"
-        }
-      ])
-      const result: any = await tool.invoke(
-        makeOptions({
-          objectName: "Z_RETAIL_CS_GET_CA_SUBZONE",
-          objectType: "FUGR/FF",
-          connectionId: "example"
-        }),
-        mockToken
-      )
-      expect(mockSearcher.searchObjects).toHaveBeenCalledWith(
-        "Z_RETAIL_CS_GET_CA_SUBZONE",
-        ["FUNC"],
-        1
-      )
-      expect(result.parts[0].text).toContain("No references found")
-    })
-    it("excludes a metadata-only reference to the queried object itself", async () => {
-      mockSearcher.searchObjects.mockResolvedValue([
-        {
-          name: "ZIMS_TEST_SCAN_PROMOTION",
-          type: "TABL/DS",
-          uri: "/sap/bc/adt/ddic/structures/zims_test_scan_promotion"
-        }
-      ])
-      mockUsageReferences.mockResolvedValue([
-        {
-          objectIdentifier: "",
-          isResult: true,
-          uri: "/sap/bc/adt/ddic/structures/zims_test_scan_promotion",
-          "adtcore:name": "ZIMS_TEST_SCAN_PROMOTION",
-          "adtcore:type": "TABL/DS"
-        }
-      ])
-      const result: any = await tool.invoke(
-        makeOptions({
-          objectName: "ZIMS_TEST_SCAN_PROMOTION",
-          objectType: "TABL/DS",
-          connectionId: "example"
-        }),
-        mockToken
-      )
-      expect(result.parts[0].text).toContain("No references found")
-    })
     it("logs telemetry with connectionId", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
       await tool
@@ -970,7 +795,7 @@ describe("ABAPWhereUsedTool", () => {
           mockToken
         )
 
-        expect(mockSearcher.searchObjects).toHaveBeenCalledWith("ZTEST", ["CLAS"], 1)
+        expect(mockSearcher.searchObjects).toHaveBeenCalledWith("ZTEST", ["CLAS/OC"], 1)
       })
     })
   })

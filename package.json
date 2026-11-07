@@ -4532,12 +4532,6 @@
         "icon": "$(compare-changes)"
       },
       {
-        "command": "abapfs.repositoryUsage",
-        "title": "Repository Usage Analysis",
-        "category": "ABAP FS",
-        "icon": "$(references)"
-      },
-      {
         "command": "abapfs.askJev",
         "title": "Ask Jev",
         "category": "ABAP FS",

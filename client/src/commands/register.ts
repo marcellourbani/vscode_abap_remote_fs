@@ -5,7 +5,6 @@ import { showEnhancementSource } from "../views/enhancementDecorations"
 import { SapSystemValidator } from "../services/sapSystemValidator"
 import { registerCompareWithSystemCommand } from "./compareWithSystem"
 import { registerRepositoryWorkflowCommand } from "../services/repositoryWorkflow/workflowPanel"
-import { registerRepositoryUsageCommand } from "../services/repositoryUsage/panel"
 
 // import/export to resolve dependencies
 export { AdtCommands } from "./commands"
@@ -66,5 +65,4 @@ export const registerCommands = (context: ExtensionContext) => {
   } catch (error) {
     console.warn("⚠️ Failed to register Repository workflow command:", error)
   }
-  registerRepositoryUsageCommand(context)
 }

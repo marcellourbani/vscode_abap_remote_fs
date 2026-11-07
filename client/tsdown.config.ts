@@ -170,15 +170,6 @@ export default defineConfig([
   },
   {
     ...shared,
-    entry: { repositoryUsageWorkerEntry: "src/services/repositoryUsage/dependencyWorkerEntry.ts" },
-    outDir: "dist",
-    tsconfig: "tsconfig.json",
-    sourcemap: true,
-    minify: minifyKeepClasses,
-    inputOptions: { external: ["vscode"] }
-  },
-  {
-    ...shared,
     dts: true,
     entry: { index: "src/services/testing/runtime/index.ts" },
     outDir: "dist/runtime",
