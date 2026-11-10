@@ -248,7 +248,7 @@ async function buildCreationDetails(connId: string, input: CreateObjectFormInput
   validateFormInput(input, typeInfo)
 
   const parentName = typeInfo.parentType === PACKAGE ? input.packageName : input.parentName || ""
-  const responsible = getClient(connId).username.toUpperCase()
+  const responsible = await creator.getOwner()
   let options: any = {
     description: input.description,
     name: buildObjectName(input, parentName),

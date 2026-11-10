@@ -69,6 +69,12 @@ export class AdtObjectCreator {
     if (otype === PACKAGE) otype = ""
     return this.types!.filter(x => x.PARENT_OBJECT_TYPE === otype)
   }
+  public async getOwner() {
+    const client = getClient(this.connId)
+    if (client.username && !client.username.includes("@")) return client.username
+    const info = await client.getSystemInformation()
+    return info.userName.toUpperCase()
+  }
   private async getAndRefreshParent(options: NewObjectOptions) {
     if (options.objtype !== "FUGR/FF") return
     const finder = new AdtObjectFinder(this.connId)
@@ -291,7 +297,7 @@ export class AdtObjectCreator {
     if (!name) return
     const description = await this.askInput("description", false)
     if (!description) return
-    const responsible = getClient(this.connId).username.toUpperCase()
+    const responsible = await this.getOwner()
     const parentType = parentTypeId(objType.typeId)
     let parentName
     if (parentType !== PACKAGE) {
