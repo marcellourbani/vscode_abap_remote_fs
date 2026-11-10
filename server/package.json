@@ -37,6 +37,6 @@
     "clean": "node ../scripts/rm.mjs ./out ./dist node_modules",
     "build": "tsdown --config tsdown.config.ts",
     "typecheck": "tsc --noEmit",
-    "watch": "tsdown --config tsdown.config.ts --watch"
+    "watch": "tsdown --config tsdown.config.ts --watch --no-minify"
   }
 }

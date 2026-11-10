@@ -13,7 +13,7 @@
     "clean": "node ../scripts/rm.mjs out dist server",
     "typecheck": "tsc --noEmit",
     "build": "node ../scripts/rm.mjs dist && tsdown --config tsdown.config.ts",
-    "watch": "tsdown --config tsdown.config.ts --watch"
+    "watch": "tsdown --config tsdown.config.ts --watch --no-minify"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",

@@ -330,7 +330,7 @@ function toTransportPreview(info: any): TransportPreview {
     }
   }
 
-  if (info.DLVUNIT === "LOCAL") {
+  if (info.DLVUNIT === "LOCAL" || info.RECORDING === "") {
     return {
       applicable: false,
       local: true,
@@ -377,7 +377,7 @@ async function resolveTransportForCreate(
   const info = await fetchTransportInfo(connId, details)
 
   if (info.LOCKS) return info.LOCKS.HEADER.TRKORR
-  if (info.DLVUNIT === "LOCAL") return ""
+  if (info.DLVUNIT === "LOCAL" || info.RECORDING === "") return ""
 
   if (input.transportMode === "existing" && input.selectedTransport) {
     await validateSelectedTransport(
