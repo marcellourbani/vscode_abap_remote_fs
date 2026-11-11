@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.15.0
+
+### Minor Changes
+
+- 38a63af: update adt api to effect based vs axios
+
+### Patch Changes
+
+- 778b848: BTP object creation fixes
+
 ## 2.14.0
 
 ### Minor Changes
