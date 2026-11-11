@@ -81,7 +81,7 @@ export async function selectTransport(
   const curtr = current && ti.TRANSPORTS.find(t => t.TRKORR === current)
   if (curtr) return trSel(curtr.TRKORR)
   // if local, return an empty value
-  if (ti.DLVUNIT === "LOCAL") return trSel("")
+  if (ti.DLVUNIT === "LOCAL" || ti.RECORDING === "") return trSel("")
 
   let selection = await selectOrCreate(ti, objContentPath, client, transportLayer)
   if (!selection.cancelled)
