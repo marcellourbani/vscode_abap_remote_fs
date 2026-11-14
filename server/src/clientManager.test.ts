@@ -17,6 +17,7 @@ vi.mock("abap-adt-api", () => ({
       mocks.createClient()
     }
   },
+  createCookieSessionOptions: vi.fn((options: { id: string }) => ({ session: { id: options.id } })),
   createSSLConfig: vi.fn(() => ({})),
   session_types: { stateful: "stateful", stateless: "stateless" }
 }))
