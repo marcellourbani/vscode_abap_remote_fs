@@ -142,6 +142,8 @@ const abapObject = (fields: { name: string; type: string; path: string }, lockOb
   const object: any = {
     ...fields,
     structure: undefined,
+    canBeWritten: true,
+    read: vi.fn().mockResolvedValue(""),
     loadStructure: vi.fn(async function () {
       object.structure = { metaData: { "adtcore:version": "active" } }
       return object.structure
@@ -999,6 +1001,86 @@ describe("AdtObjectActivator", () => {
 
       expect(clas.loadStructure).toHaveBeenCalledTimes(2)
       expect(clas.structure.metaData["adtcore:version"]).toBe("active")
+    })
+
+    it("reports an object that is still inactive after SAP reported success", async () => {
+      const clas = abapObject({ name: "ZCL_TEST", type: "CLAS/OC", path: classUri })
+      clas.loadStructure.mockImplementation(async () => {
+        clas.structure = { metaData: { "adtcore:version": "inactive" } }
+        return clas.structure
+      })
+      mockClient.activate.mockResolvedValue(success)
+      const activator = AdtObjectActivator.get("conn")
+
+      const result = await activator.activate(clas, vsUri("/ZCL_TEST"))
+
+      expect(result.ok).toBe(false)
+      expect(result.summary).toContain("ZCL_TEST is still inactive")
+      expect(activator["emitter"].fire).not.toHaveBeenCalled()
+    })
+
+    describe("editor source check", () => {
+      const editorProgram = () => {
+        const program = abapObject({ name: "ZTEST", type: "PROG/P", path: programUri })
+        mockClient.activate.mockResolvedValue(success)
+        return program
+      }
+
+      it("does not activate when the SAP source differs from the editor", async () => {
+        const program = editorProgram()
+        program.read.mockResolvedValue("REPORT ztest.\nWRITE 'old'.")
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(
+          program,
+          vsUri("/ZTEST"),
+          true,
+          "REPORT ztest.\nWRITE 'new'."
+        )
+
+        expect(result.ok).toBe(false)
+        expect(result.summary).toContain("doesn't match your editor")
+        expect(program.loadStructure).toHaveBeenCalledWith(true)
+        expect(mockClient.activate).not.toHaveBeenCalled()
+      })
+
+      it("ignores line endings and trailing blanks", async () => {
+        const program = editorProgram()
+        program.read.mockResolvedValue("REPORT ztest.\nWRITE 'x'.\n")
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(
+          program,
+          vsUri("/ZTEST"),
+          true,
+          "REPORT ztest.  \r\nWRITE 'x'.\r\n\r\n"
+        )
+
+        expect(result).toEqual({ ok: true })
+        expect(mockClient.activate).toHaveBeenCalled()
+      })
+
+      it("still activates when the SAP source cannot be read", async () => {
+        const program = editorProgram()
+        program.read.mockRejectedValue(new Error("network down"))
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(program, vsUri("/ZTEST"), true, "REPORT ztest.")
+
+        expect(result).toEqual({ ok: true })
+        expect(mockClient.activate).toHaveBeenCalled()
+      })
+
+      it("skips objects that have no editable source", async () => {
+        const program = editorProgram()
+        program.canBeWritten = false
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(program, vsUri("/ZTEST"), true, "anything")
+
+        expect(result).toEqual({ ok: true })
+        expect(program.read).not.toHaveBeenCalled()
+      })
     })
 
     it("returns the error summary when the activation request throws", async () => {

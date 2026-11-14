@@ -33,6 +33,7 @@ import {
   sameAdtUri,
   uniqueRecords
 } from "./activation/relatedInactive"
+import { sameSource, sourceMismatchSummary, stillInactiveSummary } from "./activation/sourceCheck"
 
 export interface ActivationEvent {
   connectionId: string
@@ -122,13 +123,19 @@ export class AdtObjectActivator {
     return objectsOf(await inactiveObjectRecords(this.client))
   }
 
-  /** Activates an editor object, together with its inactive siblings or includes */
+  /**
+   * Activates an editor object, together with its inactive siblings or includes
+   * @param editorSource saved editor text, activation is refused when SAP holds a different source
+   */
   public async activate(
     object: AbapObject,
     uri: Uri,
-    interactive = true
+    interactive = true,
+    editorSource?: string
   ): Promise<ActivationOutcome> {
     try {
+      if (editorSource !== undefined && (await this.sourceDiffers(object, editorSource)))
+        return { ok: false, summary: sourceMismatchSummary(object.name) }
       const main = await this.mainProgram(object, uri)
       // a silent first attempt keeps tools from blocking on a dialog, the user is asked only on failure
       let attempt = await this.attemptActivation(object, main, false)
@@ -138,7 +145,11 @@ export class AdtObjectActivator {
       if (attempt.cancelled) return { ok: false, cancelled: true, summary: CANCELLED }
       if (!attempt.result.success) return summarizeActivationFailure(attempt.result, object.name)
 
-      await this.refreshActivated(attempt.activated, object.lockObject)
+      const stillInactive = await this.refreshActivated(attempt.activated, object.lockObject)
+      if (stillInactive.includes(object.lockObject)) {
+        logActivation(`${object.lockObject.name} is still inactive after a successful activation`)
+        return { ok: false, summary: stillInactiveSummary(object.lockObject.name) }
+      }
       this.emitter.fire({
         connectionId: this.connectionId,
         objects: attempt.activated,
@@ -250,6 +261,20 @@ export class AdtObjectActivator {
         { ok: false, summary: describeActivationError(error, "Multiple activation") },
         stillInactive
       )
+    }
+  }
+
+  /** A failed comparison is logged and does not block the activation */
+  private async sourceDiffers(object: AbapObject, editorSource: string) {
+    if (!object.canBeWritten) return false
+    try {
+      await object.loadStructure(true)
+      if (sameSource(await object.read(), editorSource)) return false
+      logActivation(`The SAP source of ${object.name} differs from the editor, activation skipped`)
+      return true
+    } catch (error) {
+      logActivation(`Could not compare ${object.name} with SAP: ${caughtToString(error)}`)
+      return false
     }
   }
 
@@ -471,7 +496,10 @@ export class AdtObjectActivator {
     }
   }
 
-  /** Drops cached inactive structures, so the activate button and decorations update */
+  /**
+   * Drops cached inactive structures, so the activate button and decorations update
+   * @returns the reloaded objects SAP still reports as inactive
+   */
   private async refreshActivated(objects: InactiveObject[], editorObject?: AbapObject) {
     const targets = new Set<AbapObject>(editorObject ? [editorObject] : [])
     try {
@@ -494,16 +522,21 @@ export class AdtObjectActivator {
     } catch (error) {
       logActivation(`Could not refresh activated objects: ${caughtToString(error)}`)
     }
-    await Promise.all([...targets].map(target => this.reloadStructure(target)))
+    const reloaded = [...targets]
+    const inactive = await Promise.all(reloaded.map(target => this.reloadStructure(target)))
+    return reloaded.filter((_, index) => inactive[index])
   }
 
+  /** @returns true when a successful reload still finds the object inactive */
   private async reloadStructure(object: AbapObject) {
     try {
       await object.loadStructure(true)
       // loadStructure shares a request started before the activation, that one is stale
       if (isInactiveStructure(object)) await object.loadStructure(true)
+      return isInactiveStructure(object)
     } catch (error) {
       logActivation(`Could not reload ${object.name} after activation: ${caughtToString(error)}`)
+      return false
     }
   }
 }
