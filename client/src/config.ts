@@ -30,6 +30,7 @@ import { CallLogger } from "./adt/adtCommLog"
 import {
   buildCertAuth,
   buildKerberosAuth,
+  createKerberosClientOptions,
   createBrowserSsoClientOptions,
   clearCertPassphrase,
   clearKerberosCookies,
@@ -263,6 +264,8 @@ export async function createAuthenticatedClient(
     }
     case "kerberos": {
       log.debug(`[auth] Building kerberos/SSO auth for ${conf.name}`)
+      // Run the handshake up front so connection errors surface immediately.
+      // The cookies are stored and then picked up by the cookie session below.
       const result = await buildKerberosAuth(
         conf.name,
         conf.kerberosAuth, // Optional — PowerShell SSPI handles auth automatically
@@ -270,16 +273,24 @@ export async function createAuthenticatedClient(
         conf.client,
         !!conf.allowSelfSigned
       )
-      if (result.headers) sslconf.headers = { ...sslconf.headers, ...result.headers }
-      const client = new ADTClient(
+      // Authentication is supplied by the cookie session: the placeholder password only
+      // satisfies ADTClient's constructor and is never sent as Basic authentication.
+      const sessionOptions = createKerberosClientOptions(
+        conf.name,
+        conf.kerberosAuth,
+        conf.url,
+        conf.client,
+        !!conf.allowSelfSigned,
+        { onStatefulFailure }
+      )
+      return new ADTClient(
         conf.url,
         conf.username,
         result.passwordOrFetcher,
         conf.client,
         conf.language,
-        sslconf
+        { ...sslconf, ...sessionOptions }
       )
-      return client
     }
     case "browser_sso": {
       log.debug(`[auth] Building browser SSO auth for ${conf.name}`)

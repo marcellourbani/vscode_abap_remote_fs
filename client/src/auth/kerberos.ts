@@ -13,7 +13,9 @@
  *  2. PowerShell makes an HTTP request to SAP with UseDefaultCredentials=true
  *  3. .NET/SSPI handles the full SPNEGO Negotiate handshake transparently
  *  4. We capture the session cookies (MYSAPSSO2, SAP_SESSIONID_*) from the response
- *  5. Subsequent ADT requests use those cookies via custom headers
+ *  5. Subsequent ADT requests use those cookies through an external cookie session
+ *     (no Basic Authorization header is sent). When SAP rejects them, the
+ *     handshake is repeated silently to obtain fresh cookies.
  *
  * Prerequisites:
  *  - Windows domain-joined machine with valid Kerberos TGT
@@ -21,6 +23,11 @@
  */
 
 import { execFile } from "child_process"
+import {
+  createCookieSessionOptions,
+  type CookieSessionClient,
+  type CookieSessionOptions
+} from "abap-adt-api"
 import { type AuthResult, type KerberosAuthConfig } from "./types"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
@@ -100,6 +107,8 @@ function buildNegotiateScript(skipSsl: boolean): string {
     `  }`,
     `  $req = [System.Net.HttpWebRequest]::Create($uri)`,
     `  $req.Method = 'GET'`,
+    // ADT rejects requests without Accept (400 SADT_RESOURCE 034 "Accept header missing")
+    `  $req.Accept = '*/*'`,
     `  $req.AllowAutoRedirect = $false`,
     `  $req.CookieContainer = New-Object System.Net.CookieContainer`
   )
@@ -445,4 +454,48 @@ export async function refreshKerberosAuth(
     passwordOrFetcher: "kerberos-sso",
     ...(headers ? { headers } : {})
   }
+}
+
+/**
+ * Build ADTClient options for a Kerberos/SPNEGO cookie session.
+ *
+ * The client authenticates only with the captured SAP cookies, so the placeholder
+ * password passed to the ADTClient constructor is never sent as Basic authentication
+ * (which would count as a failed logon and could lock the SAP user).
+ * When SAP rejects the cookies, a new SSPI handshake is run to acquire fresh ones;
+ * it is non-interactive, so it is safe to run on expiry.
+ */
+export function createKerberosClientOptions(
+  connId: string,
+  kerberosConfig: KerberosAuthConfig | undefined,
+  sapBaseUrl: string,
+  sapClient: string,
+  skipSsl: boolean,
+  callbacks: {
+    onStatefulFailure?: (client: CookieSessionClient) => void | Promise<void>
+    signal?: CookieSessionOptions["signal"]
+  } = {}
+) {
+  return createCookieSessionOptions({
+    id: `kerberos:${formatKey(connId)}`,
+    loadCookies: async () => {
+      const cookies = await getKerberosCookies(connId)
+      return buildCookieHeaders(cookies)?.Cookie
+    },
+    acquireCookies: async ({ reason }) => {
+      log.debug(`[sso] Acquiring kerberos cookies for ${connId} (${reason})`)
+      const cookies = await negotiateWithSap(kerberosConfig, sapBaseUrl, sapClient, skipSsl)
+      await storeKerberosCookies(connId, cookies)
+      return buildCookieHeaders(cookies)?.Cookie
+    },
+    signal: callbacks.signal,
+    onCookiesChanged: async cookieHeader => {
+      const cookies = cookieHeader
+        .split(";")
+        .map(cookie => cookie.trim())
+        .filter(Boolean)
+      if (cookies.length) await storeKerberosCookies(connId, cookies)
+    },
+    onStatefulSessionLost: ({ client }) => callbacks.onStatefulFailure?.(client)
+  })
 }

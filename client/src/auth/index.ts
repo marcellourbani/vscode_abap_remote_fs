@@ -20,6 +20,11 @@ export {
   getCertPassphrase,
   clearCertPassphrase
 } from "./certificate"
-export { buildKerberosAuth, refreshKerberosAuth, clearKerberosCookies } from "./kerberos"
+export {
+  buildKerberosAuth,
+  refreshKerberosAuth,
+  clearKerberosCookies,
+  createKerberosClientOptions
+} from "./kerberos"
 export { createBrowserSsoClientOptions, clearSsoCookies } from "./browserSso"
 export { buildOAuthOnPremAuth, clearOAuthOnPremTokens } from "./oauthOnPrem"
