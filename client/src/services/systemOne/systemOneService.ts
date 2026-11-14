@@ -207,13 +207,16 @@ function validateRequest(
   return validateOptions(limits, options)
 }
 
+/** The messages are English, so their numbers are too, whatever the OS locale */
+const formatCount = (value: number) => value.toLocaleString("en-US")
+
 function validateStateSize(limits: EngineLimits, state: SystemOneEntry): Rejection | undefined {
   if (limits.maxStateChars === undefined) return undefined
   const length = stateLength(state)
   if (length <= limits.maxStateChars) return undefined
   return {
     reason: "context-limit",
-    message: `${limits.label} refuses a state over ${limits.maxStateChars.toLocaleString()} characters; this one is ${length.toLocaleString()}.`
+    message: `${limits.label} refuses a state over ${formatCount(limits.maxStateChars)} characters; this one is ${formatCount(length)}.`
   }
 }
 
@@ -242,7 +245,7 @@ function validateOptions(
     options.maxLen > budget.max
   )
     return invalid(
-      `${label} token budget must be a whole number between ${budget.min.toLocaleString()} and ${budget.max.toLocaleString()}.`
+      `${label} token budget must be a whole number between ${formatCount(budget.min)} and ${formatCount(budget.max)}.`
     )
   return undefined
 }

@@ -16,6 +16,22 @@ vi.mock("exceljs", () => ({
 }))
 
 describe("structuredDataExportService", () => {
+  test.each(["America/Sao_Paulo", "UTC", "Asia/Kolkata"])(
+    "reads a stringified ADT date back as the same day in %s",
+    timeZone => {
+      const original = process.env.TZ
+      process.env.TZ = timeZone
+      try {
+        const date = new Date("2024-12-05T00:00:00.000Z")
+        expect(formatExportCell(date.toString(), "D")).toBe("05-12-2024")
+        expect(formatExportCell(date, "D")).toBe("05-12-2024")
+      } finally {
+        if (original === undefined) delete process.env.TZ
+        else process.env.TZ = original
+      }
+    }
+  )
+
   it("preserves character values and formats SAP dates and times", () => {
     expect(formatExportCell("00001234", "C")).toBe("00001234")
     expect(formatExportCell("20260918", "D")).toBe("18-09-2026")

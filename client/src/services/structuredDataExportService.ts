@@ -14,38 +14,29 @@ const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z?$/
 const SAP_DATE_RE = /^(\d{4})(\d{2})(\d{2})$/
 const SAP_TIME_RE = /^(\d{2})(\d{2})(\d{2})$/
 
+function formatUtcDate(date: Date, type?: string): string {
+  if (isNaN(date.getTime())) return ""
+  return formatFromParts(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate(),
+    date.getUTCHours(),
+    date.getUTCMinutes(),
+    date.getUTCSeconds(),
+    type
+  )
+}
+
 export function formatExportCell(value: unknown, type?: string): string {
   if (value == null) return ""
-  if (value instanceof Date) {
-    if (isNaN(value.getTime())) return ""
-    return formatFromParts(
-      value.getUTCFullYear(),
-      value.getUTCMonth() + 1,
-      value.getUTCDate(),
-      value.getUTCHours(),
-      value.getUTCMinutes(),
-      value.getUTCSeconds(),
-      type
-    )
-  }
+  if (value instanceof Date) return formatUtcDate(value, type)
   const text = String(value).trim()
   if (!text || text === "Invalid Date") return ""
   const iso = ISO_RE.exec(text)
   if (iso) return formatFromParts(+iso[1], +iso[2], +iso[3], +iso[4], +iso[5], +iso[6], type)
-  if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) /.test(text)) {
-    const date = new Date(text)
-    return isNaN(date.getTime())
-      ? ""
-      : formatFromParts(
-          date.getFullYear(),
-          date.getMonth() + 1,
-          date.getDate(),
-          date.getHours(),
-          date.getMinutes(),
-          date.getSeconds(),
-          type
-        )
-  }
+  // Date.toString() output of a UTC-based ADT date: read it back in UTC like a Date object,
+  // otherwise timezones behind UTC shift it to the previous day
+  if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) /.test(text)) return formatUtcDate(new Date(text), type)
   if (type === "D") {
     if (text === "00000000") return ""
     const match = SAP_DATE_RE.exec(text)
