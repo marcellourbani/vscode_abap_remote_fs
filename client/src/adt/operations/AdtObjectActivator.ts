@@ -34,6 +34,13 @@ import {
   uniqueRecords
 } from "./activation/relatedInactive"
 import { sameSource, sourceMismatchSummary, stillInactiveSummary } from "./activation/sourceCheck"
+import {
+  listedMethods,
+  markMethods,
+  notRelistedSummary,
+  unlistedMethods,
+  unlistedMethodsSummary
+} from "./activation/unlistedMethods"
 
 export interface ActivationEvent {
   connectionId: string
@@ -136,31 +143,56 @@ export class AdtObjectActivator {
     try {
       if (editorSource !== undefined && (await this.sourceDiffers(object, editorSource)))
         return { ok: false, summary: sourceMismatchSummary(object.name) }
+      const clas = object.lockObject
+      const unlisted = await this.unlistedChangedMethods(object)
+      if (unlisted.length && object.techName !== "main")
+        return { ok: false, summary: unlistedMethodsSummary(clas.name, unlisted) }
+
       const main = await this.mainProgram(object, uri)
-      // a silent first attempt keeps tools from blocking on a dialog, the user is asked only on failure
-      let attempt = await this.attemptActivation(object, main, false)
-      if (!attempt.cancelled && !attempt.result.success)
-        attempt = await this.attemptActivation(object, main, interactive)
+      const outcome = await this.activateOnce(object, uri, main, interactive)
+      if (!outcome.ok || !unlisted.length) return outcome
 
-      if (attempt.cancelled) return { ok: false, cancelled: true, summary: CANCELLED }
-      if (!attempt.result.success) return summarizeActivationFailure(attempt.result, object.name)
-
-      const stillInactive = await this.refreshActivated(attempt.activated, object.lockObject)
-      if (stillInactive.includes(object.lockObject)) {
-        logActivation(`${object.lockObject.name} is still inactive after a successful activation`)
-        return { ok: false, summary: stillInactiveSummary(object.lockObject.name) }
-      }
-      this.emitter.fire({
-        connectionId: this.connectionId,
-        objects: attempt.activated,
-        object,
-        uri,
-        mainProg: main?.["adtcore:uri"]
-      })
-      return { ok: true }
+      // with the class source active, SAP lists a method again once its source changes
+      if (!(await this.relistMethods(clas, uri, unlisted)))
+        return { ok: false, summary: notRelistedSummary(clas.name, unlisted) }
+      const relisted = await this.activateOnce(object, uri, main, false)
+      if (!relisted.ok) return relisted
+      const left = await this.listedAmong(clas, unlisted)
+      if (left.length) return { ok: false, summary: notRelistedSummary(clas.name, left) }
+      logActivation(`${clas.name}: listed and activated ${unlisted.join(", ")}`)
+      return relisted
     } catch (error) {
       return { ok: false, summary: describeActivationError(error, "Activation") }
     }
+  }
+
+  private async activateOnce(
+    object: AbapObject,
+    uri: Uri,
+    main: MainInclude | undefined,
+    interactive: boolean
+  ): Promise<ActivationOutcome> {
+    // a silent first attempt keeps tools from blocking on a dialog, the user is asked only on failure
+    let attempt = await this.attemptActivation(object, main, false)
+    if (!attempt.cancelled && !attempt.result.success)
+      attempt = await this.attemptActivation(object, main, interactive)
+
+    if (attempt.cancelled) return { ok: false, cancelled: true, summary: CANCELLED }
+    if (!attempt.result.success) return summarizeActivationFailure(attempt.result, object.name)
+
+    const stillInactive = await this.refreshActivated(attempt.activated, object.lockObject)
+    if (stillInactive.includes(object.lockObject)) {
+      logActivation(`${object.lockObject.name} is still inactive after a successful activation`)
+      return { ok: false, summary: stillInactiveSummary(object.lockObject.name) }
+    }
+    this.emitter.fire({
+      connectionId: this.connectionId,
+      objects: attempt.activated,
+      object,
+      uri,
+      mainProg: main?.["adtcore:uri"]
+    })
+    return { ok: true }
   }
 
   /**
@@ -276,6 +308,57 @@ export class AdtObjectActivator {
       logActivation(`Could not compare ${object.name} with SAP: ${caughtToString(error)}`)
       return false
     }
+  }
+
+  /**
+   * SAP can save a changed method without listing it as inactive, activating the class then
+   * skips it and the old code keeps running (#641, #670). A failed comparison does not block
+   * @returns changed methods of the class missing from the inactive list
+   */
+  private async unlistedChangedMethods(object: AbapObject) {
+    const clas = object.lockObject
+    if (clas.type !== "CLAS/OC") return []
+    const sourcePath = `${clas.path}/source/main`
+    try {
+      const reader = this.client.statelessClone
+      const [active, inactive, records] = await Promise.all([
+        reader.getObjectSource(sourcePath, { version: "active" }),
+        reader.getObjectSource(sourcePath, { version: "inactive" }),
+        inactiveObjectRecords(this.client)
+      ])
+      const unlisted = unlistedMethods(active, inactive, objectsOf(records), clas.path)
+      if (unlisted.length)
+        logActivation(`${clas.name}: SAP did not list changed methods ${unlisted.join(", ")}`)
+      return unlisted
+    } catch (error) {
+      logActivation(`Could not compare the methods of ${clas.name}: ${caughtToString(error)}`)
+      return []
+    }
+  }
+
+  /**
+   * SAP only lists a method include it rewrites, so the methods get a temporary comment line,
+   * then the source is saved back unchanged
+   * @returns whether all the methods are listed as inactive now
+   */
+  private async relistMethods(clas: AbapObject, uri: Uri, methods: string[]) {
+    const source = await this.client.statelessClone.getObjectSource(`${clas.path}/source/main`, {
+      version: "inactive"
+    })
+    try {
+      await workspace.fs.writeFile(uri, Buffer.from(markMethods(source, methods)))
+    } finally {
+      await workspace.fs.writeFile(uri, Buffer.from(source))
+    }
+    const listed = await this.listedAmong(clas, methods)
+    const missing = methods.filter(method => !listed.includes(method))
+    if (missing.length) logActivation(`${clas.name}: still not listed: ${missing.join(", ")}`)
+    return !missing.length
+  }
+
+  private async listedAmong(clas: AbapObject, methods: string[]) {
+    const listed = listedMethods(objectsOf(await inactiveObjectRecords(this.client)), clas.path)
+    return methods.filter(method => listed.includes(method))
   }
 
   private async attemptActivation(
