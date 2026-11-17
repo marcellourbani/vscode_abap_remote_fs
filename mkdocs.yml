@@ -52,6 +52,14 @@ nav:
       - Prepare Input Data: repository-usage/input-data.md
       - Dependency Checks: repository-usage/dependencies.md
       - Review & Export: repository-usage/results.md
+  - Customizing:
+      - Overview: customizing/index.md
+      - Setup: customizing/setup.md
+      - Workflow: customizing/workflow.md
+      - Create, Copy, Edit & Delete: customizing/changes.md
+      - Customizing Requests: customizing/transports.md
+      - Updates: customizing/updates.md
+      - Troubleshooting & Questions: customizing/troubleshooting.md
   - AI Features:
       - Language Model Tools: ai/language-model-tools.md
       - Decision Models (Jev and Laya): ai/decision-models.md

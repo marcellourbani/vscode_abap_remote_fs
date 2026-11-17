@@ -43,6 +43,13 @@
 - repository-usage/input-data.md
 - repository-usage/dependencies.md
 - repository-usage/results.md
+- customizing/index.md
+- customizing/setup.md
+- customizing/workflow.md
+- customizing/changes.md
+- customizing/transports.md
+- customizing/updates.md
+- customizing/troubleshooting.md
 - code-quality/atc-analysis.md
 - code-quality/abap-cleaner.md
 - code-quality/syntax-validation.md

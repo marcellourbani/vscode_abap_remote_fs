@@ -525,6 +525,13 @@
           "name": "Object Property",
           "when": "abapfs:extensionActive",
           "icon": "$(symbol-property)"
+        },
+        {
+          "type": "webview",
+          "id": "abapfs.customizingSetup",
+          "name": "Customizing Setup",
+          "when": "abapfs:extensionActive",
+          "icon": "$(settings-gear)"
         }
       ],
       "explorer": [
@@ -4174,6 +4181,504 @@
           ]
         },
         "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
+      },
+      {
+        "name": "abapfs_search_img",
+        "displayName": "Search Customizing IMG",
+        "modelDescription": "Search the SAP Implementation Guide (IMG / SPRO) for business-configuration activities by title keyword. Returns activity IDs, titles and maintenance objects where available, or matching IMG node paths when using the search index. Uses server-side search, then an IMG text index or bounded ADT reads as fallbacks. namespace narrows activity-ID discovery; inScopeOnly restricts raw discovery where scope data exists. Partial scans are reported: no match in a partial scan does not prove an activity is absent. Read-only. Use abapfs_describe_customizing to inspect a returned maintenance object before reading or changing configuration.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_search_img",
+        "userDescription": "Search Customizing IMG",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            },
+            "keyword": {
+              "type": "string",
+              "description": "Title or activity keyword."
+            },
+            "namespace": {
+              "type": "string",
+              "description": "Optional activity-ID prefix to narrow discovery."
+            },
+            "language": {
+              "type": "string",
+              "description": "One-character SAP language key, default E."
+            },
+            "maxResults": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9999,
+              "description": "Maximum rows. Comparisons refuse truncated data instead of producing incomplete plans."
+            },
+            "inScopeOnly": {
+              "type": "boolean",
+              "description": "Restrict raw discovery to activated scope where available."
+            }
+          },
+          "required": [
+            "connectionId",
+            "keyword"
+          ]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_describe_customizing",
+        "displayName": "Describe Customizing Object",
+        "modelDescription": "Describe an exact SAP Customizing maintenance view or table: resolved base/text tables, fields with key markers and types, delivery class (transport behaviour), authorization group (S_TABU_DIS), maintenance program, transport object, and foreign-key references on key fields (organizational-unit candidates). Use after abapfs_search_img to understand the object before reading or changing configuration. Read-only; reports ambiguous resolution and SAP metadata errors rather than guessing. Next use abapfs_read_customizing for current rows or abapfs_diff_customizing to compare organizational units.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_describe_customizing",
+        "userDescription": "Describe Customizing Object",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            },
+            "objectName": {
+              "type": "string",
+              "description": "Exact maintenance view or configuration table name; use describe to resolve it first."
+            },
+            "language": {
+              "type": "string",
+              "description": "One-character SAP language key, default E."
+            }
+          },
+          "required": [
+            "connectionId",
+            "objectName"
+          ]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_read_customizing",
+        "displayName": "Read Customizing",
+        "modelDescription": "Read current rows of a SAP Customizing table or maintenance view as a formatted table; a maintenance view is resolved to its base table. Optionally filter by equality on one field: supply keyField and keyValue together, preserving SAP internal formatting and leading zeros. Returns at most maxRows rows (default 100); this bounded read is not a complete configuration export and does not merge associated text tables. Read-only; requires SAP table-read authorization. Use abapfs_describe_customizing for field metadata and abapfs_diff_customizing to compare two organizational units.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_read_customizing",
+        "userDescription": "Read Customizing",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            },
+            "objectName": {
+              "type": "string",
+              "description": "Exact maintenance view or configuration table name; use describe to resolve it first."
+            },
+            "keyField": {
+              "type": "string",
+              "description": "Optional field filter."
+            },
+            "keyValue": {
+              "type": "string",
+              "description": "Exact SAP internal-format value."
+            },
+            "maxRows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9999,
+              "description": "Maximum rows. Comparisons refuse truncated data instead of producing incomplete plans."
+            }
+          },
+          "required": [
+            "connectionId",
+            "objectName"
+          ]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_diff_customizing",
+        "displayName": "Compare Customizing",
+        "modelDescription": "Compare configuration in one table or maintenance view between two organizational-key values in the selected SAP system, such as plant 1000 versus plant 2000 or company code DE01 versus AT01. Resolves views to their base table and matches rows by DDIC primary keys excluding the organizational scope and client. Returns source rows missing from target, changed source/target pairs, identical rows and target-only rows. keyField must be a primary-key field. Read-only; refuses truncated datasets instead of returning a misleading comparison. maxRows defaults to 1000 per scope. Use abapfs_plan_customizing_change to preview proposed copy rows.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_diff_customizing",
+        "userDescription": "Compare Customizing",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            },
+            "objectName": {
+              "type": "string",
+              "description": "Exact maintenance view or configuration table name; use describe to resolve it first."
+            },
+            "keyField": {
+              "type": "string",
+              "description": "Organizational key field, e.g. WERKS."
+            },
+            "sourceKey": {
+              "type": "string",
+              "description": "Reference key, preserving leading zeros."
+            },
+            "targetKey": {
+              "type": "string",
+              "description": "Target key, preserving leading zeros."
+            },
+            "maxRows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9999,
+              "description": "Maximum rows. Comparisons refuse truncated data instead of producing incomplete plans."
+            }
+          },
+          "required": [
+            "connectionId",
+            "objectName",
+            "keyField",
+            "sourceKey",
+            "targetKey"
+          ]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_plan_customizing_change",
+        "displayName": "Plan Customizing Change",
+        "modelDescription": "Preview the rows that copying one table or maintenance view from sourceKey to targetKey would insert or update, with resolved maintenance/transport metadata and proposed target-key values. Read-only ADT comparison; nothing is written. onlyMissing defaults true and selects rows whose primary key is absent from the target; false proposes all source rows, including existing keys. Refuses truncated comparisons. This is not a frozen change or a validation of the SAP write runtime: abapfs_apply_customizing without commit performs a fresh SAP-side dry run.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_plan_customizing_change",
+        "userDescription": "Plan Customizing Change",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            },
+            "objectName": {
+              "type": "string",
+              "description": "Exact maintenance view or configuration table name; use describe to resolve it first."
+            },
+            "keyField": {
+              "type": "string",
+              "description": "Organizational key field, e.g. WERKS."
+            },
+            "sourceKey": {
+              "type": "string",
+              "description": "Reference key, preserving leading zeros."
+            },
+            "targetKey": {
+              "type": "string",
+              "description": "Target key, preserving leading zeros."
+            },
+            "onlyMissing": {
+              "type": "boolean",
+              "description": "Default true; false includes updates."
+            },
+            "maxRows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9999,
+              "description": "Maximum rows. Comparisons refuse truncated data instead of producing incomplete plans."
+            }
+          },
+          "required": [
+            "connectionId",
+            "objectName",
+            "keyField",
+            "sourceKey",
+            "targetKey"
+          ]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_apply_customizing",
+        "displayName": "Apply Customizing",
+        "modelDescription": "Edit existing SAP Customizing in place or copy configuration rows. To EDIT, set sourceKey = targetKey, onlyMissing: false, and provide nonempty values; use this tool for partial edits. Example: objectName: V_T416, keyField: STLAN, sourceKey: Z, targetKey: Z, onlyMissing: false, values: { ANTXT: \"Dummy BOM usage\" }. Unmodified base and view-only fields are retained; key changes are refused. To COPY, use different keys. onlyMissing defaults true and skips existing base keys even when text is blank. Copy does not automatically copy source descriptions. Text overrides use the current SAP logon language only, not all languages. DRY RUN by default: inspect DATA, EXTRAS and the reported language before commit: true. For a recorded commit, supply an approved transport, or set createTransport: true only when the user requests a new Customizing request; transportText optionally names it. If neither was chosen, ask the user instead of silently creating a request. Preview never creates a request. A successful or pending commit reports TRANSPORT; reuse that number for related changes instead of creating another request. In-place and view-only edits require recordTransport: true. recordTransport: false is explicit direct base-table mode for supported copies only, bypasses maintenance checks, and rejects text overrides. Poll pending RUN_ID with abapfs_get_customizing_status; do not resubmit an uncertain commit. If the service is unavailable, ask the user to check ABAP FS Customizing Setup for that connection.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_apply_customizing",
+        "userDescription": "Apply Customizing",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            },
+            "objectName": {
+              "type": "string",
+              "description": "Exact maintenance view or configuration table name; use describe to resolve it first."
+            },
+            "keyField": {
+              "type": "string",
+              "description": "Organizational key field, e.g. WERKS."
+            },
+            "sourceKey": {
+              "type": "string",
+              "description": "For an in-place edit, the existing key (equal to targetKey); for a copy, the reference key. Preserve leading zeros."
+            },
+            "targetKey": {
+              "type": "string",
+              "description": "For an in-place edit, repeat sourceKey and set onlyMissing: false plus values. For a copy, use a different key. Preserve leading zeros."
+            },
+            "commit": {
+              "type": "boolean",
+              "default": false,
+              "description": "Default false: dry run only. True executes the SAP change. Check the proposed change and transport first."
+            },
+            "transport": {
+              "type": "string",
+              "description": "Existing open Customizing request/task approved for this change. Omit when createTransport is true. Reuse the returned TRANSPORT for related changes."
+            },
+            "createTransport": {
+              "type": "boolean",
+              "default": false,
+              "description": "Create a new Customizing request only on commit and only when explicitly requested by the user. Omit transport and keep recordTransport true. Preview and zero-row plans create nothing; the resulting request number is returned as TRANSPORT."
+            },
+            "transportText": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60,
+              "description": "Optional short description for a new Customizing request, at most 60 characters. Requires createTransport: true. Omit to use a generated description."
+            },
+            "recordTransport": {
+              "type": "boolean",
+              "default": true,
+              "description": "Keep true (default) for in-place edits or view-only field overrides. False requests direct base-table mode for supported copies only; omit transport. In-place edits and view-only overrides reject false."
+            },
+            "onlyMissing": {
+              "type": "boolean",
+              "default": true,
+              "description": "Set false to edit an existing entry, including a blank description. Default true skips existing base keys even when text is missing. For in-place editing also use sourceKey = targetKey and supply values."
+            },
+            "values": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Field overrides as SAP strings, including view-only fields such as ANTXT. Required and nonempty for in-place edits; key fields cannot be changed in place. Text overrides affect the current SAP logon language only. An empty string explicitly clears a field. Preserve leading zeros and internal date formats."
+            }
+          },
+          "required": [
+            "connectionId",
+            "objectName",
+            "keyField",
+            "sourceKey",
+            "targetKey"
+          ]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_create_customizing",
+        "displayName": "Create Customizing Entries",
+        "modelDescription": "Create SAP Customizing entries from explicit rows with complete keys, including composite keys. Provide values as strings preserving leading zeros and SAP internal formats. Accepts 1 to 1000 rows. onlyMissing defaults true and skips existing keys. onlyMissing: false also replaces existing full rows: omitted fields may be cleared, so supply complete final values; use abapfs_apply_customizing for partial edits. Generated maintenance is used by default for SAP validation. DRY RUN first; inspect DATA and EXTRAS before commit: true. For recording, pass an approved transport or explicitly request createTransport: true, optionally with transportText. Preview and zero-row plans create no request. TRANSPORT identifies the request selected or created; reuse it for related changes. recordTableKeys: true explicitly allows a direct base-table write with transport-key recording when no generated maintenance exists; this bypasses the dedicated transaction's checks and requires complete base rows. recordTransport: false is an explicit unrecorded direct write; omit transport and new-request options. Direct modes cannot write view-only text fields. Poll pending RUN_ID with abapfs_get_customizing_status and never blindly resubmit an uncertain commit. Use abapfs_apply_customizing to copy reference configuration or patch existing entries.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_create_customizing",
+        "userDescription": "Create Customizing Entries",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            },
+            "objectName": {
+              "type": "string",
+              "description": "Exact maintenance view or configuration table name; use describe to resolve it first."
+            },
+            "commit": {
+              "type": "boolean",
+              "default": false,
+              "description": "Default false: dry run only. True executes the SAP change. Check the proposed change and transport first."
+            },
+            "transport": {
+              "type": "string",
+              "description": "Existing open Customizing request/task approved for this change. Omit when createTransport is true. Reuse the returned TRANSPORT for related changes."
+            },
+            "createTransport": {
+              "type": "boolean",
+              "default": false,
+              "description": "Create a new Customizing request only on commit when explicitly requested by the user. Omit transport and keep recordTransport true. Preview and zero-row plans create nothing; TRANSPORT returns the resulting request number."
+            },
+            "transportText": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60,
+              "description": "Optional description for a new Customizing request, at most 60 characters. Requires createTransport: true; omit to use a generated description."
+            },
+            "onlyMissing": {
+              "type": "boolean",
+              "default": true,
+              "description": "Default true skips existing keys. False performs full-row inserts or updates and may clear omitted fields; supply complete final rows. Prefer Apply Customizing for partial edits."
+            },
+            "recordTableKeys": {
+              "type": "boolean",
+              "default": false,
+              "description": "Explicitly allow direct base-table writes with transport-key recording when no generated maintenance exists. Bypasses the dedicated transaction's checks; supply complete base rows, not view-only text fields. Requires recordTransport true and transport or createTransport on commit."
+            },
+            "recordTransport": {
+              "type": "boolean",
+              "default": true,
+              "description": "Default true records changes through SAP maintenance or explicit recordTableKeys mode. False explicitly requests a direct unrecorded base-table write; omit transport, createTransport and recordTableKeys. Direct writes bypass maintenance checks and reject view-only text fields."
+            },
+            "rows": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1000,
+              "items": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Field-name to SAP string value; preserve leading zeros and dates in internal format."
+              },
+              "description": "Entries to create, each containing complete SAP keys and field values as strings. Preserve leading zeros; dry-run before committing."
+            }
+          },
+          "required": [
+            "connectionId",
+            "objectName",
+            "rows"
+          ]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_delete_customizing",
+        "displayName": "Delete Customizing Entries",
+        "modelDescription": "Delete SAP Customizing entries selected by keyField = targetKey through SAP maintenance validation and transport handling. The filter can select multiple rows: DRY RUN first, inspect every affected row, then commit: true deliberately. Where recording applies, supply an approved transport or set createTransport: true only when the user explicitly requests a new Customizing request; transportText optionally names it. Preview and zero-row plans create no request. TRANSPORT reports the selected or created request; reuse it for related changes. Refuses objects without generated maintenance and does not offer direct-table deletion. Poll pending RUN_ID with abapfs_get_customizing_status. After a timeout or uncertain outcome, read the current configuration before considering a retry.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_delete_customizing",
+        "userDescription": "Delete Customizing Entries",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            },
+            "objectName": {
+              "type": "string",
+              "description": "Exact maintenance view or configuration table name; use describe to resolve it first."
+            },
+            "commit": {
+              "type": "boolean",
+              "default": false,
+              "description": "Default false: dry run only. True executes the SAP change. Check the proposed change and transport first."
+            },
+            "transport": {
+              "type": "string",
+              "description": "Existing open Customizing request/task approved for this deletion. Omit when createTransport is true. Reuse the returned TRANSPORT for related changes."
+            },
+            "createTransport": {
+              "type": "boolean",
+              "default": false,
+              "description": "Create a new Customizing request on commit only when explicitly requested by the user. Omit transport. Preview and zero-row plans create nothing; TRANSPORT returns the request number."
+            },
+            "transportText": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60,
+              "description": "Optional description for a new Customizing request, at most 60 characters. Requires createTransport: true; omit to use a generated description."
+            },
+            "keyField": {
+              "type": "string",
+              "description": "Exact key field."
+            },
+            "targetKey": {
+              "type": "string",
+              "description": "Exact key value selecting the entry or entries to delete."
+            }
+          },
+          "required": [
+            "connectionId",
+            "objectName",
+            "keyField",
+            "targetKey"
+          ]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_get_customizing_status",
+        "displayName": "Get Customizing Run Status",
+        "modelDescription": "Check a previously submitted configuration change by its exact runId on the same SAP connection. Use when a change returns pending and a RUN_ID. Returns status, messages, row counts and the Customizing request as TRANSPORT when available. pending/running require further polling; ok/error/aborted/unknown are terminal. Never resubmits the change. An unknown result or connection timeout does not prove rollback: read current configuration before retrying.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_get_customizing_status",
+        "userDescription": "Get Customizing Run Status",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            },
+            "runId": {
+              "type": "string",
+              "description": "Exact RUN_ID returned by the configuration change."
+            }
+          },
+          "required": [
+            "connectionId",
+            "runId"
+          ]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_check_customizing_setup",
+        "displayName": "Check Customizing Setup",
+        "modelDescription": "Read-only check that SAP Customizing tools are ready for the selected connection. Reports availability and any action the user must take in ABAP FS Customizing Setup. Does not install anything or change SAP configuration.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_check_customizing_setup",
+        "userDescription": "Check Customizing Setup",
+        "tags": [
+          "abap-fs"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Explicit ABAP FS connection ID. Never infer a system."
+            }
+          },
+          "required": [
+            "connectionId"
+          ]
+        },
+        "when": "abapfs:extensionActive"
       }
     ],
     "commands": [

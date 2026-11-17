@@ -63,7 +63,7 @@ Generates a structured overview of any connected SAP system: number of custom ob
 
 ### SAP Customizing
 
-Teaches Copilot to navigate SPRO/IMG configuration. Uses systematic lookup procedures to trace from an SPRO activity to its storage tables (via `CUS_IMGACH`, `CUS_ACTH`, `CUS_ACTOBJ`), reverse-look up tables to their SPRO path, and resolve domain fixed values (`DD07T`).
+The instructions start with an assistant-run readiness check on the chosen SAP connection. The result and the user's choice determine which one of three supporting guides to read next: user-handled setup, the new Customizing tools, or the existing read-only table-based method. Setup remains optional. The guides keep change previews mandatory and cover request reuse, descriptions, and investigation without the optional service. See [SAP Customizing](../customizing/index.md) for the feature guide.
 
 ### SAP Data Workbook
 
