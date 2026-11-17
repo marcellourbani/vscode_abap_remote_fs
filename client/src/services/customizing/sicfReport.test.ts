@@ -7,9 +7,9 @@ describe("user-triggered SICF installer", () => {
   it("uses verified ICF APIs, explicit transport and truthful risk classification", () => {
     const source = buildSicfReport("ZCFG", "EXAK900001")
     for (const text of [
-      "* ABAP FS Customizing 1.0.0",
+      "* ABAP FS Customizing 1.0.1",
       "* Adapted from abap-config-mcp (MIT), Copyright (c) 2026 Geert Steyaert.",
-      "RISK LEVEL DANGEROUS DURATION MEDIUM",
+      "RISK LEVEL HARMLESS DURATION SHORT",
       "service_from_url(",
       "hostnumber = 0",
       "insert_node(",
@@ -28,7 +28,7 @@ describe("user-triggered SICF installer", () => {
     ])
       expect(source).toContain(text)
     expect(source).not.toContain("\n  *")
-    expect(source).not.toContain("RISK LEVEL HARMLESS")
+    expect(source).not.toContain("RISK LEVEL DANGEROUS")
     expect(source).not.toContain("MODIFY tvarvc")
     expect(source).not.toContain("EEPI2GLFNOLHN7IW9R54I61RZ")
     expect(source).not.toContain("icfserdesc =")

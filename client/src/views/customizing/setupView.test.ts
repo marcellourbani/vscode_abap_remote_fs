@@ -367,7 +367,7 @@ describe("Customizing setup view", () => {
   })
   it("keeps service-only fields visible for abapGit and wires explicit actions", async () => {
     const fs = await vi.importActual<typeof import("node:fs")>("node:fs")
-    const html = fs.readFileSync(resolve("media/customizing/setup.html"), "utf8")
+    const html = fs.readFileSync(resolve("client/media/customizing/setup.html"), "utf8")
     expect(html).toContain("Deploy objects &amp; configure SICF")
     expect(html.replace(/\s+/g, " ")).toContain("real SAP mutation, not a harmless test")
     expect(html.replace(/\s+/g, " ")).toContain(
@@ -470,7 +470,7 @@ describe("Customizing setup view", () => {
   })
   it("renders friendly statuses with raw diagnostics only in collapsed text-only details", async () => {
     const fs = await vi.importActual<typeof import("node:fs")>("node:fs")
-    const html = fs.readFileSync(resolve("media/customizing/setup.html"), "utf8")
+    const html = fs.readFileSync(resolve("client/media/customizing/setup.html"), "utf8")
     type Node = {
       tag: string
       textContent: string

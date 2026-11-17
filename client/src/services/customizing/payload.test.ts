@@ -216,12 +216,11 @@ describe("canonical SAP payload", () => {
   it("keeps class markers inside an unused private method and report markers first", () => {
     const payload = loadPayload(assets)
     for (const object of payload.filter(object => object.type === "CLAS/OC")) {
-      expect(object.source).toMatch(/^CLASS \w+ DEFINITION\r?\n  PUBLIC/)
-      expect(object.source).toContain("  PRIVATE SECTION.\n    METHODS version.")
-      expect(object.source).toContain(
-        `  METHOD version.\n* ABAP FS Customizing ${ENGINE_VERSION}\n`
-      )
-      expect(object.source).not.toMatch(/\bversion\s*\(/i)
+      const source = object.source.replace(/\r\n/g, "\n")
+      expect(source).toMatch(/^CLASS \w+ DEFINITION\n  PUBLIC/)
+      expect(source).toContain(`  PRIVATE SECTION.\n    METHODS version.\n`)
+      expect(source).toContain(`  METHOD version.\n* ABAP FS Customizing ${ENGINE_VERSION}\n`)
+      expect(source).not.toMatch(/\bversion\s*\(/i)
     }
     expect(payload[2].source).toContain(`* ABAP FS Customizing ${ENGINE_VERSION}\n`)
   })
