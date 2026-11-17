@@ -190,7 +190,7 @@ describe("repository usage webview interactions", () => {
   it.each([1440, 420])(
     "filters and exports 2249 issues and removes resolved rows at %s px",
     async width => {
-      const page = await browser.newPage({ viewport: { width, height: 900 } })
+      const page = await browser.newPage({ locale: "en-US", viewport: { width, height: 900 } })
       try {
         await fixture(page)
         const issueRows = Array.from({ length: 2249 }, (_, index) => ({
@@ -296,7 +296,7 @@ describe("repository usage webview interactions", () => {
   it.each([1440, 420])(
     "saves and restores independent job status checkboxes at %s px",
     async width => {
-      const page = await browser.newPage({ viewport: { width, height: 900 } })
+      const page = await browser.newPage({ locale: "en-US", viewport: { width, height: 900 } })
       try {
         await fixture(page)
         await page.locator('[data-stage="jobs"]').click()
@@ -355,7 +355,7 @@ describe("repository usage webview interactions", () => {
     10000
   )
   it("restores vertical scroll after switching analyses and reloading", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       const holder = page.locator("#inventory .tabulator-tableholder")
@@ -411,7 +411,7 @@ describe("repository usage webview interactions", () => {
     }
   }, 20_000)
   it("preserves vertical scroll when the retained webview is hidden and shown", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       const holder = page.locator("#inventory .tabulator-tableholder")
@@ -443,7 +443,10 @@ describe("repository usage webview interactions", () => {
   it.each(["refreshDependencies", "retryFailedOrEmptyDependencies"])(
     "consumes %s once so Resume does not restart the request",
     async option => {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      const page = await browser.newPage({
+        locale: "en-US",
+        viewport: { width: 1440, height: 900 }
+      })
       try {
         await fixture(page)
         await page.locator('[data-stage="dependencies"]').click()
@@ -471,7 +474,7 @@ describe("repository usage webview interactions", () => {
   it.each([1440, 420])(
     "keeps full refresh and selective retry mutually exclusive at %s px",
     async width => {
-      const page = await browser.newPage({ viewport: { width, height: 900 } })
+      const page = await browser.newPage({ locale: "en-US", viewport: { width, height: 900 } })
       try {
         await fixture(page)
         await page.locator('[data-stage="dependencies"]').click()
@@ -499,7 +502,7 @@ describe("repository usage webview interactions", () => {
     }
   )
   it("shows pass convergence and cache progress while leaving table rows unchanged", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await deliver(page, {
@@ -554,7 +557,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("restores a dependency selection when its confirmation is cancelled", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await deliver(page, {
@@ -579,7 +582,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("does not launch processing after cancelling the option-save confirmation", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await page.evaluate("hostMessages.length = 0; cancelNextSave = true")
@@ -595,7 +598,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("restores run chrome after a cancelled or rejected action", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await page.locator('[data-reset="discovery"]').click()
@@ -636,7 +639,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("refreshes dependency availability and diagnostics from save acknowledgements", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await page.evaluate(`
@@ -656,7 +659,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("ignores late action errors belonging to a different analysis", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await deliver(page, {
@@ -677,7 +680,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("clears stale failure details on retry and hides completed activity", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       const failure = "The selected SAP system is not connected"
@@ -753,7 +756,10 @@ describe("repository usage webview interactions", () => {
   it.each(["light", "dark"] as const)(
     "keeps hovered and selected frozen cells consistent with the %s row theme",
     async theme => {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      const page = await browser.newPage({
+        locale: "en-US",
+        viewport: { width: 1440, height: 900 }
+      })
       try {
         await fixture(page, true, theme)
         const row = page.locator("#inventory .tabulator-tableholder .tabulator-row").first()
@@ -781,7 +787,10 @@ describe("repository usage webview interactions", () => {
   it.each(["discovery", "st03n", "jobs", "dependencies"] as const)(
     "labels %s progress and bulk replaces its table only at the end",
     async stage => {
-      const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+      const page = await browser.newPage({
+        locale: "en-US",
+        viewport: { width: 1440, height: 900 }
+      })
       try {
         await fixture(page)
         const phase = {
@@ -864,7 +873,7 @@ describe("repository usage webview interactions", () => {
     }
   )
   it("sends Pause immediately without waiting for or sending an autosave", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await deliver(page, {
@@ -897,7 +906,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("autosaves fields to their analysis and never carries systems or stages into another analysis", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       const first = {
@@ -961,7 +970,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("provides deletion on the home list, independent usage stages and a dependency prerequisite", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page, false)
       await deliver(page, {
@@ -1000,7 +1009,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("shows each FM's group and keeps unclear siblings in the investigation view", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       const rows = [
@@ -1050,7 +1059,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("shows visible labels for guides, templates and other actions without requiring hover", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       expect(
@@ -1106,7 +1115,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("distinguishes existing same-name analyses without changing their saved names", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page, false)
       const analyses = [
@@ -1138,7 +1147,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("shows a chooser before an analysis exists and opens named saved analyses explicitly", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page, false)
       expect(await page.locator(".workspace").isVisible()).toBe(false)
@@ -1181,7 +1190,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("shows starting feedback before the host responds and recovers after cancellation", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await page.locator('[data-run="discover"]').click()
@@ -1196,7 +1205,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("keeps the mounted table, filters and counts across row updates and reload", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await page.locator("#view").selectOption("unclear")
@@ -1228,7 +1237,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("updates the filtered count when header filters are applied changed and cleared", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       const filter = page.locator(
@@ -1269,7 +1278,7 @@ describe("repository usage webview interactions", () => {
     }
   })
   it("preserves scroll position and ignores stale revisions", async () => {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })
     try {
       await fixture(page)
       await page.locator("#inventory .tabulator-tableholder").evaluate(element => {
