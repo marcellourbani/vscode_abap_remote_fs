@@ -284,6 +284,36 @@ function createServerBrowserSsoOptions(
   }
 }
 
+/**
+ * Kerberos cookie session: the extension host runs the (non-interactive) SSPI handshake
+ * whenever auth headers are requested, so renewal just asks it again.
+ * No Basic Authorization header is sent alongside the cookies.
+ */
+function createServerKerberosOptions(
+  state: ServerConnectionState,
+  conf: ClientConfiguration,
+  initialCookie: string | undefined
+) {
+  let pending = initialCookie
+  const fetchCookies = async () => {
+    const auth = await fetchAuthHeaders(conf.name)
+    return auth?.httpHeaders?.Cookie
+  }
+  const loadCookies = async () => {
+    const cookie = pending
+    pending = undefined
+    return cookie ?? fetchCookies()
+  }
+  return createCookieSessionOptions({
+    id: `kerberos:${state.key}`,
+    loadCookies,
+    acquireCookies: fetchCookies,
+    onStatefulSessionLost: ({ client }) => {
+      client.stateful = session_types.stateless
+    }
+  })
+}
+
 const refreshClient = async (state: ServerConnectionState, conf: ClientConfiguration) => {
   if (state.removed || state.blockedBrowserSso) return
   const generation = state.generation
@@ -292,6 +322,7 @@ const refreshClient = async (state: ServerConnectionState, conf: ClientConfigura
 
   const authMethod = getAuthMethod(conf)
   let pwdOrFetch: string | (() => Promise<string>)
+  let kerberosCookie: string | undefined
 
   if (authMethod !== "basic" && !conf.oauth) {
     const authResponse =
@@ -331,10 +362,13 @@ const refreshClient = async (state: ServerConnectionState, conf: ClientConfigura
           return t || currentToken
         })
     } else {
-      if (authResponse?.httpHeaders) {
+      if (authMethod === "kerberos") {
+        // cookies go to the cookie session below, never to static headers
+        kerberosCookie = authResponse?.httpHeaders?.Cookie
+        if (!kerberosCookie)
+          warn(`${authMethod} auth headers missing for ${state.key} — user may need to reconnect`)
+      } else if (authResponse?.httpHeaders) {
         sslconf.headers = { ...sslconf.headers, ...authResponse.httpHeaders }
-      } else if (authMethod === "kerberos") {
-        warn(`${authMethod} auth headers missing for ${state.key} — user may need to reconnect`)
       }
       pwdOrFetch = `${authMethod}-auth`
     }
@@ -354,7 +388,13 @@ const refreshClient = async (state: ServerConnectionState, conf: ClientConfigura
     pwdOrFetch,
     conf.client,
     conf.language,
-    { ...sslconf, ...sso?.options }
+    {
+      ...sslconf,
+      ...sso?.options,
+      ...(authMethod === "kerberos" && !conf.oauth
+        ? createServerKerberosOptions(state, conf, kerberosCookie)
+        : {})
+    }
   )
   sso?.setClient(baseclient)
   baseclient.stateful = session_types.stateful

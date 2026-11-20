@@ -6,7 +6,7 @@ import { formatKey } from "../../config"
 import { configFromKey } from "../../langClient"
 import { futureToken } from "../../oauth"
 import { createHash } from "crypto"
-import { getKerberosCookies } from "../../auth/kerberos"
+import { createKerberosClientOptions } from "../../auth/kerberos"
 import { createBrowserSsoClientOptions } from "../../auth/browserSso"
 import { announceBrowserSsoLogin, refreshBrowserSsoCookies } from "../conections"
 import { getCertPassphrase } from "../../auth/certificate"
@@ -17,26 +17,6 @@ export const md5 = (s: string) => createHash("md5").update(s).digest("hex")
 
 function createFetchToken(conf: ClientConfiguration) {
   if (conf.oauth) return () => futureToken(formatKey(conf.name)) as Promise<string>
-}
-
-/** Get auth headers for non-basic auth methods (for debugger client). */
-async function getDebuggerAuthHeaders(
-  conf: ClientConfiguration
-): Promise<Record<string, string> | undefined> {
-  const authMethod = (conf as any).authMethod || "basic"
-  const connId = formatKey(conf.name)
-  log.debug(`[debugger] getDebuggerAuthHeaders: ${authMethod} for ${connId}`)
-  switch (authMethod) {
-    case "kerberos": {
-      const cookies = await getKerberosCookies(connId)
-      log.debug(`[debugger] kerberos: ${cookies.length} cached cookies for ${connId}`)
-      if (cookies.length > 0)
-        return { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
-      return undefined
-    }
-    default:
-      return undefined
-  }
 }
 
 export async function newClientFromKey(key: string, options: Partial<ClientOptions> = {}) {
@@ -125,8 +105,8 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
       // satisfies ADTClient's constructor and is never sent as Basic authentication.
       pwdOrFetch = "browser-sso-auth"
     } else if (authMethod !== "basic" && !conf.oauth) {
-      const headers = await getDebuggerAuthHeaders(conf)
-      if (headers) sslconf.headers = { ...sslconf.headers, ...headers }
+      // kerberos: authentication is supplied by the cookie session below, the placeholder
+      // only satisfies ADTClient's constructor and is never sent as Basic authentication.
       pwdOrFetch = `${authMethod}-auth`
     } else {
       pwdOrFetch = createFetchToken(conf) || conf.password
@@ -142,6 +122,24 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
             client.stateful = session_types.stateless
           }
         })
+      )
+    }
+
+    if (authMethod === "kerberos" && !conf.oauth) {
+      Object.assign(
+        sslconf,
+        createKerberosClientOptions(
+          conf.name,
+          conf.kerberosAuth,
+          conf.url,
+          conf.client,
+          !!conf.allowSelfSigned,
+          {
+            onStatefulFailure: client => {
+              client.stateful = session_types.stateless
+            }
+          }
+        )
       )
     }
 

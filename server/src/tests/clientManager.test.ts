@@ -187,7 +187,7 @@ test("a declined browser login pauses the server until the next editor login", a
   }
 })
 
-test("keeps Kerberos headers and client setup unchanged", async () => {
+test("passes Kerberos cookies through a cookie session, not static headers", async () => {
   vi.useFakeTimers()
   try {
     const main = { statelessClone: {}, stateful: "stateless" }
@@ -205,11 +205,19 @@ test("keeps Kerberos headers and client setup unchanged", async () => {
 
     await clientFromKey("kerberos100")
 
-    expect(vi.mocked(ADTClient).mock.calls.at(-1)?.[5]).toHaveProperty(
-      "headers.Cookie",
-      "MYSAPSSO2=ticket"
+    const options = vi.mocked(ADTClient).mock.calls.at(-1)?.[5] as any
+    expect(options).not.toHaveProperty("headers.Cookie")
+    expect(options.session.id).toBe("kerberos:kerberos100")
+    await expect(options.session.renew({ reason: "initial-login", client: main })).resolves.toEqual(
+      { cookieHeader: "MYSAPSSO2=ticket", replace: true }
     )
     expect(main.stateful).toBe("stateful")
+
+    sendRequest.mockResolvedValueOnce({ httpHeaders: { Cookie: "MYSAPSSO2=fresh" } })
+    await expect(options.session.renew({ reason: "expired", client: main })).resolves.toEqual({
+      cookieHeader: "MYSAPSSO2=fresh",
+      replace: true
+    })
   } finally {
     vi.clearAllTimers()
     vi.useRealTimers()
