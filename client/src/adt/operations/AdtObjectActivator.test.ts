@@ -1,5 +1,6 @@
 const mocks = vi.hoisted(() => ({
-  textDocuments: [] as any[]
+  textDocuments: [] as any[],
+  writeFile: vi.fn()
 }))
 
 vi.mock("vscode", () => ({
@@ -13,7 +14,8 @@ vi.mock("vscode", () => ({
   workspace: {
     get textDocuments() {
       return mocks.textDocuments
-    }
+    },
+    fs: { writeFile: mocks.writeFile }
   },
   Uri: {
     parse: vi.fn(function (s: string) {
@@ -101,6 +103,7 @@ vi.mock("../../services/funMessenger", () => ({
 vi.mock("abapobject", () => ({}))
 
 import { AdtObjectActivator } from "./AdtObjectActivator"
+import { markMethods } from "./activation/unlistedMethods"
 import { getClient, getRoot } from "../conections"
 import { IncludeProvider, IncludeService } from "../includes"
 import { funWindow } from "../../services/funMessenger"
@@ -142,6 +145,8 @@ const abapObject = (fields: { name: string; type: string; path: string }, lockOb
   const object: any = {
     ...fields,
     structure: undefined,
+    canBeWritten: true,
+    read: vi.fn().mockResolvedValue(""),
     loadStructure: vi.fn(async function () {
       object.structure = { metaData: { "adtcore:version": "active" } }
       return object.structure
@@ -172,6 +177,7 @@ describe("AdtObjectActivator", () => {
     mockStatelessClient = {
       activate: vi.fn(),
       inactiveObjects: vi.fn().mockResolvedValue([]),
+      getObjectSource: vi.fn().mockResolvedValue(""),
       statelessClone: {
         nodeContents: vi.fn().mockResolvedValue({ nodes: [] }),
         login: vi.fn()
@@ -999,6 +1005,230 @@ describe("AdtObjectActivator", () => {
 
       expect(clas.loadStructure).toHaveBeenCalledTimes(2)
       expect(clas.structure.metaData["adtcore:version"]).toBe("active")
+    })
+
+    it("reports an object that is still inactive after SAP reported success", async () => {
+      const clas = abapObject({ name: "ZCL_TEST", type: "CLAS/OC", path: classUri })
+      clas.loadStructure.mockImplementation(async () => {
+        clas.structure = { metaData: { "adtcore:version": "inactive" } }
+        return clas.structure
+      })
+      mockClient.activate.mockResolvedValue(success)
+      const activator = AdtObjectActivator.get("conn")
+
+      const result = await activator.activate(clas, vsUri("/ZCL_TEST"))
+
+      expect(result.ok).toBe(false)
+      expect(result.summary).toContain("ZCL_TEST is still inactive")
+      expect(activator["emitter"].fire).not.toHaveBeenCalled()
+    })
+
+    describe("editor source check", () => {
+      const editorProgram = () => {
+        const program = abapObject({ name: "ZTEST", type: "PROG/P", path: programUri })
+        mockClient.activate.mockResolvedValue(success)
+        return program
+      }
+
+      it("does not activate when the SAP source differs from the editor", async () => {
+        const program = editorProgram()
+        program.read.mockResolvedValue("REPORT ztest.\nWRITE 'old'.")
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(
+          program,
+          vsUri("/ZTEST"),
+          true,
+          "REPORT ztest.\nWRITE 'new'."
+        )
+
+        expect(result.ok).toBe(false)
+        expect(result.summary).toContain("doesn't match your editor")
+        expect(program.loadStructure).toHaveBeenCalledWith(true)
+        expect(mockClient.activate).not.toHaveBeenCalled()
+      })
+
+      it("ignores line endings and trailing blanks", async () => {
+        const program = editorProgram()
+        program.read.mockResolvedValue("REPORT ztest.\nWRITE 'x'.\n")
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(
+          program,
+          vsUri("/ZTEST"),
+          true,
+          "REPORT ztest.  \r\nWRITE 'x'.\r\n\r\n"
+        )
+
+        expect(result).toEqual({ ok: true })
+        expect(mockClient.activate).toHaveBeenCalled()
+      })
+
+      it("still activates when the SAP source cannot be read", async () => {
+        const program = editorProgram()
+        program.read.mockRejectedValue(new Error("network down"))
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(program, vsUri("/ZTEST"), true, "REPORT ztest.")
+
+        expect(result).toEqual({ ok: true })
+        expect(mockClient.activate).toHaveBeenCalled()
+      })
+
+      it("skips objects that have no editable source", async () => {
+        const program = editorProgram()
+        program.canBeWritten = false
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(program, vsUri("/ZTEST"), true, "anything")
+
+        expect(result).toEqual({ ok: true })
+        expect(program.read).not.toHaveBeenCalled()
+      })
+    })
+
+    describe("changed methods missing from the inactive list", () => {
+      const classSource = (m1: string) =>
+        `CLASS zcl_test IMPLEMENTATION.\n  METHOD m1.\n    rv = '${m1}'.\n  ENDMETHOD.\nENDCLASS.`
+      const listedM1 = inactive(
+        "ZCL_TEST                      M1",
+        "CLAS/OM/public",
+        `${classUri}/source/main#type=CLAS%2FOM;name=M1`,
+        classUri
+      )
+      const mainInclude = () => {
+        const clas = abapObject({ name: "ZCL_TEST", type: "CLAS/OC", path: classUri })
+        const main = abapObject(
+          { name: "ZCL_TEST.main", type: "CLAS/I", path: `${classUri}/source/main` },
+          clas
+        )
+        main.techName = "main"
+        return main
+      }
+      const sapSources = (active: string, inactiveSource: string) =>
+        mockStatelessClient.getObjectSource.mockImplementation(
+          async (_path: string, options?: { version?: string }) =>
+            options?.version === "active" ? active : inactiveSource
+        )
+
+      beforeEach(() => {
+        mockClient.activate.mockResolvedValue(success)
+        sapSources(classSource("v3"), classSource("v4"))
+      })
+
+      /** SAP lists M1 once two saves rewrote it, and an activation clears the list */
+      const simulateSap = ({ listsAfterSaving = true, activationClears = true } = {}) => {
+        const sap = { listed: false, saves: 0 }
+        mocks.writeFile.mockImplementation(async () => {
+          sap.saves++
+          if (listsAfterSaving && sap.saves === 2) sap.listed = true
+        })
+        mockClient.activate.mockImplementation(async () => {
+          if (activationClears) sap.listed = false
+          return success
+        })
+        mockClient.inactiveObjects.mockImplementation(async () =>
+          sap.listed ? [{ object: listedM1 }] : []
+        )
+        return sap
+      }
+
+      it("lists the method again after activating, then activates it", async () => {
+        simulateSap()
+        const activator = AdtObjectActivator.get("conn")
+        const uri = vsUri("/ZCL_TEST.clas.abap")
+
+        const result = await activator.activate(mainInclude(), uri)
+
+        expect(result).toEqual({ ok: true })
+        expect(mockClient.activate).toHaveBeenCalledTimes(2)
+        expect(mocks.writeFile.mock.calls).toEqual([
+          [uri, Buffer.from(markMethods(classSource("v4"), ["M1"]))],
+          [uri, Buffer.from(classSource("v4"))]
+        ])
+      })
+
+      it("fails when saving again does not list the method", async () => {
+        simulateSap({ listsAfterSaving: false })
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(mainInclude(), vsUri("/ZCL_TEST.clas.abap"))
+
+        expect(result.ok).toBe(false)
+        expect(result.summary).toContain("saving again did not list it")
+        expect(mockClient.activate).toHaveBeenCalledTimes(1)
+      })
+
+      it("fails when the method is still listed after the second activation", async () => {
+        simulateSap({ activationClears: false })
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(mainInclude(), vsUri("/ZCL_TEST.clas.abap"))
+
+        expect(result.ok).toBe(false)
+        expect(result.summary).toContain("M1 of ZCL_TEST")
+      })
+
+      it("restores the source when saving the marked one fails", async () => {
+        simulateSap()
+        mocks.writeFile.mockRejectedValueOnce(new Error("locked"))
+        const activator = AdtObjectActivator.get("conn")
+        const uri = vsUri("/ZCL_TEST.clas.abap")
+
+        const result = await activator.activate(mainInclude(), uri)
+
+        expect(result.ok).toBe(false)
+        expect(mocks.writeFile).toHaveBeenLastCalledWith(uri, Buffer.from(classSource("v4")))
+      })
+
+      it("does not save other class includes, it only reports the method", async () => {
+        const main = mainInclude()
+        const testclasses = abapObject(
+          {
+            name: "ZCL_TEST.testclasses",
+            type: "CLAS/I",
+            path: `${classUri}/includes/testclasses`
+          },
+          main.lockObject
+        )
+        testclasses.techName = "testclasses"
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(testclasses, vsUri("/ZCL_TEST.testclasses.abap"))
+
+        expect(result.ok).toBe(false)
+        expect(mocks.writeFile).not.toHaveBeenCalled()
+        expect(mockClient.activate).not.toHaveBeenCalled()
+      })
+
+      it("activates as usual when every changed method is listed", async () => {
+        mockClient.inactiveObjects.mockResolvedValue([{ object: listedM1 }])
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(mainInclude(), vsUri("/ZCL_TEST.clas.abap"))
+
+        expect(result).toEqual({ ok: true })
+        expect(mocks.writeFile).not.toHaveBeenCalled()
+      })
+
+      it("still activates when the class source cannot be read", async () => {
+        mockStatelessClient.getObjectSource.mockRejectedValue(new Error("network down"))
+        const activator = AdtObjectActivator.get("conn")
+
+        const result = await activator.activate(mainInclude(), vsUri("/ZCL_TEST.clas.abap"))
+
+        expect(result).toEqual({ ok: true })
+        expect(mockClient.activate).toHaveBeenCalled()
+      })
+
+      it("does not read class sources for programs", async () => {
+        const program = abapObject({ name: "ZTEST", type: "PROG/P", path: programUri })
+        const activator = AdtObjectActivator.get("conn")
+
+        await activator.activate(program, vsUri("/ZTEST"))
+
+        expect(mockStatelessClient.getObjectSource).not.toHaveBeenCalled()
+      })
     })
 
     it("returns the error summary when the activation request throws", async () => {

@@ -416,7 +416,7 @@ export class AdtCommands {
           await saveBeforeActivation(documents, report)
 
           report("Activating object...")
-          const activation = await activator.activate(obj, uri)
+          const activation = await activator.activate(obj, uri, true, documents[0]?.getText())
           if (activation.ok && editor === window.activeTextEditor) {
             await workspace.fs.stat(uri)
             await showHideActivate(editor)
