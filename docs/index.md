@@ -22,6 +22,7 @@ This is a high-level summary. See the left navigation for full feature pages.
 | **Edit & Activate** | Browse, open, edit, and activate ABAP objects on the live system |
 | **Repository Comparison** | [Discover and compare scoped repositories](repository-comparison/index.md) across two systems, export results, and prepare reviewed assisted-apply plans |
 | **Repository Usage** | [Review evidence of object usage](repository-usage/index.md) from workload, jobs, and dependencies; investigate Unclear objects and export results or issues |
+| **SAP Customizing** | [Find, compare, preview, and change supported configuration](customizing/index.md), with optional setup, Customizing requests, and saved-value checks |
 | **Editor Experience** | Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels |
 | **Debug** | Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording |
 | **Test** | Run unit tests, create test classes, generate test documentation |
