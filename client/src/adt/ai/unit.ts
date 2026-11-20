@@ -36,7 +36,8 @@ export class UnitTool implements LanguageModelTool<UnitInput> {
         const struct = await object.loadStructure()
         if (struct.metaData["adtcore:version"] === "inactive") {
           const activator = AdtObjectActivator.get(uri.authority)
-          await activator.activate(object, uri)
+          const result = await activator.activate(object, uri)
+          if (!result?.ok) throw new Error("Failed to activate object")
         }
         const results = await UnitTestRunner.get(uri.authority).addResults(uri)
         return results

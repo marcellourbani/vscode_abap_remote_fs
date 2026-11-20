@@ -50,6 +50,7 @@ import { AdtObjectActivator } from "../operations/AdtObjectActivator"
 import { UnitTestRunner } from "../operations/UnitTestRunner"
 import * as vscode from "vscode"
 import type { MockedFunction, Mock } from "vitest"
+import { fail } from "node:assert"
 
 const mockGetClient = getClient as MockedFunction<typeof getClient>
 const mockUriRoot = uriRoot as MockedFunction<typeof uriRoot>
@@ -115,7 +116,7 @@ describe("UnitTool", () => {
     })
 
     test("activates inactive object before running tests", async () => {
-      const mockActivator = { activate: vi.fn().mockResolvedValue(undefined) }
+      const mockActivator = { activate: vi.fn().mockResolvedValue({ ok: true }) }
       const mockObject = {
         loadStructure: vi.fn().mockResolvedValue({
           metaData: { "adtcore:version": "inactive" }
@@ -142,6 +143,42 @@ describe("UnitTool", () => {
         { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest" } } as any,
         mockToken
       )
+
+      expect(mockActivator.activate).toHaveBeenCalled()
+    })
+
+    test("activates inactive object and fails before testing", async () => {
+      const mockActivator = { activate: vi.fn().mockResolvedValue({ ok: false }) }
+      const mockObject = {
+        loadStructure: vi.fn().mockResolvedValue({
+          metaData: { "adtcore:version": "inactive" }
+        })
+      }
+      const mockFile = { object: mockObject }
+      const mockRunner = { addResults: vi.fn().mockResolvedValue([]) }
+
+      mockIsAbapFile.mockReturnValue(true)
+      const mockRoot = {
+        getNodePathAsync: vi.fn().mockResolvedValue([{ file: mockFile, path: "/ztest" }])
+      }
+      mockUriRoot.mockReturnValue(mockRoot as any)
+      ;(AdtObjectActivator.get as Mock).mockReturnValue(mockActivator)
+      ;(UnitTestRunner.get as Mock).mockReturnValue(mockRunner)
+      ;(vscode.window.withProgress as Mock).mockImplementation(async function (
+        _opts: any,
+        fn: Function
+      ) {
+        return fn()
+      })
+      try {
+        await tool.invoke(
+          { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest" } } as any,
+          mockToken
+        )
+        fail("Expected invoke to throw an error")
+      } catch (error) {
+        expect((error as Error).message).toBe("Failed to activate object")
+      }
 
       expect(mockActivator.activate).toHaveBeenCalled()
     })
