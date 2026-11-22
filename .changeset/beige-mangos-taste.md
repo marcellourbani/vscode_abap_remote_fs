@@ -2,4 +2,4 @@
 "vscode-abap-remote-fs": patch
 ---
 
-report activation failures in test tool
+remove unused test tool
