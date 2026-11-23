@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
-import { assertToolInvocationAuthorized } from "./toolGuard"
+import { assertToolInvocationAuthorized, ToolInvocationAuthorizationError } from "./toolGuard"
 import {
   ALL_AGENT_REGISTRY,
   GENERAL_AGENT_REGISTRY,
@@ -162,11 +162,10 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
     options: vscode.LanguageModelToolInvocationOptions<SubagentConfigInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    assertToolInvocationAuthorized(options)
-    logTelemetry("tool_manage_subagents_called")
-    const input = options.input
-
     try {
+      assertToolInvocationAuthorized(options)
+      logTelemetry("tool_manage_subagents_called")
+      const input = options.input
       switch (input.action) {
         case "enable":
           return await this.enable(input.agentIds)
@@ -192,6 +191,11 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
           return text(`Unknown action: ${input.action}.`)
       }
     } catch (error) {
+      if (error instanceof ToolInvocationAuthorizationError) {
+        return text(
+          "Subagent settings were not changed because VS Code did not provide the chat context needed to verify this request. Retry the request. If it persists, use the ABAP FS: Set Models for Subagents command."
+        )
+      }
       return text(
         `Subagent operation failed: ${error instanceof Error ? error.message : String(error)}`
       )
