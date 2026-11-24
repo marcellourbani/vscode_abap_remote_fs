@@ -5,6 +5,7 @@
 
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
+import { registerCustomizingTools } from "./customizingTools"
 import { registerMermaidTools } from "./mermaidTools"
 import { registerDumpAnalysisTool } from "./dumpAnalysisTool"
 import { registerTraceAnalysisTool } from "./traceAnalysisTool"
@@ -72,6 +73,8 @@ import { registerRecordRepositoryWorkflowObjectActivationTool } from "./reposito
 export async function registerAllTools(context: vscode.ExtensionContext): Promise<void> {
   // Shared utilities (no registration needed - just exports)
   // Already available via: import { ... } from './lm-tools/shared'
+
+  registerCustomizingTools(context)
 
   // 1. Mermaid Tools (4 tools)
   registerMermaidTools(context)

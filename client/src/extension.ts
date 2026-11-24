@@ -61,6 +61,7 @@ import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { copilotLogger } from "./services/abapCopilotLogger"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { RapGeneratorPanel } from "./views/rapGenerator/rapGeneratorView"
+import { CustomizingSetupView } from "./views/customizing/setupView"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
 import { checkUpgradeNotification } from "./services/upgradeNotification"
 import { registerAbapRepl } from "./repl"
@@ -259,6 +260,12 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   sub.push(window.registerTreeDataProvider("abapfs.traces", tracesProvider))
   sub.push(window.registerTreeDataProvider("abapfs.s4hReadiness", s4hProvider))
   sub.push(window.registerWebviewViewProvider(RapGeneratorPanel.viewType, RapGeneratorPanel.get()))
+  sub.push(
+    window.registerWebviewViewProvider(
+      CustomizingSetupView.viewType,
+      new CustomizingSetupView(context.extensionPath)
+    )
+  )
   const objectPropertyView = window.createTreeView("abapfs.objectProperty", {
     treeDataProvider: objectPropertyProvider,
     showCollapseAll: false,

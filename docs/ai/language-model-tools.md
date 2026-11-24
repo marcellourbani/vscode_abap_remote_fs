@@ -109,6 +109,27 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 
 See [Repository Comparison](../repository-comparison/index.md) for the complete workflow and safety boundaries.
 
+### SAP Customizing
+
+These tools cover finding settings, reading and comparing entries, and previewing approved configuration changes. The optional SAP service must be ready on the selected connection before the dedicated tools can be used. The readiness check itself is read-only and available without that installation.
+
+| Tool | Purpose |
+| --- | --- |
+| **abapfs_check_customizing_setup** | Check readiness for the selected SAP connection; does not install anything |
+| **abapfs_search_img** | Find IMG activities by business description |
+| **abapfs_describe_customizing** | Show a setting's tables, fields, keys, and maintenance details |
+| **abapfs_read_customizing** | Read selected main-table entries; separate descriptions need their own check |
+| **abapfs_diff_customizing** | Compare reference and target entries in the same system |
+| **abapfs_plan_customizing_change** | Compare the entries a copy may add or replace; does not save a change |
+| **abapfs_apply_customizing** | Preview and perform a reference copy or an edit of selected fields |
+| **abapfs_create_customizing** | Preview and create explicit rows with complete keys |
+| **abapfs_delete_customizing** | Preview and delete matching entries through SAP maintenance |
+| **abapfs_get_customizing_status** | Follow a previously submitted change without submitting it again |
+
+A dry run is required before every change. Existing or explicitly requested new Customizing requests can be used, and the returned number is reused for related work. Setup is handled through the panel rather than a deployment tool.
+
+See [SAP Customizing](../customizing/index.md) for setup choices, workflows, languages, request handling, updates, and troubleshooting.
+
 ### Documentation
 
 49. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario

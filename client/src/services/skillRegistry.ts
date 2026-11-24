@@ -57,7 +57,7 @@ export const GENERAL_SKILL_REGISTRY: readonly SkillDefinition[] = [
   {
     id: "sap-customizing",
     displayName: "SAP Customizing",
-    description: "Traces SPRO and IMG settings to their configuration data.",
+    description: "SPRO investigation and supported configuration changes, with optional setup.",
     path: "skills/sap-customizing/SKILL.md"
   },
   {

@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'nonce-{{NONCE}}'; script-src 'nonce-{{NONCE}}';"
+    />
+    <title>Customizing Setup</title>
+    <style nonce="{{NONCE}}">
+      body {
+        padding: 12px;
+        color: var(--vscode-foreground);
+        background: var(--vscode-sideBar-background);
+        font: var(--vscode-font-size) var(--vscode-font-family);
+      }
+      h1 {
+        font-size: 1.2em;
+      }
+      h2 {
+        font-size: 1.05em;
+        margin-top: 22px;
+      }
+      label {
+        display: block;
+        margin: 12px 0 5px;
+      }
+      input,
+      select,
+      button {
+        box-sizing: border-box;
+        font: inherit;
+        width: 100%;
+        min-height: 32px;
+      }
+      input,
+      select {
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border: 1px solid var(--vscode-input-border, transparent);
+        padding: 6px;
+      }
+      button {
+        background: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+        border: none;
+        padding: 7px 10px;
+        margin-top: 9px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--vscode-button-hoverBackground);
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      :focus-visible {
+        outline: 2px solid var(--vscode-focusBorder);
+        outline-offset: 2px;
+      }
+      .secondary {
+        background: var(--vscode-button-secondaryBackground);
+        color: var(--vscode-button-secondaryForeground);
+      }
+      .hint {
+        color: var(--vscode-descriptionForeground);
+        line-height: 1.5;
+      }
+      #message {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .actionMessage {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .actionMessage.error {
+        color: var(--vscode-errorForeground);
+      }
+      .actionMessage.success {
+        color: var(--vscode-testing-iconPassed, var(--vscode-terminal-ansiGreen));
+      }
+      .actionMessage.warning {
+        color: var(--vscode-editorWarning-foreground);
+      }
+      ul {
+        padding-left: 18px;
+      }
+      li {
+        margin-bottom: 8px;
+        overflow-wrap: anywhere;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Customizing Setup</h1>
+    <p class="hint">
+      Install the SAP backend for configuration tools. Both methods use the same versioned ABAP
+      sources. Use SPRO for manual configuration.
+    </p>
+    <label for="system">SAP system</label>
+    <select id="system" aria-describedby="systemHint">
+      <option value="">Choose a connected system</option>
+    </select>
+    <p id="systemHint" class="hint">
+      Checks read active source and probe authenticated SICF services. They do not change SAP.
+    </p>
+    <button id="check" disabled>Check installation</button>
+    <p id="checkMessage" class="actionMessage" role="status" aria-live="polite"></p>
+    <button id="guide" class="secondary">Open installation &amp; SICF guide</button>
+    <p id="guideMessage" class="actionMessage" role="status" aria-live="polite"></p>
+    <section id="installation" aria-label="Installation status" aria-live="polite"></section>
+    <h2>Install or upgrade</h2>
+    <label for="method">Deployment method</label>
+    <select id="method">
+      <option value="direct">Direct ADT deployment</option>
+      <option value="abapgit">abapGit offline ZIP</option>
+    </select>
+    <div id="setupFields">
+      <label for="package">Existing SAP package</label>
+      <input
+        id="package"
+        value="$TMP"
+        spellcheck="false"
+        autocomplete="off"
+        aria-describedby="packageHint"
+      />
+      <p id="packageHint" class="hint">
+        Use $TMP for local development. Existing objects stay in their current package. Create a
+        transportable package first using ABAP FS if needed.
+      </p>
+      <label for="transport">Workbench request or task</label>
+      <input
+        id="transport"
+        spellcheck="false"
+        autocomplete="off"
+        aria-describedby="transportHint"
+      />
+      <p id="transportHint" class="hint">
+        Leave blank for $TMP. Required for transportable packages. Configuration changes later use a
+        separate Customizing request.
+      </p>
+    </div>
+    <div id="direct">
+      <button id="deploy" disabled>Deploy objects &amp; configure SICF</button>
+      <p id="deployMessage" class="actionMessage" role="status" aria-live="polite"></p>
+      <p class="hint">
+        Creates or upgrades and activates ABAP FS objects, then automatically configures SICF
+        services. No transport is released.
+      </p>
+    </div>
+    <div id="abapgit" hidden>
+      <p class="hint">
+        Generate a ZIP locally, then import it into an abapGit offline repository. No SAP connection
+        is required to export.
+      </p>
+      <button id="export">Save abapGit ZIP…</button>
+      <p id="exportMessage" class="actionMessage" role="status" aria-live="polite"></p>
+    </div>
+    <h2>SICF service setup</h2>
+    <button id="configureServices" disabled>Configure SICF services</button>
+    <p id="configureServicesMessage" class="actionMessage" role="status" aria-live="polite"></p>
+    <p class="hint">
+      Available after either deployment method, including abapGit import. SICF service nodes use the
+      package and Workbench request above; the generated installer report stays in $TMP. Backend
+      objects must already be installed and active. Manual SICF setup remains an option in the guide.
+    </p>
+    <p class="hint">
+      Automatic setup runs a generated setup report via ABAP Unit. This is a real SAP mutation, not
+      a harmless test. Clicking either setup action initiates it. Failures or cancellation may leave
+      partial changes; cancellation does not roll back completed work. Existing credentials and
+      authentication settings are unchanged. No transport is released. Cancel from the VS Code
+      progress notification.
+    </p>
+    <script nonce="{{NONCE}}">
+      const vscode = acquireVsCodeApi()
+      const element = id => document.getElementById(id)
+      let busy = false,
+        requestId = 0
+      const previous = vscode.getState() || {}
+      const send = command =>
+        vscode.postMessage({
+          command,
+          connectionId: element("system").value,
+          packageName: element("package").value.trim(),
+          transport: element("transport").value.trim(),
+          requestId: ++requestId
+        })
+      function appendStatus(list, name, label, status) {
+        const li = document.createElement("li")
+        li.textContent =
+          name +
+          ": " +
+          label +
+          (status.version ? " (" + status.version + ")" : "") +
+          (status.error ? " — " + status.error : "")
+        if (status.detail) {
+          const details = document.createElement("details")
+          const summary = document.createElement("summary")
+          summary.textContent = "Technical details"
+          const diagnostic = document.createElement("pre")
+          diagnostic.textContent = status.detail
+          details.append(summary, diagnostic)
+          li.append(details)
+        }
+        list.append(li)
+      }
+      function update() {
+        const direct = element("method").value === "direct"
+        element("direct").hidden = !direct
+        element("abapgit").hidden = direct
+        element("check").disabled = busy || !element("system").value
+        const packageName = element("package").value.trim()
+        const transport = element("transport").value.trim()
+        const validFields = packageName && (packageName.startsWith("$") ? !transport : !!transport)
+        for (const id of ["deploy", "configureServices"])
+          element(id).disabled = busy || !element("system").value || !validFields
+        for (const id of ["export", "guide", "system", "method", "package", "transport"])
+          element(id).disabled = busy
+        document.body.setAttribute("aria-busy", String(busy))
+        vscode.setState({
+          system: element("system").value,
+          method: element("method").value,
+          package: element("package").value
+        })
+      }
+      for (const id of ["check", "deploy", "configureServices", "export", "guide"])
+        element(id).addEventListener("click", () => {
+          const feedback = element(id + "Message")
+          feedback.textContent = ""
+          feedback.className = "actionMessage"
+          send(id)
+        })
+      element("system").addEventListener("change", () => {
+        requestId++
+        element("installation").replaceChildren()
+        update()
+      })
+      element("method").addEventListener("change", update)
+      element("package").addEventListener("input", update)
+      element("transport").addEventListener("input", update)
+      window.addEventListener("message", event => {
+        const message = event.data
+        if (message.type === "systems") {
+          for (const system of message.systems) {
+            const option = document.createElement("option")
+            option.value = system
+            option.textContent = system
+            element("system").append(option)
+          }
+          if (message.systems.includes(previous.system)) element("system").value = previous.system
+          if (previous.method === "abapgit") element("method").value = "abapgit"
+          if (previous.package) element("package").value = previous.package
+        } else if (message.type === "busy") busy = message.busy
+        else if (["error", "success", "warning"].includes(message.type)) {
+          const feedback = element(message.command + "Message")
+          if (feedback) {
+            feedback.textContent = message.text
+            feedback.className = "actionMessage " + message.type
+          }
+        } else if (
+          message.type === "status" &&
+          message.connectionId === element("system").value &&
+          message.requestId === requestId
+        ) {
+          const section = element("installation")
+          section.replaceChildren()
+          const heading = document.createElement("h2")
+          heading.textContent = message.status.ready ? "Ready" : "Setup needs attention"
+          section.append(heading)
+          const version = document.createElement("p")
+          version.textContent = "Bundled payload: " + message.status.version
+          section.append(version)
+          const list = document.createElement("ul")
+          const objectLabels = {
+            current: "Installed / up-to-date",
+            missing: "Not installed",
+            outdated: "Update needed",
+            unversioned: "Existing object not recognized",
+            error: "Unable to check"
+          }
+          for (const object of message.status.objects)
+            appendStatus(
+              list,
+              object.name,
+              objectLabels[object.status] || "Unable to check",
+              object
+            )
+          for (const service of message.status.services)
+            appendStatus(
+              list,
+              service.path,
+              !service.reachable
+                ? "Unavailable"
+                : service.version === service.expectedVersion
+                  ? "Available"
+                  : service.version
+                    ? "Out of date — deploy backend objects (expected " + service.expectedVersion + ")"
+                    : "Version not reported — deploy backend objects (expected " +
+                      service.expectedVersion +
+                      ")",
+              service
+            )
+          section.append(list)
+        }
+        update()
+      })
+      vscode.postMessage({ command: "ready" })
+    </script>
+  </body>
+</html>
