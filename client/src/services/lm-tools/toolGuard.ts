@@ -34,6 +34,15 @@ export interface McpAuthorizedOptions<T> extends vscode.LanguageModelToolInvocat
   [key: symbol]: string
 }
 
+export class ToolInvocationAuthorizationError extends Error {
+  constructor() {
+    super(
+      "Tool invocation could not be verified. If this request came from GitHub Copilot, VS Code did not provide its chat context. Retry the request."
+    )
+    this.name = "ToolInvocationAuthorizationError"
+  }
+}
+
 /**
  * Creates an authorized options object for MCP tool invocations.
  * Injects a one-time nonce that assertToolInvocationAuthorized will validate.
@@ -73,8 +82,6 @@ export function assertToolInvocationAuthorized(
   options: vscode.LanguageModelToolInvocationOptions<any>
 ): void {
   if (!isToolInvocationAuthorized(options)) {
-    throw new Error(
-      "Unauthorized tool invocation. This tool can only be called by GitHub Copilot or the ABAP FS MCP server."
-    )
+    throw new ToolInvocationAuthorizationError()
   }
 }

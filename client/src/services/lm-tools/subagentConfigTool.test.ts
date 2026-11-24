@@ -44,7 +44,10 @@ vi.mock("./toolRegistry", () => ({
     }
   })
 }))
-vi.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: vi.fn() }))
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  ToolInvocationAuthorizationError: class ToolInvocationAuthorizationError extends Error {}
+}))
 vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
 vi.mock("../funMessenger", () => ({
   funWindow: { showWarningMessage: vi.fn(), showInformationMessage: vi.fn() }
@@ -122,6 +125,7 @@ import * as vscode from "vscode"
 import { registerSubagentConfigTool } from "./subagentConfigTool"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { syncGeneralAgentContexts } from "../subagentRegistry"
+import { assertToolInvocationAuthorized, ToolInvocationAuthorizationError } from "./toolGuard"
 import type { Mock } from "vitest"
 
 function getTool(): any {
@@ -166,5 +170,17 @@ describe("unified subagent manager", () => {
   it("reports testing agents as unavailable without a test folder", async () => {
     const result = await getTool().invoke({ input: { action: "list_agents" } }, token)
     expect(result.parts[0].text).toContain("unavailable until testing folder is configured")
+  })
+
+  it("returns recovery guidance when VS Code omits the Copilot chat context", async () => {
+    const authorize = assertToolInvocationAuthorized as Mock
+    authorize.mockImplementationOnce(function () {
+      throw new ToolInvocationAuthorizationError()
+    })
+
+    const result = await getTool().invoke({ input: { action: "get_status" } }, token)
+
+    expect(result.parts[0].text).toContain("VS Code did not provide the chat context")
+    expect(result.parts[0].text).toContain("ABAP FS: Set Models for Subagents")
   })
 })

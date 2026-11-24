@@ -539,6 +539,7 @@
     "languageModelTools": [
       {
         "name": "abapfs_list_repository_workflows",
+        "canRequestPreApproval": true,
         "displayName": "List Repository Workflows",
         "modelDescription": "List persisted ABAP repository comparison workflows and their source/target connection IDs, current step, progress state, and last error.",
         "canBeReferencedInPrompt": true,
@@ -553,6 +554,7 @@
       },
       {
         "name": "abapfs_get_repository_workflow",
+        "canRequestPreApproval": true,
         "displayName": "Get or Update Repository Workflow",
         "modelDescription": "Before using this tool, read the repository-workflow skill in full if you have not already read it in this session. Read only the requested parts of one persisted repository comparison workflow to minimize context. Choose state, criteria, summaries, one bounded artifact, a bounded per-object raw or ABAPLint-formatted source diff, the bounded user-saved Copilot-assisted apply selection, and/or bounded persisted execution history for one exact object. Diffs describe the changes required to make the target match the source: removed lines are target content and added lines are source content. Assisted-apply selection results report total, done, pending, decision statistics, current transport-check state, and latest execution summary. The webview bulk transport check is user-only; never attempt to trigger it. Review each selected object separately, then use setDecision with exactly one objectKey, one decision (as-is, skip, or needs-human), and a concise decision reason. Decisions default to needs-human. Never batch decision updates. Successful activation recording marks an object done automatically; markDone requires an existing successful completion event, while markPending resets status for retry. These actions only update local workflow state and never write SAP. Discovery automatically creates the existence comparison, whose step state, summary, and artifact remain separately inspectable.",
         "canBeReferencedInPrompt": true,
@@ -707,6 +709,7 @@
       },
       {
         "name": "abapfs_create_repository_workflow",
+        "canRequestPreApproval": true,
         "displayName": "Create Repository Workflow",
         "modelDescription": "Create an isolated persisted repository comparison workflow using two currently connected ABAP FS connection IDs. Source and target must differ.",
         "canBeReferencedInPrompt": true,
@@ -738,6 +741,7 @@
       },
       {
         "name": "abapfs_run_repository_workflow_step",
+        "canRequestPreApproval": true,
         "displayName": "Run Repository Workflow Step",
         "modelDescription": "Run or resume a repository workflow analysis operation matching the webview. discovery queries both systems and then compares their persisted inventories locally. existenceComparison explicitly retries or rebuilds that local comparison. sourceComparison selects objects, downloads snapshots, and compares them. Closing the workflow panel is an intentional user stop: when the result is paused-by-user or partial, report it and never retry automatically. Applying changes is a separate user-controlled assisted-apply flow.",
         "canBeReferencedInPrompt": true,
@@ -794,6 +798,7 @@
       },
       {
         "name": "abapfs_update_repository_workflow_criteria",
+        "canRequestPreApproval": true,
         "displayName": "Update Repository Workflow Criteria",
         "modelDescription": "Update persisted discovery criteria for a repository workflow. This invalidates existing discovery and all downstream artifacts, so confirmation is required.",
         "canBeReferencedInPrompt": true,
@@ -923,6 +928,7 @@
       },
       {
         "name": "abapfs_open_repository_workflow",
+        "canRequestPreApproval": true,
         "displayName": "Open Repository Workflow",
         "modelDescription": "Open the repository workflow webview at a specified persisted workflow.",
         "canBeReferencedInPrompt": true,
@@ -944,6 +950,7 @@
       },
       {
         "name": "abapfs_prepare_repository_assisted_apply",
+        "canRequestPreApproval": true,
         "displayName": "Prepare Repository Assisted Apply",
         "modelDescription": "Prepare a local assisted-apply plan from the persisted source comparison for either manual assisted apply or Copilot-assisted apply. Choose raw or formatted differences as the relevance basis; formatted is the default. Raw snapshots remain authoritative for staging and stale checks. This tool never selects objects or writes, saves, transports, or activates SAP objects. Closing the workflow panel is an intentional user stop; report a paused result and never retry automatically. In manual mode, only the user can stage one source in the target editor. In Copilot mode, only the user can select and save the exact objects Copilot may inspect through abapfs_get_repository_workflow.",
         "canBeReferencedInPrompt": true,
@@ -973,6 +980,7 @@
       },
       {
         "name": "abapfs_get_object_transport_status",
+        "canRequestPreApproval": true,
         "displayName": "Get ABAP Object Transport Status",
         "modelDescription": "Read the current transport-lock status for exactly one ABAP object on one connected SAP system. Returns locked with the transport ID, not-locked, or local. This is a read-only point-in-time check intended for generic use and for revalidation immediately before a Copilot-assisted apply. Call it once per object; arrays and bulk checks are not supported. Repository workflow users can run a separate visible bulk check from the webview, but Copilot must not trigger that bulk operation.",
         "canBeReferencedInPrompt": true,
@@ -1011,6 +1019,7 @@
       },
       {
         "name": "abapfs_set_transport_for_next_object_save",
+        "canRequestPreApproval": true,
         "displayName": "Set Transport for Next ABAP Object Save",
         "modelDescription": "Arm one short-lived transport choice for the next save of one exact adt:// object URI. Always call abapfs_get_object_transport_status first. Never invent or choose a transport request or description: ask the user unless they already explicitly supplied or approved it. If the object is locked, tell the user the current request and obtain approval; a different or new request cannot be used until that lock is resolved. If unlocked, use only an explicitly user-approved existing request or new-request description. The choice is revalidated when the file is written. After editing, recheck transport status and read version inactive to verify the pending SAP source.",
         "canBeReferencedInPrompt": true,
@@ -1076,6 +1085,7 @@
       },
       {
         "name": "abapfs_apply_repository_workflow_object",
+        "canRequestPreApproval": true,
         "displayName": "Apply Repository Workflow Object",
         "modelDescription": "Stage and save all applicable changed text resources belonging to exactly one object from a repository-comparison workflow's user-saved Copilot-assisted selection. The workflow must currently be in Copilot-assisted mode, the object must be pending and eligible, and its singular decision must be as-is with a reason. Never invent or choose a transport. Call the transport-status tool first. For a lock, explain its request and obtain user approval; for an unlocked object, use only an existing request or new-request description explicitly supplied or approved by the user; for a local object, use the local choice. The target connection and exact reviewed raw bytes are derived from the workflow. The tool records every attempt and resource result, saves through the normal ABAP filesystem provider, waits for each result, and verifies every inactive SAP source. It returns an attempt ID for later activation recording. It does not activate or mark the object done.",
         "canBeReferencedInPrompt": true,
@@ -1161,6 +1171,7 @@
       },
       {
         "name": "abapfs_record_repository_workflow_object_activation",
+        "canRequestPreApproval": true,
         "displayName": "Record Repository Workflow Object Activation",
         "modelDescription": "Repository workflow processing only; never use this tool for ordinary ABAP edits or activations outside repository comparison. Persist the activation result for exactly one successful repository-workflow apply attempt. Call this only after abapfs_activate_object has returned and verified the exact activated object URL set. Never invent URLs or report success without activation evidence. A successful record marks the selected workflow object done; a failed record preserves the error and leaves it pending. The workflow must still be in Copilot-assisted mode with user consent.",
         "canBeReferencedInPrompt": true,
@@ -1214,6 +1225,7 @@
       },
       {
         "name": "abapfs_setup_sap_testing",
+        "canRequestPreApproval": true,
         "displayName": "SAP Testing Setup",
         "modelDescription": "Highest-priority route for requests mentioning SAP report UI testing. ABAP FS includes a complete SAP UI testing factory for analysing SAP/ABAP objects/reports, exploring SAP WebGUI, designing test cases, preparing test data, generating and running Playwright tests, and producing evidence reports. If this tool is visible, it means SAP Testing is not enabled. When the user asks about SAP testing and you think this factory could help, call this tool proactively to explain it and guide the user through setup.",
         "canBeReferencedInPrompt": true,
@@ -1228,6 +1240,7 @@
       },
       {
         "name": "abapfs_get_test_folder",
+        "canRequestPreApproval": true,
         "displayName": "Get Test Folder",
         "modelDescription": "Get the configured SAP testing folder path. Call this first before reading or writing any test artifact. If the folder is not open in the VS Code workspace, the result will include a warning — tell the user to open it (File > Add Folder to Workspace) before proceeding.",
         "canBeReferencedInPrompt": true,
@@ -1242,6 +1255,7 @@
       },
       {
         "name": "abapfs_get_sap_webgui_url",
+        "canRequestPreApproval": true,
         "displayName": "Get SAP WebGUI URL",
         "modelDescription": "Returns a ready-to-open SAP WebGUI URL for a connection, already signed in when the connection allows auto-login. Pass the target transaction so the URL lands on it — an auto-login URL is single-use and token-matched, so appending query parameters to it will fail. Open the returned URL exactly as given. Once it is open the browser session is authenticated and you can navigate to other transactions normally. Also use this to obtain the URL for browser exploration.",
         "canBeReferencedInPrompt": true,
@@ -1268,6 +1282,7 @@
       },
       {
         "name": "abapfs_build_test_index",
+        "canRequestPreApproval": true,
         "displayName": "Build Test Case Index",
         "modelDescription": "Validate every TC-NNN.md and mechanically rebuild tests/<PROGRAM>/test-cases/_index.md and _index.docx, including title, description, category, runnability, and dataRequired. Requires the analysis sourceSnapshot path, records it, and sets analyzedOn automatically. Rejects malformed files, invalid categories, missing required fields, and dataRequired: no cases that nonetheless have a .data.md. A missing .data.md for a dataRequired: yes case is only a warning (those are authored later). This tool is GATED: it refuses to run unless you pass the mandatory reviewerConfirmation field certifying the sap-test-plan-reviewer agent already returned PASS.",
         "canBeReferencedInPrompt": true,
@@ -1300,6 +1315,7 @@
       },
       {
         "name": "abapfs_build_test_index_docx",
+        "canRequestPreApproval": true,
         "displayName": "Build Test Case Index Document",
         "modelDescription": "Convert the current tests/<PROGRAM>/test-cases/_index.md into a printable _index.docx beside it. Preserves headings, notes, lists, and Markdown tables; every table receives explicit single-line outer and inner borders. Use after editing the preserved Notes section or whenever only the DOCX needs refreshing.",
         "canBeReferencedInPrompt": true,
@@ -1322,6 +1338,7 @@
       },
       {
         "name": "abapfs_split_test_cases",
+        "canRequestPreApproval": true,
         "displayName": "Split Test Cases",
         "modelDescription": "Split a validated _bulk-*.md aggregate under tests/<PROGRAM>/test-cases into one TC-NNN.md file per <sap-test-case> block. Validates exact IDs, required title/description/dataRequired frontmatter, categories, runnable values, headings, duplicates, and overwrite conflicts before writing. Deletes the aggregate only after complete success. Does not run abapfs_build_test_index.",
         "canBeReferencedInPrompt": true,
@@ -1344,6 +1361,7 @@
       },
       {
         "name": "abapfs_verify_test_data_usage",
+        "canRequestPreApproval": true,
         "displayName": "Verify Test Data Usage",
         "modelDescription": "Cross-check a Playwright spec against its case and .data.md: data.<key> declarations must match, and every table declared in se16nTables must have a matching sap.se16n() call. Run this right after writing or editing a spec.",
         "canBeReferencedInPrompt": true,
@@ -1371,6 +1389,7 @@
       },
       {
         "name": "abapfs_check_test_data",
+        "canRequestPreApproval": true,
         "displayName": "Check Test Data Readiness",
         "modelDescription": "Pre-flight check: for every TC-*.data.md under a program, resolve its test data against a system using the exact same resolution logic the Playwright specs use at run time. Reports every case with missing cache keys, unresolved seeded requirements, or broken generated fixtures - before spending time on a real test run. Run this before declaring a system 'ready to test'.",
         "canBeReferencedInPrompt": true,
@@ -1398,6 +1417,7 @@
       },
       {
         "name": "abapfs_build_evidence_report",
+        "canRequestPreApproval": true,
         "displayName": "Build Evidence Report",
         "modelDescription": "Build the aggregated .docx evidence report for a program+system from every test-results manifest.json found - title page, fully bordered pass/fail summary table, and one section per test case with embedded screenshots. Run this after a batch of test runs completes.",
         "canBeReferencedInPrompt": true,
@@ -1425,6 +1445,7 @@
       },
       {
         "name": "abapfs_run_playwright_tests",
+        "canRequestPreApproval": true,
         "displayName": "Run Playwright Test",
         "modelDescription": "Run exact tcIds or every Playwright spec in one program using ABAP FS's bundled tool; NEVER run terminal Playwright. Use runInParallel only after reading case/data/automation notes and confirming cases are independent. Batch producers before consumers and shared-state/order-dependent cases sequentially; when uncertain, stay sequential. Parallel mode uses up to maxTasks isolated workers after one authentication setup. maxFailures defaults 3, caps 10. GATED by readiness and SE16N coverage.",
         "canBeReferencedInPrompt": true,
@@ -1488,6 +1509,7 @@
       },
       {
         "name": "abapfs_search_objects",
+        "canRequestPreApproval": true,
         "displayName": "Search ABAP Objects",
         "modelDescription": "Search ABAP objects by name pattern. Do not use unbounded Z* or Y* searches: they return only a truncated subset and cannot show the whole custom-code picture. Use a specific pattern such as Z*ARTICLE* or Y*ARTICLE*, or provide an object type. Standard SAP: BAPI_*, CL_*, /SAP/*. MANDATORY before code generation: training data outdated — ALWAYS verify objects exist first, read signatures with abapfs_get_object_source, then generate. Unverified code WILL fail at runtime. If a SAP system has already been explicitly established in this chat, continue using that system; in a new chat with no system context, do not infer a system and always ask the user which system the request is for.",
         "canBeReferencedInPrompt": true,
@@ -1571,6 +1593,7 @@
       },
       {
         "name": "abapfs_get_object_source",
+        "canRequestPreApproval": true,
         "displayName": "Get ABAP Object Lines",
         "modelDescription": "Read active or inactive ABAP source. Defaults to active. BEFORE EDITING, read with version inactive: edits are applied to the inactive version, which can differ from the active one when the object has unactivated changes. If no inactive version exists, inactive returns the active source, so it is always safe to use before editing. Also use inactive to verify source saved to SAP before activation. For tables, structures and table types use active only: active returns the complete structure including append structures. objectType disambiguates same-named objects (MATNR exists as DTEL and DOMA). methodName extracts one method body from a class. MANDATORY before code generation: training data has wrong params — ALWAYS read exact signatures before calling functions/methods, never guess. Unverified params WILL fail at runtime. IMPORTANT: shows SAP code only, not unsaved local edits — use VS Code file tools or replace_string_in_abap_object(preferred) for fresh edits.",
         "canBeReferencedInPrompt": true,
@@ -1668,6 +1691,7 @@
       },
       {
         "name": "abapfs_search_object_source",
+        "canRequestPreApproval": true,
         "displayName": "Search ABAP Object Lines",
         "modelDescription": "Search text inside ABAP source. Literal or regex (isRegexp=true). Prefer over VS Code grep — ABAP source lives on remote system, grep_search misses it. objectName wildcards scan multiple objects (max 100), but unbounded Z* and Y* searches are rejected because the result limit makes them incomplete. Use a specific pattern such as Z*ARTICLE*. Class structure trick: regex '^\\s*(CLASS-)?METHODS?\\s+\\w+' with contextLines=0 lists all method names. IMPORTANT: searches committed code only, not unsaved local edits.",
         "canBeReferencedInPrompt": true,
@@ -1720,6 +1744,7 @@
       },
       {
         "name": "abapfs_get_object_info",
+        "canRequestPreApproval": true,
         "displayName": "Get ABAP Object Info",
         "modelDescription": "Get ABAP object metadata: type, total lines, cache status. Use before retrieving content to understand what kind of object you're dealing with.",
         "canBeReferencedInPrompt": true,
@@ -1794,6 +1819,7 @@
       },
       {
         "name": "abapfs_batch_get_lines",
+        "canRequestPreApproval": true,
         "displayName": "Get Batch Lines",
         "modelDescription": "Read active or inactive lines from multiple ABAP objects in one call. Defaults to active. BEFORE EDITING, read with version inactive: edits are applied to the inactive version, which can differ from the active one when an object has unactivated changes. If no inactive version exists, inactive returns the active source. Also use inactive to verify pending SAP source before activation. For tables, structures and table types use active only. Does not return unsaved local edits.",
         "canBeReferencedInPrompt": true,
@@ -1855,6 +1881,7 @@
       },
       {
         "name": "abapfs_get_object_by_uri",
+        "canRequestPreApproval": true,
         "displayName": "Get ABAP Object by URI",
         "modelDescription": "Read ABAP object by direct ADT URI. Use when URI already known from search results — skips name resolution.",
         "canBeReferencedInPrompt": true,
@@ -1895,6 +1922,7 @@
       },
       {
         "name": "abapfs_create_object",
+        "canRequestPreApproval": true,
         "displayName": "Create ABAP Object Programmatically",
         "modelDescription": "Create new ABAP objects (classes, reports, function groups, function modules, interfaces, data elements, tables, CDS views, packages, service bindings, etc.). Function modules: objectType='FUGR/FF' and ALWAYS provide parentName with the parent function group name. Service bindings: MANDATORY serviceDefinition, bindingType, bindingCategory. Packages: MANDATORY softwareComponent, packageType, transportLayer. Never run this tool in parallel with other tool calls that create, edit or activate objects in the same system: SAP can leave the new object half registered, and saving it then fails with 'Operation terminated' (HTTP 500) for several minutes. Create objects one at a time and wait for each creation to finish before editing the new object or its main program.",
         "canBeReferencedInPrompt": true,
@@ -2036,6 +2064,7 @@
       },
       {
         "name": "abapfs_get_object_url",
+        "canRequestPreApproval": true,
         "displayName": "Get ABAP Object URL",
         "modelDescription": "Return SAP GUI WebGUI URL for an ABAP object (SE38 reports, SE24 classes, SE37 function modules). Use for browser automation — not for opening in editor.",
         "canBeReferencedInPrompt": true,
@@ -2071,6 +2100,7 @@
       },
       {
         "name": "abapfs_get_workspace_uri",
+        "canRequestPreApproval": true,
         "displayName": "Get ABAP Object Workspace URI",
         "modelDescription": "Get adt:// workspace URI for an ABAP object — usable with replace_string_in_abap_object (preferred for ABAP edits) or standard VS Code file ops. Use when modifying/editing objects in editor OR when user asks to open file in editor. All params MANDATORY for exact object identification. NOTE: for function modules, pass the parent function group name with 'FUGR/F' type, NOT 'FUGR/FF'.",
         "canBeReferencedInPrompt": true,
@@ -2106,6 +2136,7 @@
       },
       {
         "name": "abapfs_create_mermaid_diagram",
+        "canRequestPreApproval": true,
         "displayName": "Create Mermaid Diagram",
         "modelDescription": "Render Mermaid diagram in interactive webview with zoom controls.",
         "canBeReferencedInPrompt": true,
@@ -2163,6 +2194,7 @@
       },
       {
         "name": "abapfs_validate_mermaid_syntax",
+        "canRequestPreApproval": true,
         "displayName": "Validate Mermaid Syntax",
         "modelDescription": "Validate Mermaid syntax without rendering.",
         "canBeReferencedInPrompt": true,
@@ -2193,6 +2225,7 @@
       },
       {
         "name": "abapfs_get_mermaid_documentation",
+        "canRequestPreApproval": true,
         "displayName": "Get Mermaid Documentation",
         "modelDescription": "Get Mermaid syntax docs and examples per diagram type.",
         "canBeReferencedInPrompt": true,
@@ -2239,6 +2272,7 @@
       },
       {
         "name": "abapfs_detect_mermaid_diagram_type",
+        "canRequestPreApproval": true,
         "displayName": "Detect Mermaid Diagram Type",
         "modelDescription": "Auto-detect Mermaid diagram type from code.",
         "canBeReferencedInPrompt": true,
@@ -2264,6 +2298,7 @@
       },
       {
         "name": "abapfs_build_test_documentation",
+        "canRequestPreApproval": true,
         "displayName": "Create Test Documentation",
         "modelDescription": "Build Word doc from Playwright test screenshots grouped by scenario.",
         "canBeReferencedInPrompt": true,
@@ -2341,6 +2376,7 @@
       },
       {
         "name": "abapfs_run_sql_query",
+        "canRequestPreApproval": true,
         "displayName": "Execute Data Query",
         "modelDescription": "Run ABAP SQL or display structured data in interactive webview, OR export to xlsx/csv. Call abapfs_get_sql_syntax FIRST — ABAP SQL differs from standard SQL, skipping causes syntax errors. If you already have the syntax guidelines in your context, use it instead of calling abapfs_get_sql_syntax again.Supports sort, filter, row range. For internal mode, rowRange is MANDATORY (max 1000 rows). For download_to_file mode, filePath and fileType are MANDATORY. Default displayMode=ui. Always set meaningful title. Non-SAP data (JIRA, tasks) via 'data' param instead of 'sql'.",
         "canBeReferencedInPrompt": true,
@@ -2524,6 +2560,7 @@
       },
       {
         "name": "abapfs_get_sql_syntax",
+        "canRequestPreApproval": true,
         "displayName": "Get ABAP SQL Syntax",
         "modelDescription": "MANDATORY before abapfs_run_sql_query: ABAP SQL syntax guide — differences from standard SQL, reserved keywords, field naming, table format. MUST call first to prevent syntax errors. No params. If you already called this tool and have the syntax guidelines in your context, use it instead of calling this tool again.",
         "canBeReferencedInPrompt": true,
@@ -2541,6 +2578,7 @@
       },
       {
         "name": "abapfs_run_atc_analysis",
+        "canRequestPreApproval": true,
         "displayName": "Run ATC Analysis",
         "modelDescription": "Run ABAP Test Cockpit checks, list variants, or fetch finding documentation. 'run_analysis' without resultId runs ATC and caches the complete run for 90 minutes. Returns resultId, full-run summary, a page of findings, hasMore and nextStart. Page indexes resultStart/resultEnd are one-based and inclusive (default 25 findings, maximum 100). To read more, pass the same resultId with resultStart=nextStart; ATC will NOT run again. Each successful cache read refreshes its 90-minute expiry. Cached pages include all findings independently of the UI exemption filter. Missing/expired/evicted result IDs return ATC_RESULT_EXPIRED: run again without resultId and with the original target/variant. Optional includeUri/includeDocUri/includeCheckIds control detail fields. Variant name explains context (e.g. S4HANA_READINESS is upgrade compatibility, not code quality). For function modules use objectName and objectType FUNC or FUNC/FF, not the source URI. 'get_atc_variants' lists available variants; confirm uncertain variant names first. 'get_documentation' fetches full finding documentation using its exact docUri and connectionId; fetch documentation before suggesting fixes. Each finding can have unique documentation even when titles repeat.",
         "canBeReferencedInPrompt": true,
@@ -2651,6 +2689,7 @@
       },
       {
         "name": "abapfs_get_atc_highlights",
+        "canRequestPreApproval": true,
         "displayName": "Get ATC Decorations",
         "modelDescription": "Read current ATC highlights visible in editor (errors/warnings/info). Companion to abapfs_run_atc_analysis.",
         "canBeReferencedInPrompt": true,
@@ -2673,6 +2712,7 @@
       },
       {
         "name": "abapfs_manage_text_elements",
+        "canRequestPreApproval": true,
         "displayName": "Manage Text Elements",
         "modelDescription": "Read, create, update, or delete text elements in programs, classes, and function groups. Create is supported only for text symbols. Selection texts and list headings are update-only. Pass category 'selections' or 'headings' for those categories; omit it only for text symbols. Delete removes the given IDs in any category and needs only id. Create and update require text.",
         "canBeReferencedInPrompt": true,
@@ -2762,6 +2802,7 @@
       },
       {
         "name": "abapfs_open_object",
+        "canRequestPreApproval": true,
         "displayName": "Open ABAP Object",
         "modelDescription": "Open ABAP object in VS Code editor by name. Use when user wants to view or edit the object.",
         "canBeReferencedInPrompt": true,
@@ -2796,6 +2837,7 @@
       },
       {
         "name": "replace_string_in_abap_object",
+        "canRequestPreApproval": true,
         "displayName": "Replace String in ABAP Object",
         "modelDescription": "Edit ABAP source code (adt:// files) by replacing one exact text string with new text. Use this for ABAP edits; generic file edit tools may not be able to write adt:// files. The oldString must match EXACTLY ONE occurrence in the file - include 3-5 lines of surrounding context to ensure uniqueness. The file is automatically locked, saved to SAP, and unlocked. Prerequisites: call abapfs_get_workspace_uri to get the fileUri, then abapfs_get_object_source with version inactive (edits apply to the inactive version) or abapfs_search_object_source to read the current content before editing. oldString is mandatory whenever the file has any content; an empty oldString is accepted ONLY when the file is completely blank (e.g. a freshly created object), in which case newString becomes the whole file. First call abapfs_get_object_transport_status for the exact object. Never invent a transport number or description: use an existing request only after the user approves it, or create a request only when the user explicitly asks and supplies or approves the description. This tool verifies that SAP's inactive source matches the requested replacement. After editing, read the source with version inactive when inspecting pending source, check diagnostics, and activate with abapfs_activate_object.",
         "canBeReferencedInPrompt": true,
@@ -2874,6 +2916,7 @@
       },
       {
         "name": "abapfs_download_object",
+        "canRequestPreApproval": true,
         "displayName": "Download ABAP Resource",
         "modelDescription": "Download an ABAP resource (package, program, class, function group, folder, or single file) to a local folder. Recursive for folders/packages. Preferred source: full adt:// workspace URI (from abapfs_get_workspace_uri). Also accepts ADT paths (/sap/bc/adt/...) or bare object names with connectionId (+ optional objectType for disambiguation). NOTE: downloading a program does NOT automatically download its includes — includes are separate objects; download them explicitly (or download the parent package to get everything).",
         "canBeReferencedInPrompt": true,
@@ -2916,6 +2959,7 @@
       },
       {
         "name": "abapfs_run_vscode_command",
+        "canRequestPreApproval": true,
         "displayName": "Run ABAP FS Command",
         "modelDescription": "Trigger an allow-listed ABAP FS VS Code command. Use this tool to: activate/deactivate ADT communication log, start/stop debug replay recording, open the connection manager, launch the ABAP FS walkthrough, or open ADT feeds manager. Fire-and-forget by default (returns 'triggered'); a small set of setup-style commands wait until finished. No return value from the command itself — dedicated LM tools handle commands that need meaningful args or output.",
         "canBeReferencedInPrompt": true,
@@ -2950,6 +2994,7 @@
       },
       {
         "name": "abapfs_run_unit_tests",
+        "canRequestPreApproval": true,
         "displayName": "Run ABAP Unit Tests",
         "modelDescription": "Run ABAP unit tests for an object. Inactive changes are activated first by default; if the user enabled abapfs.unitTests.noAutoActivate, no tests are run and nothing is activated when the object has saved inactive changes, so activate the required objects explicitly, then retry. Results are shown in the VS Code Testing panel with pass/fail.",
         "canBeReferencedInPrompt": true,
@@ -2980,6 +3025,7 @@
       },
       {
         "name": "abapfs_create_test_include",
+        "canRequestPreApproval": true,
         "displayName": "Create Test Include",
         "modelDescription": "Create test include (unit test class) for an existing ABAP class. Auto-opens in editor.",
         "canBeReferencedInPrompt": true,
@@ -3010,6 +3056,7 @@
       },
       {
         "name": "abapfs_manage_transports",
+        "canRequestPreApproval": true,
         "displayName": "Manage Transport Requests",
         "modelDescription": "Manage SAP transport requests. Actions: get_user_transports, get_transport_details, get_transport_objects, compare_transports. IMPORTANT workaround for older SAP systems: on compatibility error, MUST query E070/E071/E071K directly via abapfs_run_sql_query.",
         "canBeReferencedInPrompt": true,
@@ -3061,6 +3108,7 @@
       },
       {
         "name": "abapfs_manage_debug_session",
+        "canRequestPreApproval": true,
         "displayName": "ABAP Debug Session",
         "modelDescription": "Start/stop/check ABAP debug session. action: start | stop | status.",
         "canBeReferencedInPrompt": true,
@@ -3105,6 +3153,7 @@
       },
       {
         "name": "abapfs_manage_breakpoints",
+        "canRequestPreApproval": true,
         "displayName": "ABAP Debug Breakpoint",
         "modelDescription": "Set or remove ABAP breakpoints. filePath must be full adt:// workspace URI — get it via abapfs_get_workspace_uri first. Supports conditional breakpoints.",
         "canBeReferencedInPrompt": true,
@@ -3156,6 +3205,7 @@
       },
       {
         "name": "abapfs_step_debugger",
+        "canRequestPreApproval": true,
         "displayName": "ABAP Debug Step",
         "modelDescription": "Step ABAP debug execution. stepType: continue (F5), stepOver (F6), stepInto (F7), stepReturn (F8), jumpToLine (needs targetLine).",
         "canBeReferencedInPrompt": true,
@@ -3202,6 +3252,7 @@
       },
       {
         "name": "abapfs_inspect_variable",
+        "canRequestPreApproval": true,
         "displayName": "ABAP Debug Variable",
         "modelDescription": "Inspect ABAP variables during debug. Call abapfs_get_debug_stack first to get frameId (large numbers like 1000000000000, not 0). filter narrows table contents. filterPattern matches variable names (e.g., 'LT_*'). expandStructures / expandTables for inline expansion. maxVariables caps scope listing.",
         "canBeReferencedInPrompt": true,
@@ -3282,6 +3333,7 @@
       },
       {
         "name": "abapfs_get_debug_stack",
+        "canRequestPreApproval": true,
         "displayName": "ABAP Debug Stack",
         "modelDescription": "Get current ABAP debug call stack (frame IDs, methods, files, lines). frameId values needed for abapfs_inspect_variable.",
         "canBeReferencedInPrompt": true,
@@ -3312,6 +3364,7 @@
       },
       {
         "name": "abapfs_get_debug_status",
+        "canRequestPreApproval": true,
         "displayName": "ABAP Debug Status",
         "modelDescription": "Check ABAP debug session status — active sessions, threads, execution state.",
         "canBeReferencedInPrompt": true,
@@ -3337,6 +3390,7 @@
       },
       {
         "name": "abapfs_analyze_dumps",
+        "canRequestPreApproval": true,
         "displayName": "Analyze ABAP Dumps",
         "modelDescription": "Analyze ABAP runtime dumps (ST22). Actions: list_dumps (ID, error type, timestamp), analyze_dump (needs dumpId — structured detail for root-cause analysis).",
         "canBeReferencedInPrompt": true,
@@ -3383,6 +3437,7 @@
       },
       {
         "name": "abapfs_analyze_traces",
+        "canRequestPreApproval": true,
         "displayName": "Analyze ABAP Traces",
         "modelDescription": "Analyze ABAP performance traces. Actions: list_runs, list_configurations, analyze_run, get_statements (auto-switches to hitlist for aggregated traces), get_hitlist. Identifies DB bottlenecks and ABAP hotspots. traceId must be full URL-encoded path.",
         "canBeReferencedInPrompt": true,
@@ -3432,6 +3487,7 @@
       },
       {
         "name": "abapfs_analyze_object_relations",
+        "canRequestPreApproval": true,
         "displayName": "Analyze ABAP Relations",
         "modelDescription": "Use this tool for object-to-object relationship questions: what an object uses, what uses it, its components, source locations for a relationship, or relationships between two objects. ALWAYS provide objectType for every primary object, even when objectName is supplied. Identify the primary object with objectName plus objectType, or with objectUri plus objectType; do not invent placeholder names when a URI is supplied. For references and compare, ALWAYS provide relatedObjectType for the second object, together with relatedObjectName or relatedObjectUri. It supports used, using, and both directions, custom/standard/type/name/relation filters, and pagination for large results. For report references, it resolves aggregated report relationships to exact target anchors and includes through Object Relations APIs. Use the separate Find Where Used tool (`abap-where-used`) for a symbol, method, variable, or exact source-usage question.",
         "canBeReferencedInPrompt": true,
@@ -3563,6 +3619,7 @@
       },
       {
         "name": "abapfs_find_usages",
+        "canRequestPreApproval": true,
         "displayName": "Find Where Used",
         "modelDescription": "Use this tool to find exact source usages of an ABAP object, method, variable, or symbol, including source snippets and include locations. Use the separate Analyze ABAP Relations tool (`abap-relations`) for object-to-object relationships, used/using networks, components, or comparing two objects. Large result sets support pagination and filters; request snippets when source context is needed.",
         "canBeReferencedInPrompt": true,
@@ -3642,6 +3699,7 @@
       },
       {
         "name": "abapfs_get_sap_system_info",
+        "canRequestPreApproval": true,
         "displayName": "Get SAP System Info",
         "modelDescription": "Get SAP system info: client (T000), system type (S/4HANA vs ECC), release (SVERS), timezone (TTZCU/TTZZ with UTC offset + DST). includeComponents=true adds CVERS software list. System type and timezone always returned.",
         "canBeReferencedInPrompt": true,
@@ -3672,6 +3730,7 @@
       },
       {
         "name": "abapfs_get_connected_systems",
+        "canRequestPreApproval": true,
         "displayName": "Get Connected SAP Systems",
         "modelDescription": "List SAP connection IDs currently connected in VS Code. If a SAP system has already been explicitly established in this chat, continue using that system. In a new chat with no prior system context, do not infer a system or objects; ask the user which system the request is for before using SAP tools. Call this tool only when the user needs to choose among connected systems or the system is genuinely unknown. No params.",
         "canBeReferencedInPrompt": true,
@@ -3690,6 +3749,7 @@
       },
       {
         "name": "abapfs_get_configured_systems",
+        "canRequestPreApproval": true,
         "displayName": "Get Configured SAP Systems",
         "modelDescription": "Without connectionId, return only configured SAP connection IDs. With connectionId, return that system's non-sensitive global settings and package.json defaults; configured values are under settings and defaults are under defaults. ADT URL, username, password, and OAuth client secret are omitted for security.",
         "canBeReferencedInPrompt": true,
@@ -3713,6 +3773,7 @@
       },
       {
         "name": "abapfs_workbook_cell_settings",
+        "canRequestPreApproval": true,
         "displayName": "SAP Data Workbook Cell Settings",
         "modelDescription": "Read or change the per-cell settings of an SAP Data Workbook (.sapwb): cell name, system marker and row limit (maxRows). Notebook editing tools cannot see or set these; use this tool instead. Pass only filePath to read every cell's index, language, name, own or inherited system, row limit and first line. Pass cells to change settings: index is the 0-based cell position counting markdown cells (the N of cells[N]); give at least one of name, system, maxRows, clearName, clearSystem per cell. system and maxRows apply to ABAP SQL cells only; a system marker applies to that SQL cell and every following SQL cell until the next marker, and clearSystem makes the cell inherit the marker above. maxRows defaults to 1000; set it only when the user needs more rows. All changes are validated first: if any entry is invalid, nothing is changed. A system that is not connected is saved with a warning. Edit cell content with the notebook tools first, finish all cell inserts and moves, then call this tool once with all settings, and re-read the indexes if cells moved.",
         "canBeReferencedInPrompt": true,
@@ -3774,6 +3835,7 @@
       },
       {
         "name": "abapfs_get_version_history",
+        "canRequestPreApproval": true,
         "displayName": "Get Version History",
         "modelDescription": "ABAP object version history. Actions: list_versions (dates, authors, transports), get_version_source (code at version N), compare_versions (diff between two). Version 1 = most recent.",
         "canBeReferencedInPrompt": true,
@@ -3835,6 +3897,7 @@
       },
       {
         "name": "abapfs_manage_subagents",
+        "canRequestPreApproval": true,
         "displayName": "Manage AI Subagents",
         "modelDescription": "Manage 14 general ABAP agents and 9 SAP testing agents. Before configuring or enabling anything, call get_status, then list_models, and use the guidance they return. General agents are configured and enabled individually with agentIds. Testing agents are configured as one all-or-nothing group and are available only when the SAP testing folder is ready. Use exact model names from list_models. Settings are user-level. Model changes and enable/disable changes take effect without a VS Code reload. The legacy regenerate action is a no-op and does not write workspace files.",
         "canBeReferencedInPrompt": true,
@@ -3896,6 +3959,7 @@
       },
       {
         "name": "abapfs_search_documentation",
+        "canRequestPreApproval": true,
         "displayName": "ABAP FS Documentation & Settings",
         "modelDescription": "Read/search ABAP FS extension docs (DOCUMENTATION.md) and settings reference (ABAP-FS-SETTINGS.md). Brand ambassador for this extension — 40+ tools, many users don't know exist. Proactively suggest relevant features from context; educate users on capabilities; help them find the right settings. Be enthusiastic but honest, no exaggeration. Always verify docs first before explaining a feature or setting — wrong info kills trust. Setting scope critical: application=user/global, resource=workspace — wrong scope fails silently. Can change Global/Workspace settings yourself but never without explicit user consent. Only reference official repo https://github.com/marcellourbani/vscode_abap_remote_fs — no invented links.",
         "canBeReferencedInPrompt": true,
@@ -3940,6 +4004,7 @@
       },
       {
         "name": "abapfs_manage_heartbeat",
+        "canRequestPreApproval": true,
         "displayName": "Manage Heartbeat",
         "modelDescription": "Background SAP monitor + reminder service. Call action=status first — verifies service running and HB model configured. Actions: status, start, stop, trigger, history, add_task, remove_task, update_task, enable_task, disable_task, list_tasks, get_watchlist. TIMEZONE RULE: for ANY monitoring task, get SAP timezone via abapfs_get_sap_system_info first — HB model uses it when interpreting dates/times from SAP. Scheduled reminders ('tomorrow at 10am'): set startAt as ISO timestamp converted to UTC per SAP timezone. reminderOnly=true notifies once then auto-removes. Dump monitoring: checkInstructions must reference abapfs_analyze_dumps tool, not raw SQL. sampleQuery = direct SQL for HB model (e.g., E070 transport monitoring). cooldownMinutes prevents re-notify spam. removeWhenDone auto-cleans on condition met.",
         "canBeReferencedInPrompt": true,
@@ -4085,6 +4150,7 @@
       },
       {
         "name": "abapfs_export_adt_discovery",
+        "canRequestPreApproval": true,
         "displayName": "ADT Discovery Export",
         "modelDescription": "Export full ADT discovery tree (workspaces, collections, RES_APP classes from SEOMETAREL) to markdown files. Pair with adt-api-discovery skill to investigate ADT REST endpoints — handler classes, Simple Transformations, request/response schemas.",
         "canBeReferencedInPrompt": true,
@@ -4110,6 +4176,7 @@
       },
       {
         "name": "abapfs_activate_object",
+        "canRequestPreApproval": true,
         "displayName": "Activate ABAP objects - equivalent of compiling",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_activate_object",
@@ -4155,6 +4222,7 @@
       },
       {
         "name": "abapfs_analyze_anst_enhancements",
+        "canRequestPreApproval": true,
         "displayName": "Analyze ANST Enhancements",
         "modelDescription": "Read an xlsx exported from the ANST Customer Code screen, classify every object as USER_EXIT, DEFINITE, POTENTIAL, or STANDARD, and write <xlsx_basename>_analysis.md beside the workbook. The output path is fixed and no external Python installation is required.",
         "canBeReferencedInPrompt": true,
