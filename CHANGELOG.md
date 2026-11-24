@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.15.1
+
+### Patch Changes
+
+- 9dcf152: remove unused test tool
+- 621897f: Editor activation no longer reports success when SAP keeps the object inactive, refuses to activate when the SAP source differs from the saved editor content, and activates class methods that SAP saved without listing them as inactive, instead of leaving their old code running
+- aacbae5: set canRequestPreApproval to true for all LM tools
+- 114cf22: Data query export: dates stringified by Date.toString() no longer shift to the previous day in timezones behind UTC. Engine limit messages always use English number formatting
+- aacbae5: Explain how to recover when VS Code omits a Copilot tool invocation context while managing subagents.
+- d52589b: Kerberos SSO: send an Accept header in the handshake and authenticate ADT requests with the SSO cookies only, without a placeholder Basic password
+
 ## 2.15.0
 
 ### Minor Changes
