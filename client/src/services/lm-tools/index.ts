@@ -24,6 +24,7 @@ import { registerExecuteCommandTool } from "./executeCommandTool"
 import { registerGetWorkspaceUriTool } from "./getWorkspaceUriTool"
 import { registerGetObjectUrlTool } from "./getObjectUrlTool"
 import { registerDocumentationTool } from "./documentationTool"
+import { registerAbapKeywordDocuTool } from "./abapKeywordDocuTool"
 import { registerUnitTestTools } from "./unitTestTools"
 import { registerAtcTools } from "./atcTools"
 import { registerTransportTool } from "./transportTool"
@@ -97,8 +98,9 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerGetWorkspaceUriTool(context)
   registerGetObjectUrlTool(context)
 
-  // 4. Documentation Tool
+  // 4. Documentation Tools
   registerDocumentationTool(context)
+  registerAbapKeywordDocuTool(context)
 
   // 5. Unit Test Tools
   registerUnitTestTools(context)
