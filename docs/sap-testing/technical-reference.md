@@ -110,7 +110,7 @@ Keys that must differ from each other declare `distinctFrom` on both sides; `aba
 
 ## Quality gates
 
-Three reviewer agents and two tool-level gates keep the workflow honest.
+Three reviewer agents and two tool-level gates define the default comprehensive workflow. Explicit user-directed scope may override methodology requirements, but never safety, authorization, security, or truthful reporting.
 
 **Reviewer agents** run at the end of phases 1, 2, and 3. Each reads the underlying evidence itself rather than trusting the main agent's summary, returns either a pass or an itemised gap list, and the phase does not hand off until every gap is fixed and it passes.
 
@@ -121,7 +121,13 @@ Three reviewer agents and two tool-level gates keep the workflow honest.
 | `abapfs_build_test_index` | Certification that the test plan reviewer already returned a pass |
 | `abapfs_run_playwright_tests` | Certification that all upstream phase gates and data readiness were verified |
 
-Both reject the call if the confirmation is missing or wrong, which means an agent that skipped a phase cannot produce the case index or run a test. The gate is a behavioural contract rather than a cryptographic one — its purpose is to stop a model from quietly cutting a corner under pressure, not to defend against a determined attacker.
+By default, both reject a missing or incorrect confirmation. A user-directed workflow exception is supported through `skipWorkflowValidation: true` and a nonblank `overrideReason`, instead of a false certification. This skips reviewer certification, source-snapshot validation, and SQL/mixed table-declaration requirements for the index tool, and prerequisite certification plus SE16N workflow proof for the runner. The data-usage tool also supports these flags to skip SE16N proof only; real data-key/resolver dependencies remain enforced. Indexes built with waived checks are labelled, without a new analysis certification. Execution/configuration and structural checks still apply. These are behavioural contracts, not cryptographic authorization: a reason records the user's requested scope, not proof of approval.
+
+Each testing skill documents scope exceptions relevant to its subject. Each testing agent accepts optional `userIntent` from its caller: the user's goal, requested scope, and waived workflow requirements. Without an override, the full workflow remains the default. Scoped reviewer verdicts are not full-suite approvals.
+
+For a smoke check or targeted logic test, user-supplied or verified values may live directly in the spec. Such a spec need not call `resolveTestData()` or have `.data.md`/`data.json` files. The sidecar/cache model remains the default for reusable, cross-system suites; if a spec calls the resolver, its actual data dependencies still apply.
+
+`abapfs_check_test_data` accepts optional `tcIds` to isolate selected cases. Missing sidecars are reported as unmanaged/skipped, never as validated inline data; a missing sidecar directory yields zero managed cases rather than demanding suite artifacts.
 
 `abapfs_build_test_index` also enforces structural rules: valid categories, matching case IDs, parseable frontmatter, and agreement between `dataRequired` and the presence of a `.data.md`. A missing `.data.md` for a case that needs one is a warning during phase 3 (specs come later) and must be zero by the end of phase 4.
 

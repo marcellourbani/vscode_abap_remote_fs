@@ -53,7 +53,7 @@
  *    From-To" but opened a File Upload dialog. Toolbar buttons are resolved by title, and
  *    that one is never used.
  */
-import type { Page, Frame } from "@playwright/test"
+import type { Page, Frame, Locator } from "@playwright/test"
 import type { SapSession } from "./sap-session"
 
 /** ABAP range sign: I = include (select), E = exclude (do not select). */
@@ -617,9 +617,7 @@ class Se16nDriver {
       values.length > CLIPBOARD_THRESHOLD &&
       values.every(v => !v.high && (v.option ?? "EQ") === "EQ" && (v.sign ?? "I") === "I")
 
-    if (uploadable) {
-      await this.uploadValues(values.map(v => v.low))
-    } else {
+    const fillRows = async () => {
       for (let i = 0; i < values.length; i++) {
         const r = await this.multiRow(i)
         const v = values[i]
@@ -635,6 +633,24 @@ class Se16nDriver {
         if (v.high) await this.setCell(M_HIGH(r), v.high, `${field} multiple to-value ${i + 1}`)
       }
       await this.commit(`multiple selection for ${field}`)
+    }
+
+    let uploaded = false
+    if (uploadable) {
+      uploaded = await this.uploadValues(values.map(v => v.low))
+      if (uploaded && Number(await this.valueOf("txtGD_LINES_USED")) !== values.length) {
+        await this.sap.note(
+          `SE16N ${field}: clipboard transfer was incomplete; retrying values row by row`
+        )
+        uploaded = false
+      }
+    }
+    if (!uploaded) {
+      if (uploadable) {
+        await this.pressToolbar("All Entries", 1)
+        await this.scrollMultiToTop()
+      }
+      await fillRows()
     }
 
     const used = Number(await this.valueOf("txtGD_LINES_USED"))
@@ -665,7 +681,7 @@ class Se16nDriver {
    * served over http, so `navigator.clipboard` is unavailable — `execCommand("copy")` from
    * a throwaway textarea is what actually works here.
    */
-  private async uploadValues(values: string[]): Promise<void> {
+  private async uploadValues(values: string[]): Promise<boolean> {
     const text = values.join("\n")
     const copied = await this.scope.evaluate((t: string) => {
       const ta = document.createElement("textarea")
@@ -678,20 +694,11 @@ class Se16nDriver {
       let ok = false
       try {
         ok = document.execCommand("copy")
-      } catch {
-        ok = false
-      }
+      } catch {}
       ta.remove()
       return ok
     }, text)
-    if (!copied) {
-      throw new Error(
-        `se16n: could not place ${values.length} values on the clipboard, so SE16N's ` +
-          `"Upload from Clipboard" cannot be used. Pass fewer than ${CLIPBOARD_THRESHOLD + 1} ` +
-          `values, or give each value an explicit option so the row-by-row path is taken.`
-      )
-    }
-
+    if (!copied) return false
     await this.pressToolbar("Upload from Clipboard", 1)
     let opened = false
     for (let i = 0; i < 60; i++) {
@@ -701,25 +708,15 @@ class Se16nDriver {
       }
       await this.page.waitForTimeout(250)
     }
-    if (!opened) {
-      throw new Error(
-        `se16n: SAP's "Clipboard Access" confirmation did not appear after "Upload from ` +
-          `Clipboard" — the toolbar action may not have registered.${await this.messageSuffix()}`
-      )
-    }
+    if (!opened) return false
     await this.page.keyboard.press("Control+V")
     for (let i = 0; i < 60; i++) {
       if (!(await this.clipboardPromptOpen())) {
         await this.sap.settle("clipboard upload")
-        return
+        return true
       }
       await this.page.waitForTimeout(250)
     }
-    // Falling through here would leave SAP's own dialog open while every later action
-    // burns ~10s in settle()'s DOM-stability wait against it, surfacing 50+ seconds later
-    // as an opaque Playwright test timeout instead of this actionable cause. execCommand
-    // ("copy") frequently doesn't seed the real OS clipboard in a headless/automated
-    // browser, which is the most likely reason SAP never sees a valid paste.
     throw new Error(
       `se16n: SAP's "Clipboard Access" dialog did not close after Control+V — SAP never ` +
         `registered a paste of the ${values.length} clipboard value(s). This commonly means ` +
@@ -967,8 +964,9 @@ class Se16nDriver {
         grid[r][c] = r === 0 ? text.split("\n")[0].trim() : text
         if (r === 0) {
           const raw = el.getAttribute("lsdata") ?? ""
-          const sid = (raw.match(/"SID":"[^"]*\/col([^"]+)"/) ?? [])[1]
-          if (sid) technicalFields[c] = sid
+          const sid = raw.match(/["']?SID["']?\s*:\s*["']([^"']+)["']/i)?.[1]
+          const technicalField = sid?.match(/\/col([^/]+)$/i)?.[1]
+          if (technicalField) technicalFields[c] = technicalField
         }
         if (c > maxCol) maxCol = c
       })
@@ -1039,7 +1037,10 @@ class Se16nDriver {
           optionIcon: "",
           moreIcon: ""
         }
-        const icon = (raw.match(/icons\.svg#(\w+)/) ?? [])[1] ?? ""
+        const icon =
+          (raw.match(/icons\.svg#(\w+)/i) ??
+            raw.match(/\/(s_[\w]+)\.(?:png|svg)(?:[?#'"]|$)/i) ??
+            [])[1] ?? ""
         const text = (el as HTMLInputElement).value ?? (el.textContent ?? "").trim()
         switch (m[1]) {
           case "txtGS_SELFIELDS-FIELDNAME":
@@ -1200,7 +1201,11 @@ class Se16nDriver {
 
   private async iconOf(sid: string): Promise<string> {
     const raw = (await this.sidLoc(sid).getAttribute("lsdata")) ?? ""
-    return (raw.match(/icons\.svg#(\w+)/) ?? [])[1] ?? ""
+    return (
+      (raw.match(/icons\.svg#(\w+)/i) ??
+        raw.match(/\/(s_[\w]+)\.(?:png|svg)(?:[?#'"]|$)/i) ??
+        [])[1] ?? ""
+    )
   }
 
   private valueOf(sid: string): Promise<string> {
@@ -1295,13 +1300,20 @@ class Se16nDriver {
    * another GUI status (`wnd[1]/tbar[0]/btn[21]`, titled "Separator for From-To", opened a
    * File Upload dialog).
    *
-   * Clicking is attempted first but is NOT trusted: SE16N's toolbar collapses buttons into
-   * the `>>` overflow depending on window width, and a collapsed button refuses to click
-   * even with `force: true` — and it can collapse between the visibility probe and the
-   * click. Every SE16N toolbar function advertises its shortcut in its own title, and the
-   * shortcut works whether or not the button is rendered, so that is the fallback.
+   * Resolve accessible toolbar buttons first, then title/SID-backed toolbar controls, then
+   * menu items in the More overflow. The presentation differs by WebGUI theme and release.
    */
   private async pressToolbar(titlePrefix: string, windowIndex = 0): Promise<void> {
+    const escapedTitlePrefix = titlePrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const accessibleButton = this.scope
+      .getByRole("button", { name: new RegExp(`^${escapedTitlePrefix}`, "i") })
+      .first()
+    if (await accessibleButton.count().catch(() => 0)) {
+      await accessibleButton.click({ timeout: 3_000 })
+      await this.sap.settle(titlePrefix)
+      return
+    }
+
     const title = await this.scope.evaluate(
       ({ prefix, win }: { prefix: string; win: number }) => {
         for (const el of Array.from(document.querySelectorAll('[role="button"][title]'))) {
@@ -1317,9 +1329,35 @@ class Se16nDriver {
       { prefix: titlePrefix, win: windowIndex }
     )
     if (!title) {
+      const menuPrefixes =
+        titlePrefix === "Delete All Entries" ? [titlePrefix, "All Entries"] : [titlePrefix]
+      const locateMenuItem = async (): Promise<Locator | undefined> => {
+        for (const prefix of menuPrefixes) {
+          const item = this.scope.getByRole("menuitem", { name: prefix }).first()
+          if (await item.count().catch(() => 0)) return item
+        }
+        return undefined
+      }
+
+      let menuItem = await locateMenuItem()
+      if (!menuItem) {
+        const more = this.scope.getByRole("button", { name: /^More$/i }).last()
+        if (await more.count().catch(() => 0)) {
+          await more.click({ timeout: 3_000 }).catch(() => {})
+          await this.sap.settle("Open SE16N toolbar overflow")
+        }
+        menuItem = await locateMenuItem()
+      }
+
+      if (menuItem) {
+        await menuItem.click({ timeout: 3_000 })
+        await this.sap.settle(titlePrefix)
+        return
+      }
+
       throw new Error(
-        `se16n: toolbar function "${titlePrefix}" is not available on this screen. Either the ` +
-          `screen is not the one expected, or this SAP release names it differently.`
+        `se16n: toolbar function "${titlePrefix}" is not available on the visible toolbar or its ` +
+          `More menu. Either the screen is not the one expected, or this SAP release names it differently.`
       )
     }
 

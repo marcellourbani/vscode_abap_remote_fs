@@ -5,7 +5,9 @@ description: Guides an agent in deciding when SAP WebGUI exploration needs a foc
 
 # SAP WebGUI Recording — User-Assisted Evidence
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
+The full testing framework is the default, but recording is a supporting method, not a prerequisite for every test: omit it and its formal artifacts when outside the user's explicit scope. When recording is needed, preserve safe actions, authorization, truthful observations, and the distinction between reference code and a runnable spec.
+
+For bounded support work, `sap-task-helper` can help; pass `userIntent` (outcome, scope, and overrides), explicit inputs, allowed writes, and an output contract.
 
 ## How to use this skill
 
@@ -27,7 +29,7 @@ A recording is not a test case or production spec:
 - never run it through `abapfs_run_playwright_tests`;
 - never copy it verbatim into `test-scripts/`;
 - never treat generated IDs, iframe names, or positions as approved locators;
-- persist verified observations into `_screens.md`;
+- persist verified observations into `_screens.md` in the full framework, or retain the relevant observations for the scoped task;
 - keep it until the translated spec passes its first headed run, then offer to remove it if it is no longer referenced.
 
 ## Decide who should explore
@@ -76,17 +78,17 @@ When requesting a data-changing flow, explicitly tell the user whether to stop b
 
 ## Consume the recording
 
-1. Read the recording and the current `_screens.md` together.
+1. Read the recording and, if the task uses one, the current `_screens.md` together.
 2. Load `sap-webgui` and classify every generated locator using its recording-interpretation rules.
 3. Extract interaction order, visible labels, accessible names, titles, dialog transitions, server roundtrips, and rerenders.
 4. Treat typed business values as examples, not constants.
-5. Add verified evidence to `_screens.md`, including:
+5. In the full framework, add verified evidence to `_screens.md`; for a scoped task, retain only the relevant observations, including as needed:
    - `Recording evidence: <relative-path>`;
    - screen/dialog and trigger path;
    - visible label and differing accessible name;
    - initial and resulting state;
    - duplicate-label or personalization caveats;
    - unresolved controls that still lack a stable semantic contract.
-6. Resume the phase workflow already in progress. A recording does not bypass any phase gate.
+6. Resume the requested work. A recording does not prove business assertions or completion of phases/reviews; neither does a scoped recording task require unrelated phases. If a later runner/index call omits workflow gates under the user's scope, use `skipWorkflowValidation: true` and `overrideReason`, not a false prerequisite/reviewer certification.
 
 If the recording contains only an unstable generated ID for a required control, it proves interaction intent but not a usable locator. Request narrower exploration or report a runtime gap; do not bless the ID.

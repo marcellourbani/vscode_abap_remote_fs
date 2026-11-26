@@ -5,11 +5,9 @@ description: Authoritative SAP WebGUI behavior and locator guidance for live exp
 
 # SAP WebGUI — UI Mechanics and Locator Rules
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
+Use these mechanics within the full testing framework by default; explicit user scope may instead call for a direct open/execute/no-dump or focused logic check without a formal screen map, plan, or review. Observe the controls you actually use and preserve safety, authorization, honest results, and runtime limitations—narrow scope does not make an unverified locator reliable.
 
-## Non-negotiable execution gate
-
-The `abapfs_run_playwright_tests` tool verifies the workflow artifacts produced from WebGUI exploration and **will reject affected cases** when required screen mappings or script checks are missing. Do not guess locators or skip live verification.
+For bounded support work, `sap-task-helper` can help; pass `userIntent` (outcome, scope, and overrides), explicit inputs, allowed writes, and an output contract.
 
 ## Related workflows
 
@@ -48,7 +46,7 @@ Recordings are interaction evidence, not production specs. Classify generated co
 
 **Conditionally usable evidence**
 
-- `.first()` or `.nth()` only for a duplicate set whose order and meaning were explicitly verified and recorded in `_screens.md`;
+- `.first()` or `.nth()` only for a duplicate set whose order and meaning were explicitly verified (record them in `_screens.md` for the full workflow);
 - grid row text only when the row has stable business text and the intended column/action is unambiguous;
 - Enter or other key presses as evidence of a required server roundtrip, translated through `SapSession`.
 
@@ -68,14 +66,14 @@ Recordings are interaction evidence, not production specs. Classify generated co
 - Cell coordinates encode the current layout. Personalization, hidden columns, variants, horizontal scrolling, and support-package changes can move the same business field.
 - Tab labels may exist several times in visible and hidden DOM sections. Recorded `.first()`/`.nth()` is not proof of the intended tab.
 - A click immediately before `fill()` is usually recorder noise; preserve it only when clicking changes mode or activates a cell editor.
-- Codegen records actions, not business assertions. Expected messages, persisted state, and visible results still come from the approved TC.
-- Typed materials, vendors, plants, organizations, and document numbers are examples. Build scripts must resolve them through `.data.md`, not copy them as constants.
+- Codegen records actions, not business assertions. Expected messages, persisted state, and visible results come from the approved TC or the user's explicit scoped check, grounded in verified behavior.
+- Typed materials, vendors, plants, organizations, and document numbers are examples, not automatically valid inputs. Full-framework scripts resolve them through `.data.md`; scoped scripts may use inline verified/user-provided values after checking target-system suitability.
 
 ### Stable replacement decision
 
 For every required recorded interaction:
 
-1. Use the matching `SapSession` helper with labels and scopes verified in `_screens.md`.
+1. Use the matching `SapSession` helper with live-verified labels and scopes (`_screens.md` records these in the full framework).
 2. If no helper fits, use one narrow `sap.raw()` role/name, title, aria-label, or stable visible-text locator confirmed by live evidence.
 3. If the recording exposes only an unsafe ID or coordinate, stop. Obtain focused exploration evidence or report a runtime/control-accessibility gap.
 
@@ -83,9 +81,11 @@ Never “improve” an unsafe ID by shortening it, regex-matching part of it, or
 
 ## WebGUI structure and common traps
 
-- The ITS application normally renders inside an iframe. Page-level locators can miss every SAP control.
+- **Rendering varies by connection and session; do not infer the UI from ECC versus S/4HANA or from a prior system.** SAP release, configured theme, browser viewport, user preferences, and WebGUI configuration can change the DOM and accessibility tree. Record the observed connection/release/theme as context when relevant, but choose locators from the live target screen.
+- SAP may render its controls in the top-level document, in `iframe#ITSFRAME1`, or in a different ITS frame. An iframe's presence is not proof that it contains SAP controls. During exploration, use the accessibility snapshot and verify where SAP content appears. In a spec, let `SapSession` select the content document; never hard-code an iframe just because another system used one.
+- A theme can be identified from the live browser's rendered appearance or SAP GUI for HTML Visual Design settings. Theme URL parameters may be ignored by system configuration. Do not change persistent user settings to make automation work; adapt the locator to the target UI instead.
 - **Every server round-trip invalidates every accessibility-tree `ref` on the page.** Clicking a radio, tab, toolbar button, Execute, Enter/OK, any F-key, or any grid-cell dropdown all trigger PBO and re-render the ITS DOM. Any `ref` captured from a previous `read_page` snapshot is stale after that action — including on plain selection screens, SM30/SE16-family screens, ALV outputs, dialogs, and F4 popups. This is not SE16N-specific; it happens on every SAP screen. Re-`read_page` before the next `click_element`/`type_in_page` — never reuse an old `ref`.
-- **SELECT-OPTION from/to pairs SYSTEMATICALLY produce two textboxes with the same accessible name** (e.g. both range ends of `s_site` are named `"Site"`; a `FOR sy-datum` range's ends both get the DDIC description `"ABAP System Field: Current Date of Application Server"`). This is expected, not a quirk. Record them as the from/to pair and prefer `sap.setRange(name, from, to)` (order-based, needs no technical name); reserve `nth(0)`/`nth(1)` or `{ technicalName: "S_XXX-LOW" / "-HIGH" }` for when you must use `setField` directly. Note the ugly DDIC accessible name in `_screens.md` exactly as it renders — it IS what Playwright sees.
+- **SELECT-OPTION endpoints can have the same or different accessible names across themes/releases.** A low endpoint may use the field label while the high endpoint is exposed as a generic "to" textbox; the controls' `lsdata` SIDs still identify their LOW/HIGH roles. Prefer `sap.setRange(name, from, to)`: it uses the visible label when both endpoints share it and verified LOW/HIGH metadata when they do not. It also clears the high endpoint when passed `""`. Record both visible names in `_screens.md`; if the helper cannot prove the pair, stop and inspect the live SIDs rather than guessing `nth`.
 - Dynpro blocks do not always expose an ARIA `group`. Use group scoping only after live verification.
 - Radio buttons, toolbar buttons, status messages, and ALV cells vary by theme and may lack ideal ARIA roles.
 - Hidden controls can remain in the DOM. Verify visibility, not only element count.
@@ -93,22 +93,23 @@ Never “improve” an unsafe ID by shortening it, regex-matching part of it, or
 - SAP file-path fields are usually textboxes, not native file inputs. Use `setField`; reserve `uploadFile` for a verified `<input type="file">`.
 - **Native OS dialogs are outside the iframe and cannot be snapshotted or driven by the runtime.** `cl_gui_frontend_services=>file_save_dialog` / `file_open_dialog` and `F4_FILENAME` may pop a native Windows Save/Open dialog that is not part of the ITS DOM — accessibility snapshots and `sap.*` helpers cannot reach it, and there is no runtime helper for it. During exploration mark such a screen NOT observed; in the plan such a path is normally `manual` (the human picks the file). A path that only needs the RESULTING file path typed into a textbox is different — that's a normal `setField` and IS automatable; only the OS picker itself is the un-automatable part.
 - **Dialog-level Cancel ≠ screen-level Back/Exit/Cancel.** A dialog's own `Cancel` closes just that dialog (safe). The main toolbar `Back` (F3) / `Exit` (F15) / `Cancel` (F12) mean "leave this screen/transaction" and where they land is PF-STATUS-dependent (previous screen, Easy Access, or a save prompt). Always re-`read_page` after a screen-level Back/Exit/Cancel; recover a lost position by reopening `&~transaction=<TCODE>`. Never use keyboard Escape to close a dialog — it may exit the whole transaction.
-- **Overflow toolbar (`>>`) hides buttons from the snapshot.** A narrow toolbar collapses its extra buttons (often Execute/F8) behind a `>>` chevron, and those buttons are absent from the accessibility tree until `>>` is clicked. During exploration, expand `>>` and re-`read_page` before concluding a button is missing. In a spec you do NOT need to click `>>` — `clickButton`/`execute` match by `title` and force-click even a visually-collapsed toolbar item — but the button must have been recorded in `_screens.md`.
+- **Overflow toolbar (`>>`) hides buttons from the snapshot.** A narrow toolbar collapses its extra buttons (often Execute/F8) behind a `>>` chevron, and those buttons are absent from the accessibility tree until `>>` is clicked. During exploration, expand `>>` and re-`read_page` before concluding a button is missing. In a spec you do NOT need to click `>>` — `clickButton`/`execute` match by `title` and force-click even a visually-collapsed toolbar item — but the button must have been observed live (and recorded in `_screens.md` for the full framework).
 - Wait for WebGUI server/busy state and DOM stability through `SapSession`; do not add arbitrary sleeps.
 
 ## SAP selection screens (SE38 / SUBMIT with SELECTION-SCREEN)
 
 Selection screens — the initial parameter screen of every SAP report — behave differently from dynpro maintenance screens (ME21N/MIGO/VA01) and are the source of the two most common `build-scripts` mistranslations. Rules for the whole family:
 
-- **No ARIA `group` role.** ITS renders selection-screen blocks (`SELECTION-SCREEN BEGIN OF BLOCK … WITH FRAME TITLE`) as an HTML `<table>` with a text caption — NO `role="group"` container is emitted. Passing `{ group: "..." }` to `sap.setField`/`check`/`selectRadio` here makes the helper time out because the scope never matches. Omit the option entirely; the plain accessible name is the correct locator. Record the block title in `_screens.md` as context (for `## Selection screen state at Execute` grouping in the TC), NOT as a scope Playwright can use.
+- **Standard ABAP selection-screen blocks generally have no ARIA `group` role.** When source uses `SELECTION-SCREEN BEGIN OF BLOCK … WITH FRAME TITLE`, ITS often renders a table with a caption and no group. Confirm on the target screen before passing `{ group: "..." }`; custom report screens and newer renderers may expose real groups. If absent, omit the scope. Record headings as context, not as a locator scope.
 - **`PARAMETERS` = single textbox → `sap.setField(label, value)`.**
-- **`SELECT-OPTIONS` = TWO textboxes with the same accessible name → `sap.setRange(label, from, to)`.** The runtime helper handles the from/to order and both-labels-identical trap. Even a case that only fills the low end must use `setRange("F", value, "")`. Never `setField` a range field; it triggers `strict mode violation: 2 elements` at runtime and the case fails for the wrong reason. The systematic same-name behaviour is documented under "SELECT-OPTION from/to pairs" above.
+- **`SELECT-OPTIONS` = a verified low/high textbox pair → `sap.setRange(label, from, to)`.** Their accessible names may be identical or different. The helper uses names where possible and verified SID LOW/HIGH metadata where needed. Even a case that only fills the low end must clear high explicitly with `setRange("F", value, "")`. Never use two guessed `setField` calls or positional indices to imitate a range.
 - **Multiple-selection button (the little arrow next to a range) opens a dialog** with tabs for `Single vals`/`Ranges`/`Exclude`. Record the tabs in `_screens.md` if a case uses them; drive them with `sap.clickTab` inside the dialog.
 - **F4 value help** works via `sap.pickFromValueHelp(fieldName, valueText)` — no group scope needed for the same reason as above.
-- **Radio groups and checkboxes.** ITS may not expose a `radiogroup` role; the individual radios still work by accessible name via `sap.selectRadio(name)`. Confirm live during `explore-ui`.
+- **Radio groups and checkboxes.** ITS may not expose a `radiogroup` role, and a radio can be a custom `<span role="radio">` rather than a native input. Confirm its live role/name and selected state. `sap.selectRadio(name)` handles native and custom radios and verifies that the target became selected; a clickable label/hotspot is not proof of selection. If the label is not the radio's accessible name, inspect the live association and use a supported, verifiable interaction instead of assuming a click worked.
+- **Dropdown/listbox controls.** A listbox may render as a native `<select>` or as a textbox plus a popup option list. Inspect the live role/name and option labels; use `sap.selectOption(fieldName, optionName)` for either pattern. It selects by exact option name, not option position, and verifies the selected value. Option order and the empty entry can differ between SAP themes.
 - **Variant list (`Save as Variant`, `Get Variant`)** are toolbar buttons on the selection screen — accessible by `title` via `sap.clickButton`; usually not needed unless the TC references a specific variant.
 
-Dynpro screens (ME21N/MIGO/VA01/…) DO expose real groups/regions in many places — `{ group: "..." }` is legitimate there when `_screens.md` records it. The rule is: emit `group` when the map records it, omit otherwise; do not emit it reflexively.
+Dynpro screens (ME21N/MIGO/VA01/…) DO expose real groups/regions in many places — `{ group: "..." }` is legitimate there when `_screens.md` records it. The rule is: emit `group` only when observed live (and recorded in the map when used), omit otherwise; do not emit it reflexively.
 
 ## Header tab strips
 
@@ -207,9 +208,9 @@ When NOT to use it:
 
 `sap.setField(..., { technicalName: "..." })` uses the technical name whenever the accessible name is NOT a unique match — i.e. when it matches multiple fields (the duplicate-label case this is designed for) OR matches nothing. It never overrides a UNIQUE role+name match, so the helper stays role-first: a clean single label wins, but the moment a label is ambiguous the technical name takes over instead of silently filling the first match. If the label is ambiguous and no `technicalName` is supplied, `setField` throws and asks for one (or a verified `nth`) rather than guessing — so a from/to pair with identical labels can't silently collapse into one field.
 
-## Required live-exploration record
+## Live-exploration record (full framework)
 
-For every screen/dialog used by a case, record in `_screens.md`:
+For a scoped check, observe only the screens/controls needed and report relevant observations; a formal `_screens.md` is not mandatory. In the full framework, record for every screen/dialog used by a case:
 
 - screen/dialog title and trigger path;
 - control role, visible label, and differing accessible name;
@@ -273,7 +274,7 @@ When detected, the guard captures evidence and throws with `kind`, title, URL, a
 The helper strategy—semantic role and accessible name first—is substantially more stable than generated WebGUI IDs. It is not universally reliable without live verification:
 
 - `setField` and checkbox helpers depend on usable accessible names.
-- `setField(..., { technicalName })` fallback depends on a real `lsdata` SID; verify the ABAP field name from ADT before adding it.
+- `setField(..., { technicalName })` fallback depends on a real `lsdata` SID; verify the field name from the live SID or ADT before adding it.
 - group scoping fails where ITS exposes no group role.
 - radio fallback behavior is theme-specific and can be ambiguous with duplicate labels.
 - toolbar fallback depends on stable English `title`/`aria-label`.
@@ -281,11 +282,11 @@ The helper strategy—semantic role and accessible name first—is substantially
 - `setGridCell` requires the target column to be currently visible; scrolled-off columns are removed from the DOM.
 - ALV role/text structure varies by renderer and theme.
 - `uploadFile` should be trusted only after confirming a native file input.
-- iframe selection targets the SAP content frame (`#ITSFRAME1`) specifically, not merely "the first iframe" — the page also has `ITSTERMFRAME` ("Blank ITS Page"), and picking it by DOM order made assertions query an empty document and report `Last seen: []` while the message was plainly on screen. Unusual full-page redirects or shell layouts still need a headed verification run.
+- SAP document selection must be based on observed controls, not iframe IDs or DOM order: some pages have SAP in the top-level document, some in an ITS frame, and some include empty helper frames. The runtime's `contentRoot()`/content-frame detection handles supported cases; a new frame layout needs a focused regression test.
 - popup-guard only auto-dismisses titles on the curated list; program-specific interrupters need `extraInterrupters` at the call site.
 - runtime-error detection uses signature substrings — a customised dump theme or translated error text may slip through; add signatures if you see one repeatedly missed.
 
-Therefore, use helpers by default, but treat `_screens.md` plus the first headed run as required proof for each new screen pattern. A helper failure is not permission to switch to generated IDs.
+Use helpers by default and verify each new screen pattern live. The full framework records this in `_screens.md` and a first headed run; a scoped check can retain only the observations/evidence it needs. A helper failure is not permission to switch to generated IDs.
 
 ## Locator failure patterns
 
@@ -301,15 +302,15 @@ Use these patterns during `run-scripts` diagnosis:
 - test fails with `Popup guard: recognised interrupter "..." but could not click its "..." button` → the button label changed in your SAP version; add an `extraInterrupters` entry with the correct label, don't disable the guard;
 - test fails with `SAP runtime error detected (dump|its|logon): "..."` → real short dump / session loss / ITS error; investigate the SAP-side cause (ST22 for dumps, SM21 for session, SMICM for ITS) before touching the test.
 
-Correct the observed control in `_screens.md` (via `explore-ui`), then follow `build-scripts` to rebuild the spec. Do not patch the locator ad hoc during Phase 7 (run-scripts) diagnosis.
+In the full framework, correct the observed control in `_screens.md` (via `explore-ui`), then use `build-scripts` to rebuild the spec. For a scoped repair, re-observe the control and fix only the affected interaction; never patch from a guessed locator.
 
 ## Before writing or approving a script
 
 Confirm:
 
-- every helper label comes verbatim from `_screens.md`;
+- every helper label comes from live evidence (`_screens.md` in the full framework);
 - every scope was observed live;
 - duplicate labels have deterministic disambiguation;
 - no generated IDs, SAP ref numbers, unstable CSS suffixes, or guessed positions are used;
 - dynamic/default state is explicitly handled;
-- a first run will be headed and failures will be diagnosed from screenshots/manifest before changing locators.
+- use a headed first run for a new screen pattern; diagnose from actual browser/run evidence before changing locators.

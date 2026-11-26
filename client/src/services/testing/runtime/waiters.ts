@@ -22,6 +22,7 @@ const BUSY_SELECTORS = [
   '[id$="_blockOverlay"]',
   ".sapMBusyIndicator"
 ]
+const NETWORK_IDLE_BEST_EFFORT_MS = 1_500
 
 /** Every JavaScript execution scope on the page: outer + all frames. */
 function scopes(page: Page): Array<Page | Frame> {
@@ -32,10 +33,11 @@ export async function waitForServer(page: Page, timeout = 30_000): Promise<void>
   const deadline = Date.now() + timeout
   try {
     await page.waitForLoadState("networkidle", {
-      timeout: Math.max(1_000, deadline - Date.now())
+      timeout: Math.min(NETWORK_IDLE_BEST_EFFORT_MS, Math.max(1, deadline - Date.now()))
     })
   } catch {
-    // networkidle may never fire on long-polling pages; fall through to DOM checks
+    // Persistent WebGUI requests can prevent networkidle. Keep it best-effort; the
+    // per-document busy-overlay checks below determine whether SAP is still processing.
   }
   const remaining = Math.max(1_000, deadline - Date.now())
   // Poll every scope: outer page + every frame. Overlay must be absent in ALL scopes.

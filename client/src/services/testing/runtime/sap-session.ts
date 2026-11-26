@@ -62,17 +62,9 @@ export class SapSession {
   private evidence: Evidence
   private captureSteps: boolean
   private extraInterrupters: Interrupter[]
-  /**
-   * CSS selector for the iframe that actually holds the SAP ITS content. The page has
-   * TWO iframes — `ITSFRAME1` (the SAP application) and `ITSTERMFRAME` ("Blank ITS Page").
-   * Selecting "the first iframe" by DOM order can pick the blank one, which makes every
-   * locator and assertion query an empty document and report `Last seen: []` while the
-   * text is plainly on screen (the headless-vs-headed "impossible to diagnose" alert bug).
-   * We target `#ITSFRAME1` explicitly, and only fall back if it genuinely isn't present.
-   */
   private contentFrameSelector = "iframe#ITSFRAME1"
   private contentFrameResolved = false
-  /** false = this system renders SAP directly in the top document (no ITS iframe at all). */
+  /** false = SAP controls are in the top document; an empty iframe may still exist. */
   private hasContentFrame: boolean | null = null
 
   constructor(
@@ -89,11 +81,9 @@ export class SapSession {
 
   /**
    * Build the SAP WebGUI URL from baseURL + optional extra query params.
-   * We do NOT force a theme — on ITS WebGUI the user's SU3 theme already renders
-   * controls with usable accessible names, and forcing `sap_fiori_3` on some
-   * systems leaves a persistent "Please wait..." splash overlay covering the app.
-   * Iframe targeting + role-with-CSS-class fallbacks (see content(), selectRadio,
-   * clickButton, expectAlert) handle the ITS DOM regardless of theme.
+   * We do NOT force a theme: WebGUI theme selection is system/configuration dependent,
+   * and a URL override may be ignored or leave the session on a loading screen. Helpers
+   * identify the active SAP document and use the target screen's observed controls.
    */
   private buildUrl(extraParams: Record<string, string> = {}): string {
     const base =
@@ -398,14 +388,63 @@ export class SapSession {
   }
 
   /** Fill both endpoints of a range (from/to) for a select-option.
-   *  SAP select-options render as two textboxes with the SAME accessible name
-   *  (both labeled after the field, e.g. "Site"). We target them by nth.
+   *  SAP select-options commonly share a label, but some WebGUI themes label the high
+   *  endpoint as "to". Use the SAP LOW/HIGH technical names when the accessible labels
+   *  do not identify both endpoints.
    */
   async setRange(fieldName: string, from: string, to: string, opts: { group?: string } = {}) {
-    await this.setField(fieldName, from, { ...opts, nth: 0 })
-    if (to !== undefined && to !== "") {
+    await this.ensureContentFrame()
+    const root: FrameLocator | Locator = opts.group
+      ? this.content().getByRole("group", { name: opts.group })
+      : this.content()
+    const namedFields = root.getByRole("textbox", { name: fieldName })
+    const namedFieldCount = await namedFields.count().catch(() => 0)
+
+    if (namedFieldCount === 2) {
+      await this.setField(fieldName, from, { ...opts, nth: 0 })
       await this.setField(fieldName, to, { ...opts, nth: 1 })
+      return
     }
+
+    if (namedFieldCount === 1) {
+      const technicalField = await namedFields
+        .first()
+        .evaluate(element => {
+          const serialized = element.getAttribute("lsdata")
+          if (!serialized) return ""
+          const sid = serialized.match(/["']?SID["']?\s*:\s*["']([^"']+)["']/i)?.[1]
+          const match = sid?.match(/(?:ctxt|txt|cmb|chk|rad)([A-Z0-9_]+)-(LOW|HIGH)$/i)
+          return match ? match[1].toUpperCase() : ""
+        })
+        .catch(() => "")
+
+      if (technicalField) {
+        const low = root.locator(`input[lsdata*="${technicalField}-LOW"]`)
+        const high = root.locator(`input[lsdata*="${technicalField}-HIGH"]`)
+        const [lowCount, highCount] = await Promise.all([
+          low.count().catch(() => 0),
+          high.count().catch(() => 0)
+        ])
+        if (lowCount === 1 && highCount === 1) {
+          await this.guarded(`Set ${fieldName} range from "${from}" to "${to}"`, async () => {
+            await low.fill(from)
+            await high.fill(to)
+          })
+          return
+        }
+      }
+    }
+
+    const hint = await this.suggestControls(root, fieldName, {
+      selector: "input, textarea",
+      kindLabel: "Text fields",
+      group: opts.group
+    }).catch(() => "")
+    throw new Error(
+      `setRange could not identify both endpoints for "${fieldName}" from the live controls.` +
+        hint +
+        ` Verify the low/high controls and their SAP technical names on this screen.`
+    )
   }
 
   async check(checkboxName: string, opts: { group?: string; value?: boolean } = {}) {
@@ -433,14 +472,88 @@ export class SapSession {
     })
   }
 
+  async selectOption(fieldName: string, optionName: string, opts: { group?: string } = {}) {
+    await this.guarded(`Select "${optionName}" in "${fieldName}"`, async () => {
+      const root: FrameLocator | Locator = opts.group
+        ? this.content().getByRole("group", { name: opts.group })
+        : this.content()
+      const select = root.getByRole("combobox", { name: fieldName }).first()
+
+      if (await select.count().catch(() => 0)) {
+        const isNativeSelect = await select
+          .evaluate(element => element instanceof HTMLSelectElement)
+          .catch(() => false)
+        if (isNativeSelect) {
+          await select.selectOption({ label: optionName })
+          const selectedLabel = await select.locator("option:checked").textContent()
+          if (selectedLabel?.trim() !== optionName) {
+            throw new Error(
+              `selectOption chose "${optionName}" in "${fieldName}" but it is not selected.`
+            )
+          }
+          return
+        }
+      }
+
+      const field = root.getByRole("textbox", { name: fieldName }).first()
+      if (!(await field.count().catch(() => 0))) {
+        const hint = await this.suggestControls(root, fieldName, {
+          selector: 'select, input, [role="combobox"]',
+          kindLabel: "Dropdown fields",
+          group: opts.group
+        }).catch(() => "")
+        throw new Error(
+          `selectOption could not locate a dropdown field named "${fieldName}".` +
+            hint +
+            ` Verify the accessible name on the live screen.`
+        )
+      }
+
+      await field.click()
+      const option = root.getByRole("option", { name: optionName, exact: true })
+      if (!(await option.count().catch(() => 0))) {
+        const hint = await this.suggestControls(root, optionName, {
+          selector: '[role="option"], option',
+          kindLabel: "Dropdown options",
+          group: opts.group
+        }).catch(() => "")
+        throw new Error(
+          `selectOption could not locate option "${optionName}" for "${fieldName}".` +
+            hint +
+            ` Confirm the option is available and visible in the open list.`
+        )
+      }
+
+      await option.first().click()
+      const [currentValue, selectedState] = await Promise.all([
+        field.inputValue().catch(() => ""),
+        option
+          .first()
+          .getAttribute("aria-selected")
+          .catch(() => null)
+      ])
+      if (selectedState === "false" || (selectedState !== "true" && currentValue !== optionName)) {
+        throw new Error(
+          `selectOption clicked "${optionName}" for "${fieldName}" but could not verify the selection.`
+        )
+      }
+    })
+  }
+
   async selectRadio(radioName: string, opts: { group?: string } = {}) {
+    let radioToVerify: Locator | undefined
     await this.guarded(`Select radio "${radioName}"`, async () => {
       const root: FrameLocator | Locator = opts.group
         ? this.content().getByRole("group", { name: opts.group })
         : this.content()
       const byRole = root.getByRole("radio", { name: radioName }).first()
       if (await byRole.count().catch(() => 0)) {
-        await byRole.check()
+        radioToVerify = byRole
+        const isNativeRadio = await byRole
+          .evaluate(el => el instanceof HTMLInputElement && el.type === "radio")
+          .catch(() => false)
+        if (isNativeRadio) await byRole.check()
+        else await byRole.click()
         return
       }
       // ponytail: SAP ITS WebGUI renders radios as <span class="lsRadioButton--{checked,unchecked}">
@@ -461,8 +574,25 @@ export class SapSession {
             `if it's wrong). Do NOT blindly swap in a similar name.`
         )
       }
+      radioToVerify = span
       await span.click({ force: true })
     })
+    if (radioToVerify && (await this.radioSelected(radioToVerify)) === false) {
+      throw new Error(`selectRadio clicked "${radioName}" but it did not become selected.`)
+    }
+  }
+
+  private async radioSelected(radio: Locator): Promise<boolean | undefined> {
+    return radio
+      .evaluate(el => {
+        if (el instanceof HTMLInputElement && el.type === "radio") return el.checked
+        const ariaChecked = el.getAttribute("aria-checked")
+        if (ariaChecked !== null) return ariaChecked === "true"
+        if (el.classList.contains("lsRadioButton--checked")) return true
+        if (el.classList.contains("lsRadioButton--unchecked")) return false
+        return undefined
+      })
+      .catch(() => undefined)
   }
 
   async clickButton(
@@ -1109,13 +1239,8 @@ export class SapSession {
   }
 
   /**
-   * Content root. SAP WebGUI (ITS) renders the whole screen inside an <iframe>.
-   * Every action/assertion locator must go through the frame — page-level
-   * getByRole/locator will return zero matches. We use frameLocator("iframe").first()
-   * which is stable across the two iframes present (the second is "Blank ITS Page").
-   *
-   * If the frame is missing (edge case: full-page redirect), we fall back to page.
-   * ponytail: single method, all helpers call it. Upgrade: cache after first non-zero probe.
+   * WebGUI may render SAP in an ITS frame or directly in the page.
+   * `ensureContentFrame()` identifies the document that actually contains SAP controls.
    */
   content(): FrameLocator | Locator {
     if (this.hasContentFrame === false) return this.page.locator("body")
@@ -1123,10 +1248,9 @@ export class SapSession {
   }
 
   /**
-   * JS execution scope for the SAP content — the ITS iframe's `Frame`, or the `Page`
-   * itself on systems that render SAP directly in the top document. Needed by helpers
-   * that read control metadata with `evaluate` (see `se16n`), because a `FrameLocator`
-   * cannot evaluate.
+   * JS execution scope for the SAP content — its `Frame`, or the `Page` itself when SAP
+   * controls are in the top document. Needed by helpers that read control metadata with
+   * `evaluate` (see `se16n`), because a `FrameLocator` cannot evaluate.
    */
   async contentScope(): Promise<Page | Frame> {
     await this.ensureContentFrame()
@@ -1134,6 +1258,18 @@ export class SapSession {
     const handle = await this.page.$(this.contentFrameSelector).catch(() => null)
     const frame = handle ? await handle.contentFrame().catch(() => null) : null
     return frame ?? this.page
+  }
+
+  /** Resolve the active SAP document and return its body for one-off raw locators. */
+  async contentRoot(): Promise<Locator> {
+    await this.ensureContentFrame()
+    if (this.hasContentFrame === false) return this.page.locator("body")
+    if (this.hasContentFrame === true) {
+      return this.page.frameLocator(this.contentFrameSelector).locator("body")
+    }
+    throw new Error(
+      "Could not identify the SAP WebGUI document: no SAP controls were found in the page or its ITS frame."
+    )
   }
 
   /**
@@ -1170,13 +1306,9 @@ export class SapSession {
   }
 
   /**
-   * Resolve, once, which iframe carries the SAP ITS content. Prefer `#ITSFRAME1`; if that
-   * id isn't present on this system, pick the first iframe that is NOT the blank
-   * `ITSTERMFRAME`; only if neither can be determined, fall back to the first iframe.
-   *
-   * Some WebGUI configurations render SAP directly in the top document with NO iframe at
-   * all (observed on ITS + `sap_fiori_3`). In that case every `frameLocator` query returns
-   * an empty document, so we record `hasContentFrame = false` and scope to the page.
+   * Resolve, once, which document contains the SAP controls. A frame's existence alone is
+   * insufficient: some configurations keep an empty `ITSFRAME1` while rendering SAP in
+   * the top document. Probe for SAP controls before choosing the frame or page.
    *
    * Called at the start of every `guarded()` action, so by the time any assertion runs
    * (a spec always performs an action before asserting) the correct scope is already
@@ -1190,33 +1322,21 @@ export class SapSession {
         .count()
         .catch(() => 0)
       if (its1 > 0) {
-        this.contentFrameSelector = "iframe#ITSFRAME1"
-        this.hasContentFrame = true
-        this.contentFrameResolved = true
-        return
+        const its1HasSapContent = await this.page
+          .frameLocator("iframe#ITSFRAME1")
+          .locator("[lsdata]")
+          .count()
+          .catch(() => 0)
+        if (its1HasSapContent > 0) {
+          this.contentFrameSelector = "iframe#ITSFRAME1"
+          this.hasContentFrame = true
+          this.contentFrameResolved = true
+          return
+        }
       }
-      const nonBlank = await this.page
-        .locator("iframe:not(#ITSTERMFRAME)")
-        .count()
-        .catch(() => 0)
-      if (nonBlank > 0) {
-        this.contentFrameSelector = "iframe:not(#ITSTERMFRAME)"
-        this.hasContentFrame = true
-        this.contentFrameResolved = true
-        return
-      }
-      const any = await this.page
-        .locator("iframe")
-        .count()
-        .catch(() => 0)
-      if (any > 0) {
-        this.contentFrameSelector = "iframe"
-        this.hasContentFrame = true
-        this.contentFrameResolved = true
-        return
-      }
-      // No iframe at all: this system renders SAP in the top document. Only conclude that
-      // once the SAP DOM is actually present, so a still-loading page isn't misdetected.
+
+      // Some WebGUI configurations keep an empty ITSFRAME1 while rendering SAP in the
+      // top document. Prefer the document that actually contains SAP controls.
       const sapInPage = await this.page
         .locator("[lsdata]")
         .count()
@@ -1224,9 +1344,44 @@ export class SapSession {
       if (sapInPage > 0) {
         this.hasContentFrame = false
         this.contentFrameResolved = true
+        return
+      }
+
+      const nonBlank = await this.page
+        .locator("iframe:not(#ITSTERMFRAME)")
+        .count()
+        .catch(() => 0)
+      if (nonBlank > 0) {
+        const nonBlankHasSapContent = await this.page
+          .frameLocator("iframe:not(#ITSTERMFRAME)")
+          .locator("[lsdata]")
+          .count()
+          .catch(() => 0)
+        if (nonBlankHasSapContent > 0) {
+          this.contentFrameSelector = "iframe:not(#ITSTERMFRAME)"
+          this.hasContentFrame = true
+          this.contentFrameResolved = true
+          return
+        }
+      }
+      const any = await this.page
+        .locator("iframe")
+        .count()
+        .catch(() => 0)
+      if (any > 0) {
+        const anyHasSapContent = await this.page
+          .frameLocator("iframe")
+          .locator("[lsdata]")
+          .count()
+          .catch(() => 0)
+        if (anyHasSapContent > 0) {
+          this.contentFrameSelector = "iframe"
+          this.hasContentFrame = true
+          this.contentFrameResolved = true
+        }
       }
     } catch {
-      // Leave the default (#ITSFRAME1) in place; do not mark resolved so a later action retries.
+      // Do not cache an uncertain result; a later action can retry after the page settles.
     }
   }
 

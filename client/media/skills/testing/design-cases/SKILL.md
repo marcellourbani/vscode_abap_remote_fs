@@ -5,6 +5,10 @@ description: Standalone Phase 3 of SAP UI testing. Turns the _findings.md decisi
 
 # Design Cases — Phase 3 (of 7)
 
+## User-directed case scope
+
+The complete candidate plan, upstream artifacts, category/minimum coverage, verification, review, and index below remain the strict default for full case design; the gates and handoff describe that workflow. An explicit narrower request—one report rule or an open/execute/no-dump smoke check—can waive those methodology requirements without requiring a full suite or cases for unrelated branches. For scoped tests the user may choose inline test values in the executable spec instead of reusable `.data.md`/`data.json`, skipping define-data and prepare-data when unnecessary; use supplied or verified values, never invented ones, and prove any absence premise before claiming it. Safety, authorization, and honest reporting remain mandatory: waived verification means an unverified effect, not proof of business correctness.
+
 If one business scenario has ordered stages on different SAP connections, load and follow
 `multi-system-workflows` alongside this skill. Split it into linked `TC-NNN` stage cases;
 never put multiple systems inside one case script.
@@ -13,11 +17,11 @@ Phase order: analyze-and-plan (1) → explore-ui (2) → **design-cases (3)** �
 
 This phase produces `TC-XXX.md` files plus the rebuilt `_index.md`/`_index.docx`. It does NOT author `.data.md` files (Phase 4) and does NOT write specs (Phase 6). Each `TC-XXX.md` still DECLARES `dataRequired: yes|no`; the sidecar itself is written in Phase 4.
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract. Never delegate the whole phase.
+For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, an output contract, and optional `userIntent` carrying the user's goal/scope and waived methodology. Never delegate the whole phase.
 
-## Non-negotiable execution gate
+## Default full-plan execution gate
 
-`abapfs_build_test_index` is GATED: it refuses to build unless you pass `reviewerConfirmation` certifying the `sap-test-plan-reviewer` agent already returned PASS. You cannot produce the index — and therefore cannot hand off — without the reviewer actually running. Downstream phases and `abapfs_run_playwright_tests` reject cases whose plan was never reviewed.
+The full workflow requires `sap-test-plan-reviewer` PASS before `abapfs_build_test_index` and downstream execution. For an explicit scoped exception, omit an unnecessary index or call supporting tools with `skipWorkflowValidation: true` and an `overrideReason` reflecting the user's scope; never supply a false reviewer attestation to bypass a waived review.
 
 ## Why
 
@@ -36,7 +40,7 @@ The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_
 1. Call `abapfs_get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
 3. Resolve `<PROGRAM>` from the request; if omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_findings.md`. Auto-select only when exactly one candidate matches; otherwise ask.
-4. **Enforce the Phase 1 + Phase 2 input gate.** All of these must exist:
+4. **For the full plan, enforce the Phase 1 + Phase 2 input gate.** All of these must exist:
    - `tests/<PROGRAM>/test-cases/_findings.md`, `_flow.md`, `_units.md` (from analyze-and-plan)
    - `tests/<PROGRAM>/test-cases/_screens.md` (from explore-ui)
    If any Phase 1 artifact is missing, STOP and follow `analyze-and-plan`. If `_screens.md` is missing, STOP and follow `explore-ui`. Never write cases from memory.
@@ -51,7 +55,7 @@ The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_
 
 > **Say before continuing:** "Step 0 completed. Evidence: test folder, program, `_findings.md`/`_flow.md`/`_units.md`/`_screens.md` read, source snapshot read for the relevant units, and snapshot path confirmed. Next: Step 1 — category contract and count gate."
 
-## Step 1 — Category contract and count gate
+## Step 1 — Category contract and count gate (full plan by default)
 
 > **Say before acting:** "Starting Step 1: state the category contract and read the target minimum."
 
@@ -84,7 +88,7 @@ Non-trivial report → typically 15–30 cases. `large` and `idempotency` are th
 4. Turn every `## Behavioural logic` rule into at least one TC: the overlap-truncation case, the exact-duplicate case, the start-after-end case, each boundary. These are the cases most likely to be skipped — do not skip them.
 5. Read the final "Target minimum" and write at least that many `^TC-\d{3}\.md$` files.
 
-Do NOT reduce the minimum for feasibility — runnability triage is a separate annotation; every candidate gets a file even when marked `manual` or `blocked-by-data`.
+For a full plan, do NOT reduce the minimum for feasibility — runnability triage is a separate annotation; every candidate gets a file even when marked `manual` or `blocked-by-data`. For an explicitly scoped plan, cover the requested logic and name excluded coverage instead of pretending to meet the whole-object minimum.
 
 Categories that MUST be present unless the report cannot exhibit them: covered by the mandatory checklist above — do not repeat that logic here, act on the checklist.
 
@@ -122,7 +126,7 @@ targetType: report | class | transaction | process
 category: happy-path | boundary | invalid | mandatory | authorization | empty | large | idempotency | cross-tx | concurrency | background-artifact | discovered-control
 priority: high | medium | low
 runnable: runnable | manual | blocked-by-data | runnable-elsewhere # from _findings.md runnability triage — this is what abapfs_build_test_index reads for summary counts
-dataRequired: yes | no # mandatory; yes means a TC-XXX.data.md WILL be authored in Phase 4, no means none may exist
+dataRequired: yes | no # reusable workflow: yes requires a Phase 4 sidecar; no forbids one. Scoped inline values need no sidecar/resolver; document that choice in Notes.
 verification: sql | manual | mixed | none # mandatory — HOW this case proves the object did its job AFTER the UI passes (see "Post-test verification is the rule" below). Outcomes the SPEC already asserts on screen are NOT this — this is the DB/artifact truth the spec can't see. A "nothing should have been written" case is `sql` (assert the count/table is unchanged), NOT none. `none` is valid ONLY when the path cannot write anything AND no meaningful count/absence check exists (a pure error/abort case where the message is the whole outcome).
 se16nTables: [EKKO, EKPO] # mandatory for verification: sql|mixed; every SQL-verified business table/effect that business users can inspect. Use [] for manual/none.
 outputs: [alv | excel | email | al11 | table | idoc | job | spool]
@@ -215,15 +219,15 @@ During this phase you author only the table + frontmatter; you run nothing. A ru
 
 **Authorization cases: the POSITIVE side is `runnable`, the NEGATIVE side is `runnable-elsewhere` — never `runnable`.** An `authorization` TC comparing "with role X" vs "without role X" needs a real SAP user for BOTH sides. The positive case runs as the normal run user (whoever the target `connectionId` authenticates as) — `runnable`. The negative case must run as a user who LACKS the authorization, and there is **no spec-level or config-level way to switch users mid-run**: `abapfs_run_playwright_tests` authenticates one session, as the connection's own user, for the whole run (see `build-scripts` and universal rule 5). So a negative-auth case can only run against a SEPARATE ABAP FS connection configured for an unauthorized user — mark it `runnable: runnable-elsewhere` with that exact reason. Marking it `runnable` is a defect the reviewer FAILs, and it is also dangerous: if it runs as the authorized user it "passes" for the wrong reason (the action was allowed, not blocked). In `## Preconditions` name the required unauthorized user / role gap and the second connection it needs; in `## Notes for automation` state that provisioning that user goes through SU01 / the customer's identity system, not any test-writable path, so `prepare-data` cannot create it. The `.data.md` may pin the user via `source: static` (dummy `staticValue: "ZTESTNOAUTH"`) or `source: user` so a different landscape can substitute a different unauthorized user without editing the spec.
 
-**A case whose premise is that a value does NOT exist must have that premise PROVEN, not assumed.** For a "no record found" / "invalid key rejected" / "unknown value" case, do NOT hardcode a number you believe is absent and hope it stays absent — a value that exists on the run system turns the test green for the wrong reason. Set the case `dataRequired: yes` and, in the TC, add an `## Absence preconditions` section with the SQL that must return ZERO rows for the case to be valid (using a `<data-key: ...>` placeholder). Phase 4 declares the key; Phase 5 (`prepare-data`) runs the absence SQL and BLOCKS the case if the row actually exists. (`dataRequired: no` forbids a `.data.md`, so an absence-checked case is always `dataRequired: yes`.)
+**A case whose premise is that a value does NOT exist must have that premise PROVEN, not assumed.** For a "no record found" / "invalid key rejected" / "unknown value" case, do NOT hardcode a number you believe is absent and hope it stays absent — a value that exists on the run system turns the test green for the wrong reason. For the default reusable-data workflow, set the case `dataRequired: yes` and, in the TC, add an `## Absence preconditions` section with the SQL that must return ZERO rows for the case to be valid (using a `<data-key: ...>` placeholder). Phase 4 declares the key; Phase 5 (`prepare-data`) runs the absence SQL and BLOCKS the case if the row actually exists. (In the reusable workflow, an absence-checked case is `dataRequired: yes`; for a user-chosen inline spec, run the same absence query against the inline candidate before execution without requiring Phases 4–5.)
 
 > **Say before continuing:** "Step 2 completed. Evidence: TC count meets the target minimum, every behavioural rule and distinct trigger has its own case, and every state-changing case carries a `## Post-test verification` section with the right `verification` value. Next: Step 3 — reviewer."
 
-## Step 3 — Adversarial review (mandatory, BEFORE building the index)
+## Step 3 — Adversarial review (default full workflow: BEFORE building the index)
 
 > **Say before acting:** "Starting Step 3: delegate the plan to sap-test-plan-reviewer."
 
-Delegate to the `sap-test-plan-reviewer` agent. Give it `<PROGRAM>`, the connection, and confirm that `_findings.md`, `_flow.md`, `_units.md`, `_screens.md`, the source snapshot, and every `TC-*.md` exist. It reads the actual source, then counts `TC-*.md` files against the target minimum, checks MESSAGE/branch/category/enhancement coverage, checks that every state-changing case carries a `## Post-test verification` section (against `_units.md`'s writes) and challenges every `verification: none`, and challenges the runnability triage.
+Delegate to the `sap-test-plan-reviewer` agent with `<PROGRAM>`, the connection, and optional `userIntent` carrying the user's goal/scope and waived methodology on initial and repeat reviews. Confirm which upstream artifacts, source snapshot, and `TC-*.md` files actually exist; do not claim waived artifacts were produced. It reads the actual source, then counts `TC-*.md` files against the target minimum, checks MESSAGE/branch/category/enhancement coverage, checks that every state-changing case carries a `## Post-test verification` section (against `_units.md`'s writes) and challenges every `verification: none`, and challenges the runnability triage.
 
 The reviewer does not need `_index.md` to exist yet — it works from `_findings.md`, `_units.md`, the source, and the `TC-*.md` frontmatter directly. Expect `PASS` or an itemised gap list. Fix EVERY gap (add/split cases, add missing verification, correct triage) and re-review until PASS. Do not proceed to Step 4 without a genuine PASS.
 
@@ -237,7 +241,9 @@ Call `abapfs_build_test_index` with:
 
 - `program` = `<PROGRAM>`
 - `sourceSnapshot` = the snapshot path recorded in `_findings.md`
-- `reviewerConfirmation` = the EXACT text `I called the reviewer agent and it passed all test cases` (valid only after a real PASS in Step 3 — the tool rejects the build otherwise).
+- `reviewerConfirmation` = the EXACT text `I called the reviewer agent and it passed all test cases` only after a real PASS in Step 3.
+
+If the user explicitly waived review or upstream artifacts for a scoped index, use `skipWorkflowValidation: true` plus `overrideReason` instead of a false attestation; omit `sourceSnapshot` when no snapshot exists. Report bypassed checks and do not label the plan fully reviewed.
 
 `_index.md` is a mechanical projection of every `TC-*.md` frontmatter — never hand-edit its tables. The tool also writes the bordered `_index.docx`. It records `analyzedOn`/`sourceSnapshot` itself; never edit those.
 
@@ -263,7 +269,7 @@ Ask which cases to prioritise. Then make disk state sufficient for a fresh `defi
 - Every `TC-XXX.md` exists with a correct `dataRequired` value; `_index.md`/`_index.docx` are current.
 - Your final response names `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, approved/prioritised TC-IDs, and every `dataRequired: yes` case still awaiting its `.data.md`.
 
-**Your final message MUST tell the user the exact next step: "Next: Phase 4 — start a new chat, load the `define-data` skill, and say: Define the data specs for `<PROGRAM>` using the approved cases on disk."** Naming the skill matters — without it the next chat tends to skip loading `define-data` and improvise.
+If inline values or no data preparation suffice for the user's scope, skip Phases 4–5 and hand off only the requested next work. **For the default reusable-data handoff, your final message MUST tell the user the exact next step: "Next: Phase 4 — start a new chat, load the `define-data` skill, and say: Define the data specs for `<PROGRAM>` using the approved cases on disk."** Naming the skill matters — without it the next chat tends to skip loading `define-data` and improvise.
 
 > **Say after the handoff is complete:** "Step 5 completed. Evidence: the reviewed index, discoveries, and data-pending cases were handed off. Phase 3 completed. Next phase: Phase 4 — in a new chat, load the `define-data` skill and follow it."
 
@@ -277,8 +283,8 @@ Ask which cases to prioritise. Then make disk state sufficient for a fresh `defi
 - ❌ **Hardcoding a value you assume is absent** for a "not found" case — set `dataRequired: yes` and prove absence via an `## Absence preconditions` SQL that Phase 5 checks.
 - ❌ **A runnable, state-changing case with no `## Post-test verification` (or `verification: none`)** — a green UI is not proof the object did its job. Only pure error/abort cases that persist nothing may be `none`.
 - ❌ **Defaulting a hard-to-check effect to no verification instead of marking it `manual`.** An AL11 file or SXMB_MONI payload the model can't query is still verified — by the user; record it as a `manual` check with the tool, don't drop it.
-- ❌ Skipping the reviewer, or passing `reviewerConfirmation` without a real PASS.
+- Skipping the reviewer in the full workflow, or ever passing `reviewerConfirmation` without a real PASS.
 - ❌ Computing a low minimum then meeting it; silently deleting cases you can't run today.
-- ❌ Hardcoding a specific material/plant/order in the `.md` — use `<data-key: ...>` placeholders resolved in Phases 4–5.
+- Baking landscape values into reusable cases — default to `<data-key: ...>` placeholders resolved in Phases 4–5; explicit scoped inline specs may use supplied or verified values with their system dependency stated.
 - ❌ A state table that lists only the fields the case touches — it must cover ALL controls from `_screens.md`.
 - ❌ Authoring `.data.md` files here — that is Phase 4.

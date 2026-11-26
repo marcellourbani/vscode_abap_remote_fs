@@ -33,6 +33,8 @@ export type CaseDataStatus =
 export type CheckFixturesResult = {
   total: number
   passed: number
+  /** Requested IDs without a managed .data.md sidecar; inline values were NOT validated. */
+  skippedUnmanaged: string[]
   cached: string[]
   noCacheNeeded: string[]
   envPinned: string[]
@@ -135,8 +137,18 @@ async function dataJsonExists(
 export async function checkTestData(
   testFolder: string,
   program: string,
-  system: string
+  system: string,
+  tcIds?: string[]
 ): Promise<CheckFixturesResult> {
+  if (
+    tcIds !== undefined &&
+    (!Array.isArray(tcIds) ||
+      tcIds.length === 0 ||
+      tcIds.some(id => typeof id !== "string" || !/^TC-\d{3}$/.test(id)))
+  ) {
+    throw new Error("tcIds must be a non-empty list of test-case IDs in TC-001 format.")
+  }
+  const selectedIds = tcIds === undefined ? undefined : new Set(tcIds)
   const previousRoot = process.env.SAP_TESTING_ROOT
   const previousSystem = process.env.SAP_SYSTEM
   process.env.SAP_TESTING_ROOT = testFolder
@@ -147,14 +159,19 @@ export async function checkTestData(
     let entries: string[]
     try {
       entries = await fs.readdir(testCasesDir)
-    } catch {
-      throw new Error(`No such directory: ${testCasesDir}`)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+      entries = []
     }
 
-    const tcIds = entries
+    const managedIds = entries
       .filter(e => e.endsWith(".data.md"))
       .map(e => e.replace(/\.data\.md$/, ""))
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    // Select BEFORE reading requirements or resolving anything: unrelated sidecars must
+    // never generate fixtures or report missing caches during a scoped check.
+    const scopedIds = managedIds.filter(id => !selectedIds || selectedIds.has(id))
+    const skippedUnmanaged = [...(selectedIds ?? [])].filter(id => !managedIds.includes(id))
 
     const failures: Array<{ tcId: string; message: string }> = []
     const cached: string[] = []
@@ -165,7 +182,7 @@ export async function checkTestData(
     const shadowWarnings: Array<{ tcId: string; message: string }> = []
     let passed = 0
 
-    for (const tcId of tcIds) {
+    for (const tcId of scopedIds) {
       const dataFile = path.join(testCasesDir, `${tcId}.data.md`)
       const requires = await readRequires(dataFile)
       const needsCache = needsPreparedCache(requires)
@@ -234,8 +251,9 @@ export async function checkTestData(
     }
 
     return {
-      total: tcIds.length,
+      total: scopedIds.length,
       passed,
+      skippedUnmanaged,
       cached,
       noCacheNeeded,
       envPinned,

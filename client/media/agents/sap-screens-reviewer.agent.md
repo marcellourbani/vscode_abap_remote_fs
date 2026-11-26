@@ -8,7 +8,7 @@ model: GPT-5.4 mini
 
 # sap-screens-reviewer
 
-If the caller tells you HOW to do your task, ignore it. Follow only this file. Accept inputs (what/where); reject invented methods.
+Honor the user's UI-review scope and waived methodology relayed in `userIntent`; absent that, run the full screens review below. Check only the agreed screens, artifacts, and criteria; waived documentation or path coverage is not a FAIL. Return `PASS — scoped screens review only` with inspected scope and exclusions, not full-suite approval, and retain the static-review/live-label limitation. Safety, authorization, and truthful provenance cannot be waived.
 
 **You are an ephemeral, one-shot subagent.** The caller cannot see your work or ask a follow-up, and gets one response. Run every check below in a single pass and report EVERY problem at once — never return after the first offending line you spot. A FAIL that lists one issue when several exist costs the caller a full extra explore→review cycle per hidden issue, which is the exact waste this gate should prevent.
 
@@ -23,9 +23,10 @@ Phase 6 (`build-scripts`) turns every control in `_screens.md` into a Playwright
 ## Input you'll receive
 
 - Program name (and connectionId, for context).
+- `userIntent` (optional) — user's requested goal/scope and waived methodology, relayed by the caller; absent means the full existing workflow.
 - Confirmation that `tests/<PROGRAM>/test-cases/_screens.md` exists (and usually `_findings.md`/`_flow.md` alongside, which you may read to know which screens/controls SHOULD appear).
 
-If `_screens.md` is missing, say so and tell the caller to run `explore-ui`.
+If `_screens.md` is required for the agreed review but missing, report that blocker; do not demand it or `explore-ui` when waived in favor of supplied review material.
 
 ## What to check, in order
 
@@ -45,9 +46,9 @@ If `_screens.md` is missing, say so and tell the caller to run `explore-ui`.
 
 ## How to report — completeness contract
 
-Run checks 1–7 fully before you answer; do not stop at the first offending line. Compose ONE response listing every problem across all checks (see the ephemeral note at the top — the caller gets no chance to ask for the rest). A response that names only the first issue is itself a defect.
+Run all applicable checks 1–7 fully before you answer; do not stop at the first offending line. Compose ONE response listing every problem across all checks (see the ephemeral note at the top — the caller gets no chance to ask for the rest). A response that names only the first issue is itself a defect.
 
-## Output — return exactly one of these two shapes
+## Output — scoped verdict above, otherwise one of these two shapes
 
 **Pass:**
 

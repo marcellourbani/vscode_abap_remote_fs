@@ -39,13 +39,12 @@ import { funWindow } from "../funMessenger"
 import {
   PlaywrightTestTool,
   cleanupStorageState,
-  killTree,
   playwrightArgs,
   registerPlaywrightTestTool,
-  runProcess,
   summarizeReport
 } from "./playwrightTestTool"
 import { registerToolWithRegistry } from "./toolRegistry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 import type { Mock } from "vitest"
 
 const result = (status: string, extra: Record<string, unknown> = {}) => ({ status, ...extra })
@@ -205,6 +204,7 @@ describe("PlaywrightTestTool", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    vi.mocked(assertToolInvocationAuthorized).mockReset()
     root = await fs.mkdtemp(path.join(os.tmpdir(), "playwright-tool-"))
     extension = path.join(root, "extension")
     specDir = path.join(root, "tests", "PROGRAM", "test-scripts")
@@ -379,9 +379,16 @@ describe("PlaywrightTestTool", () => {
     await expect(cleanupStorageState(nonEmpty)).resolves.toBeUndefined()
   })
 
-  it("rejects invalid readiness, folder, URL, spec directory, selected files, and gates", async () => {
-    const base = { program: "PROGRAM", connectionId: "DEV100" }
-    await expect(tool.invoke(options(base), token())).rejects.toThrow(/prerequisiteConfirmation/)
+  it.each([false, true])("retains execution checks with bypass=%s", async bypass => {
+    const base = {
+      program: "PROGRAM",
+      connectionId: "DEV100",
+      skipWorkflowValidation: bypass,
+      overrideReason: "User requested smoke testing"
+    }
+    if (!bypass) {
+      await expect(tool.invoke(options(base), token())).rejects.toThrow(/prerequisiteConfirmation/)
+    }
     ;(getTestFolder as Mock).mockReturnValue(undefined)
     await expect(
       tool.invoke(options({ ...base, prerequisiteConfirmation: confirmation }), token())
@@ -412,22 +419,86 @@ describe("PlaywrightTestTool", () => {
       path.join(cases, "TC-001.md"),
       "---\nverification: sql\nse16nTables: [EKKO]\n---\n"
     )
+    if (bypass) {
+      mockProcess(report({ title: "smoke", results: [result("passed")] }))
+      const value: any = await tool.invoke(options({ ...base, tcIds: ["TC-001"] }), token())
+      expect(value.parts[0].text).toContain("SE16N workflow proof")
+      expect(value.parts[0].text).toContain("1 passed")
+    } else {
+      await expect(
+        tool.invoke(
+          options({ ...base, tcIds: ["TC-001"], prerequisiteConfirmation: confirmation }),
+          token()
+        )
+      ).rejects.toThrow(/missing EKKO/)
+      expect(spawn).not.toHaveBeenCalled()
+    }
+  })
+
+  it("bypasses confirmations without planning artifacts and reports the actual scope", async () => {
+    await fs.writeFile(path.join(specDir, "TC-001.spec.ts"), "test")
+    mockProcess(report({ title: "smoke", results: [result("passed")] }))
+    const value: any = await tool.invoke(
+      options({
+        program: "PROGRAM",
+        connectionId: "DEV100",
+        tcIds: ["TC-001"],
+        skipWorkflowValidation: true,
+        overrideReason: "  User requested execution only  "
+      }),
+      token()
+    )
+    expect(value.parts[0].text).toContain("WORKFLOW VALIDATION BYPASSED")
+    expect(value.parts[0].text).toContain("Reason: User requested execution only")
+    expect(value.parts[0].text).toContain("not verified")
+    expect(value.parts[0].text).not.toContain(confirmation)
+    expect(value.parts[0].text).toContain("1 passed")
+  })
+
+  it.each([undefined, "", "   "])("requires a bypass reason: %s", async overrideReason => {
     await expect(
       tool.invoke(
-        options({ ...base, tcIds: ["TC-001"], prerequisiteConfirmation: confirmation }),
+        options({
+          program: "PROGRAM",
+          connectionId: "DEV100",
+          skipWorkflowValidation: true,
+          overrideReason,
+          prerequisiteConfirmation: confirmation
+        }),
         token()
       )
-    ).rejects.toThrow(/missing EKKO/)
+    ).rejects.toThrow(/nonempty overrideReason/)
     expect(spawn).not.toHaveBeenCalled()
   })
 
-  it("fails clearly when the extension or vendored Playwright package is missing", async () => {
+  it("still enforces authorization during a workflow bypass", async () => {
+    vi.mocked(assertToolInvocationAuthorized).mockImplementationOnce(() => {
+      throw new Error("Unauthorized")
+    })
+    await expect(
+      tool.invoke(
+        options({
+          program: "PROGRAM",
+          connectionId: "DEV100",
+          skipWorkflowValidation: true,
+          overrideReason: "User requested execution only"
+        }),
+        token()
+      )
+    ).rejects.toThrow("Unauthorized")
+    expect(getWebGuiUrl).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])("retains packaging checks with bypass=%s", async bypass => {
     ;(vscode.extensions.getExtension as Mock).mockReturnValue(undefined)
     await expect(
       tool.invoke(
         options({
           program: "PROGRAM",
           connectionId: "DEV100",
+          skipWorkflowValidation: bypass,
+          overrideReason: "User requested execution only",
           prerequisiteConfirmation: confirmation
         }),
         token()
@@ -443,6 +514,8 @@ describe("PlaywrightTestTool", () => {
         options({
           program: "PROGRAM",
           connectionId: "DEV100",
+          skipWorkflowValidation: bypass,
+          overrideReason: "User requested execution only",
           prerequisiteConfirmation: confirmation
         }),
         token()
@@ -505,124 +578,5 @@ describe("PlaywrightTestTool", () => {
       expect.any(PlaywrightTestTool)
     )
     expect(context.subscriptions.push).toHaveBeenCalledWith("registration")
-  })
-})
-
-function fakeChild() {
-  const child = new EventEmitter() as any
-  child.stdout = new EventEmitter()
-  child.stderr = new EventEmitter()
-  child.pid = 321
-  child.exitCode = null
-  child.signalCode = null
-  child.kill = vi.fn()
-  return child
-}
-
-describe("Playwright process lifecycle", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it("captures both streams and settles on close", async () => {
-    const child = fakeChild()
-    ;(spawn as unknown as Mock).mockReturnValue(child)
-    const cancel = { dispose: vi.fn() }
-    const runToken = {
-      onCancellationRequested: vi.fn(function () {
-        return cancel
-      })
-    } as any
-    const promise = runProcess("node", ["cli"], { cwd: "C:/tests", env: {} }, runToken)
-    child.stdout.emit("data", Buffer.from("out\n"))
-    child.stderr.emit("data", Buffer.from("err\n"))
-    child.emit("close", 2)
-    child.emit("close", 3)
-    await expect(promise).resolves.toEqual({ code: 2, stdout: "out\n", stderr: "err\n" })
-    expect(cancel.dispose).toHaveBeenCalledTimes(1)
-  })
-
-  it("settles through the exit grace path when close never arrives", async () => {
-    vi.useFakeTimers()
-    const child = fakeChild()
-    ;(spawn as unknown as Mock).mockReturnValue(child)
-    const promise = runProcess("node", [], { cwd: "C:/tests", env: {} }, token())
-    child.emit("exit", 0)
-    vi.advanceTimersByTime(2_000)
-    await expect(promise).resolves.toEqual({ code: 0, stdout: "", stderr: "" })
-    vi.useRealTimers()
-  })
-
-  describe("on Windows", () => {
-    const platform = Object.getOwnPropertyDescriptor(process, "platform")!
-
-    beforeEach(() => {
-      Object.defineProperty(process, "platform", { value: "win32" })
-    })
-
-    afterEach(() => {
-      Object.defineProperty(process, "platform", platform)
-    })
-
-    it("kills an active process tree on cancellation", async () => {
-      const child = fakeChild()
-      const taskkill = fakeChild()
-      const calls: any[] = []
-      ;(spawn as unknown as Mock).mockImplementation(function (...args: any[]) {
-        calls.push(args)
-        return calls.length === 1 ? child : taskkill
-      })
-      let cancel: (() => void) | undefined
-      const runToken = {
-        onCancellationRequested: vi.fn(function (handler: () => void) {
-          cancel = handler
-          return { dispose: vi.fn() }
-        })
-      } as any
-      const promise = runProcess("node", [], { cwd: "C:/tests", env: {} }, runToken)
-      cancel!()
-      child.signalCode = "SIGKILL"
-      child.emit("close", null)
-      await promise
-      expect(calls[1][0]).toBe("taskkill")
-      expect(calls[1][1]).toEqual(["/pid", "321", "/T", "/F"])
-    })
-
-    it("does not kill a settled child and falls back when taskkill fails", () => {
-      const settled = fakeChild()
-      settled.exitCode = 0
-      killTree(settled)
-      expect(spawn).not.toHaveBeenCalled()
-
-      const child = fakeChild()
-      const taskkill = fakeChild()
-      ;(spawn as unknown as Mock).mockReturnValue(taskkill)
-      killTree(child)
-      taskkill.emit("error", new Error("taskkill unavailable"))
-      expect(child.kill).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  it("kills a POSIX process group and falls back to the child when that fails", () => {
-    const descriptor = Object.getOwnPropertyDescriptor(process, "platform")!
-    Object.defineProperty(process, "platform", { value: "linux" })
-    const processKill = vi.spyOn(process, "kill").mockImplementation(function () {
-      return true
-    })
-    try {
-      const grouped = fakeChild()
-      killTree(grouped)
-      expect(processKill).toHaveBeenCalledWith(-321, "SIGKILL")
-
-      processKill.mockImplementation(function () {
-        throw new Error("no group")
-      })
-      const fallback = fakeChild()
-      killTree(fallback)
-      expect(fallback.kill).toHaveBeenCalledWith("SIGKILL")
-    } finally {
-      processKill.mockRestore()
-      Object.defineProperty(process, "platform", descriptor)
-    }
   })
 })

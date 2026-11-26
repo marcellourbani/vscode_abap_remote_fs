@@ -1284,7 +1284,7 @@
         "name": "abapfs_build_test_index",
         "canRequestPreApproval": true,
         "displayName": "Build Test Case Index",
-        "modelDescription": "Validate every TC-NNN.md and mechanically rebuild tests/<PROGRAM>/test-cases/_index.md and _index.docx, including title, description, category, runnability, and dataRequired. Requires the analysis sourceSnapshot path, records it, and sets analyzedOn automatically. Rejects malformed files, invalid categories, missing required fields, and dataRequired: no cases that nonetheless have a .data.md. A missing .data.md for a dataRequired: yes case is only a warning (those are authored later). This tool is GATED: it refuses to run unless you pass the mandatory reviewerConfirmation field certifying the sap-test-plan-reviewer agent already returned PASS.",
+        "modelDescription": "Validate every TC-NNN.md and mechanically rebuild tests/<PROGRAM>/test-cases/_index.md and _index.docx, including title, description, category, runnability, and dataRequired. By default requires a valid analysis sourceSnapshot, records it, sets analyzedOn, and requires se16nTables for SQL/mixed cases. Rejects malformed files, invalid categories, missing required fields, and dataRequired: no cases that nonetheless have a .data.md. A missing .data.md for a dataRequired: yes case is only a warning (those are authored later). By default, reviewerConfirmation must certify a genuine sap-test-plan-reviewer PASS. If the user explicitly overrides that workflow requirement, pass skipWorkflowValidation: true with overrideReason instead; never invent a review certification. The override skips reviewer, source-snapshot, and SE16N workflow gates; case-format/data-dependency validation remains. Bypassed output is labelled and does not certify a new analysis.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_build_test_index",
         "icon": "$(list-tree)",
@@ -1298,17 +1298,25 @@
             },
             "sourceSnapshot": {
               "type": "string",
-              "description": "Analysis snapshot folder under tests/<PROGRAM>/sources/, absolute or relative to the configured test folder"
+              "description": "Required by default: analysis snapshot folder under tests/<PROGRAM>/sources/, absolute or relative to the test folder. Optional with skipWorkflowValidation; then provenance is unverified."
             },
             "reviewerConfirmation": {
               "type": "string",
-              "description": "MANDATORY. Certifies that the sap-test-plan-reviewer agent reviewed this plan and returned PASS. Pass this EXACT text: 'I called the reviewer agent and it passed all test cases'. Only valid after a genuine PASS; the index build is rejected otherwise."
+              "description": "Required unless skipWorkflowValidation is true. Certifies a genuine sap-test-plan-reviewer PASS. Exact text: 'I called the reviewer agent and it passed all test cases'. Never certify a skipped review."
+            },
+            "skipWorkflowValidation": {
+              "type": "boolean",
+              "default": false,
+              "description": "Skip reviewer confirmation, source-snapshot validation, and SE16N table-declaration workflow gates for explicit user-directed scope. Requires overrideReason. Does not skip case-format/data-dependency validation, authorization, or configured folder requirements."
+            },
+            "overrideReason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "User-requested scope or workflow exception authorizing skipWorkflowValidation. Required when the flag is true; never invent user authorization."
             }
           },
           "required": [
-            "program",
-            "sourceSnapshot",
-            "reviewerConfirmation"
+            "program"
           ]
         },
         "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
@@ -1363,7 +1371,7 @@
         "name": "abapfs_verify_test_data_usage",
         "canRequestPreApproval": true,
         "displayName": "Verify Test Data Usage",
-        "modelDescription": "Cross-check a Playwright spec against its case and .data.md: data.<key> declarations must match, and every table declared in se16nTables must have a matching sap.se16n() call. Run this right after writing or editing a spec.",
+        "modelDescription": "Cross-check a Playwright spec against its case and .data.md: resolver-backed data.<key> declarations must match. Inline specs without resolver use need no sidecar; their values are not validated. By default every table declared in se16nTables must have a matching sap.se16n() call. Explicit user-directed scope may bypass only that workflow proof via skipWorkflowValidation and overrideReason; missing resolver dependencies still fail.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_verify_test_data_usage",
         "icon": "$(check)",
@@ -1378,6 +1386,16 @@
             "tcId": {
               "type": "string",
               "description": "Test case ID, e.g. TC-001"
+            },
+            "skipWorkflowValidation": {
+              "type": "boolean",
+              "default": false,
+              "description": "Skip SE16N workflow proof only for user-directed scope; requires overrideReason. Data-key and resolver dependency checks remain."
+            },
+            "overrideReason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "User-requested scope justifying the workflow exception. Required when skipWorkflowValidation is true."
             }
           },
           "required": [
@@ -1391,7 +1409,7 @@
         "name": "abapfs_check_test_data",
         "canRequestPreApproval": true,
         "displayName": "Check Test Data Readiness",
-        "modelDescription": "Pre-flight check: for every TC-*.data.md under a program, resolve its test data against a system using the exact same resolution logic the Playwright specs use at run time. Reports every case with missing cache keys, unresolved seeded requirements, or broken generated fixtures - before spending time on a real test run. Run this before declaring a system 'ready to test'.",
+        "modelDescription": "Resolve managed test-data sidecars against a system using runtime resolution. Omit tcIds to scan all .data.md files, or supply tcIds to check only selected cases so unrelated failures do not block scoped work. Selected cases without sidecars are reported as unmanaged/skipped, not passed; inline values are not validated. No sidecar directory means zero managed cases. Real resolver/cache/fixture failures are never bypassed.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_check_test_data",
         "icon": "$(verified)",
@@ -1406,6 +1424,15 @@
             "connectionId": {
               "type": "string",
               "description": "SAP connection ID (e.g., 'dev100'). Also used as the results-folder name."
+            },
+            "tcIds": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "pattern": "^TC-[0-9]{3}$"
+              },
+              "description": "Optional exact case selection; omit to scan all managed sidecars. IDs without sidecars are skipped, not validated."
             }
           },
           "required": [
@@ -1447,7 +1474,7 @@
         "name": "abapfs_run_playwright_tests",
         "canRequestPreApproval": true,
         "displayName": "Run Playwright Test",
-        "modelDescription": "Run exact tcIds or every Playwright spec in one program using ABAP FS's bundled tool; NEVER run terminal Playwright. Use runInParallel only after reading case/data/automation notes and confirming cases are independent. Batch producers before consumers and shared-state/order-dependent cases sequentially; when uncertain, stay sequential. Parallel mode uses up to maxTasks isolated workers after one authentication setup. maxFailures defaults 3, caps 10. GATED by readiness and SE16N coverage.",
+        "modelDescription": "Run exact tcIds or every Playwright spec in one program using ABAP FS's bundled tool; NEVER run terminal Playwright. Use runInParallel only after reading case/data/automation notes and confirming cases are independent. Batch producers before consumers and shared-state/order-dependent cases sequentially; when uncertain, stay sequential. Parallel mode uses up to maxTasks isolated workers after one authentication setup. maxFailures defaults 3, caps 10. By default, requires prerequisiteConfirmation and SE16N coverage. For an explicit user-directed workflow override such as an execution-only smoke check, use skipWorkflowValidation: true with overrideReason; this waives the readiness certification and SE16N gate, so planning/case/index/data artifacts are not required by this tool. An executable spec under test-scripts and any inputs it actually consumes are still required. Never claim skipped checks passed.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_run_playwright_tests",
         "icon": "$(play)",
@@ -1496,13 +1523,22 @@
             },
             "prerequisiteConfirmation": {
               "type": "string",
-              "description": "MANDATORY. Certifies you completed the run-scripts readiness gate (case/spec/_screens.md/_index.md artifacts exist AND abapfs_check_test_data reports the selected cases resolvable on this connection). Pass this EXACT text: 'I verified all upstream phase gates and test data readiness for this program'. Only valid once that gate is genuinely complete; the run is rejected otherwise."
+              "description": "Required unless skipWorkflowValidation is true. Certifies the run-scripts readiness gate genuinely completed. Exact text: 'I verified all upstream phase gates and test data readiness for this program'. Never certify intentionally skipped work."
+            },
+            "skipWorkflowValidation": {
+              "type": "boolean",
+              "default": false,
+              "description": "For an explicit user-directed scope/workflow override, skip prerequisite certification and SE16N workflow proof only. Requires overrideReason. Authorization, target configuration, executable specs, and execution checks remain enforced."
+            },
+            "overrideReason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "User-requested scope or workflow exception, e.g. execution-only smoke testing without suite planning. Required when skipWorkflowValidation is true; never invent user authorization."
             }
           },
           "required": [
             "program",
-            "connectionId",
-            "prerequisiteConfirmation"
+            "connectionId"
           ]
         },
         "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"

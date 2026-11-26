@@ -37,6 +37,7 @@ import {
   normalizeTcIds
 } from "../testing/playwright-limits"
 import { findSqlVerificationGateErrors } from "../testing/verification-gate"
+import { type TestingWorkflowOverride, workflowBypassNotice } from "./testingWorkflowOverride"
 
 /** Time a startup phase into the debug channel, so a slow run points at a specific step. */
 async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {
@@ -49,7 +50,7 @@ async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {
   }
 }
 
-export interface IPlaywrightTestParameters {
+export interface IPlaywrightTestParameters extends TestingWorkflowOverride {
   program: string
   tcIds?: string[]
   connectionId: string
@@ -57,11 +58,13 @@ export interface IPlaywrightTestParameters {
   maxFailures?: number
   runInParallel?: boolean
   maxTasks?: number
-  prerequisiteConfirmation: string
+  prerequisiteConfirmation?: string
 }
 
 /**
- * The exact sentence the model must pass before a run is allowed. Same behavioral-gate
+ * The exact sentence required by default before a run. Explicit workflow overrides skip
+ * this certification rather than asking the model to claim checks it did not perform.
+ * Same behavioral-gate
  * technique as abapfs_build_test_index's reviewerConfirmation: the tool cannot itself re-derive
  * every upstream phase gate cheaply, but requiring the model to type this certification
  * forces it to consciously complete the run-scripts Step 0 gate (artifacts present, data
@@ -263,6 +266,10 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     assertToolInvocationAuthorized(options)
     logTelemetry("tool_playwright_test_called")
 
+    const bypassNotice = workflowBypassNotice(
+      options.input,
+      "prerequisite confirmation and SE16N workflow proof"
+    )
     const invokeStarted = Date.now()
     const { program, headed } = options.input
     const tcIds = normalizeTcIds(options.input.tcIds)
@@ -275,8 +282,9 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     )
 
     if (
+      !bypassNotice &&
       normalizeConfirmation(options.input.prerequisiteConfirmation) !==
-      normalizeConfirmation(REQUIRED_PREREQUISITE_CONFIRMATION)
+        normalizeConfirmation(REQUIRED_PREREQUISITE_CONFIRMATION)
     ) {
       throw new Error(
         "abapfs_run_playwright_tests is blocked: the mandatory 'prerequisiteConfirmation' field was " +
@@ -321,12 +329,14 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
       }
     }
 
-    const verificationErrors = await findSqlVerificationGateErrors(testFolder, program, tcIds)
-    if (verificationErrors.length) {
-      throw new Error(
-        `abapfs_run_playwright_tests blocked: SQL/mixed post-validation cases require SE16N screenshot ` +
-          `proof in the matching spec:\n- ${verificationErrors.join("\n- ")}`
-      )
+    if (!bypassNotice) {
+      const verificationErrors = await findSqlVerificationGateErrors(testFolder, program, tcIds)
+      if (verificationErrors.length) {
+        throw new Error(
+          `abapfs_run_playwright_tests blocked: SQL/mixed post-validation cases require SE16N screenshot ` +
+            `proof in the matching spec:\n- ${verificationErrors.join("\n- ")}`
+        )
+      }
     }
 
     const extPath = extensionPath()
@@ -391,7 +401,8 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     log.debug(`[playwright] summarized report in ${Date.now() - summaryStarted}ms`)
     log.debug(`[playwright] returning to model after ${Date.now() - invokeStarted}ms total`)
 
-    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(summary)])
+    const output = bypassNotice ? `${bypassNotice}\n\n${summary}` : summary
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(output)])
   }
 }
 
