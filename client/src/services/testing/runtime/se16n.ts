@@ -47,13 +47,13 @@
  *  - A field-level validation failure (e.g. a date in the wrong user format) makes SAP mark
  *    every other input on the screen `readonly` until it is fixed. `setCell` detects that
  *    before attempting to edit the next field and surfaces SAP's status-bar message.
- *  - Toolbar buttons collapse into the `>>` overflow and then refuse to click even with
- *    `force: true`. We press the keyboard shortcut parsed from the button's own title.
+ *  - Toolbar buttons collapse into the `>>` overflow. Known SAP function keys are mapped
+ *    directly and do not require locating the button or opening the overflow menu.
  *  - `wnd[1]/tbar[0]/btn[21]` in the multiple-selection popup is titled "Separator for
  *    From-To" but opened a File Upload dialog. Toolbar buttons are resolved by title, and
  *    that one is never used.
  */
-import type { Page, Frame, Locator } from "@playwright/test"
+import type { Page, Frame } from "@playwright/test"
 import type { SapSession } from "./sap-session"
 
 /** ABAP range sign: I = include (select), E = exclude (do not select). */
@@ -147,6 +147,19 @@ const GET_FIELD = "ctxtGD_ADD_COLUMN"
 const HITS_FIELD = "txtGD-NUMBER"
 const RUNTIME_FIELD = "txtGD-RUNTIME"
 
+const MAIN_TOOLBAR_SHORTCUTS: Record<string, string> = {
+  "Delete Sorting of Selection Fields": "Control+Shift+F7",
+  "Delete All Entries": "Control+F1",
+  "Deselect All": "Shift+F6",
+  "Select All": "Shift+F1",
+  Online: "F8"
+}
+const MULTI_TOOLBAR_SHORTCUTS: Record<string, string> = {
+  "All Entries": "Control+F10",
+  "Transfer Data": "F8",
+  "Upload from Clipboard": "Shift+F12"
+}
+
 /** Icon shown by a row's option button when no option was ever chosen. */
 const OPTION_UNSET_ICON = "s_b_selc"
 /** "More" button icon once the multiple-selection popup holds values. */
@@ -193,7 +206,6 @@ const CLIPBOARD_THRESHOLD = 5
  * cases) is the real backstop if SAP is genuinely stuck rather than just slow.
  */
 const EXECUTE_MAX_WAIT_MS = 10 * 60 * 1000
-const EXECUTE_POLL_INTERVAL_MS = 250
 
 type RowState = {
   field: string
@@ -249,6 +261,10 @@ class Se16nDriver {
     // leave SAP on something other than a fresh selection screen — this is what turned
     // into a silent hang instead of a clear error. Confirm the table-name input actually
     // exists before touching anything.
+    await this.loc(`[lsdata*="${TABLE_FIELD}"]`)
+      .first()
+      .waitFor({ state: "attached", timeout: 60_000 })
+      .catch(() => {})
     const onSelectionScreen = await this.loc(`input[lsdata*="${TABLE_FIELD}"]`)
       .count()
       .catch(() => 0)
@@ -260,7 +276,11 @@ class Se16nDriver {
       )
     }
 
-    await this.openTable()
+    await this.loc(`[lsdata*="${FIELDNAME(1)}"]`)
+      .last()
+      .waitFor({ state: "attached", timeout: 60_000 })
+      .catch(() => {})
+
     await this.reset()
     await this.placeFields()
     await this.setOutputColumns()
@@ -273,7 +293,6 @@ class Se16nDriver {
     if (this.spec.maxHits !== undefined) {
       await this.setHeaderField(MAXHITS_FIELD, String(this.spec.maxHits))
     }
-
     if (this.spec.evidence?.criteria !== false) {
       await this.sap.note(`SE16N ${table}: selection criteria`)
     }
@@ -291,7 +310,7 @@ class Se16nDriver {
     // message ("XYZ does not exist; check the name") and leaves the OLD table's field grid
     // in place underneath. The message check is the one that actually catches this.
     const shown = await this.headerValue(TABLE_FIELD)
-    const { isError, text: message } = await this.messageInfo()
+    const { isError, text: message } = await this.sap.statusMessage()
     if (shown.toUpperCase() !== this.spec.table.toUpperCase() || isError) {
       throw new Error(
         `se16n: table "${this.spec.table}" did not stick — SE16N shows "${shown}". ` +
@@ -302,6 +321,13 @@ class Se16nDriver {
     await this.assertNoStrayLayout()
     // The technical-name column is the safety anchor for every write below.
     const names = await this.readRows()
+    if (!Object.keys(names).length) {
+      throw new Error(
+        `se16n: table "${this.spec.table}" did not stick — no selection fields were loaded. ` +
+          `The table/view may not exist in this client, or the user may lack authorization.` +
+          (message ? ` SAP says: "${message}".` : "")
+      )
+    }
     if (!Object.values(names).some(r => r.field)) {
       throw new Error(
         `se16n: the "Technical Name" column is not rendered on the SE16N selection screen, ` +
@@ -328,7 +354,7 @@ class Se16nDriver {
       // field/criteria state (see TC-015a). Verify it stuck, the same way openTable() does
       // for the table name.
       const shown = (await this.headerValue(LAYOUT_FIELD)).trim()
-      const { isError, text: message } = await this.messageInfo()
+      const { isError, text: message } = await this.sap.statusMessage()
       if (shown.toUpperCase() !== this.spec.layout.toUpperCase() || isError) {
         throw new Error(
           `se16n: layout "${this.spec.layout}" did not stick for ${this.spec.table} — SE16N ` +
@@ -351,35 +377,30 @@ class Se16nDriver {
     )
   }
 
-  /**
-   * SE16N remembers field order, criteria and output ticks PER USER between runs — a
-   * previous run (or a human using the same account) leaks straight into this one. Order
-   * matters: undo the field sorting first, then clear values, then clear the output ticks.
-   */
+  /** Reload SE16N, change tables to reset user-specific selections, then deselect all fields. */
   private async reset(): Promise<void> {
+    await this.page.reload({ waitUntil: "commit" })
+    await this.sap.settle("reload SE16N before reset")
+    this.scope = await this.sap.contentScope()
+    await this.loc(`input[lsdata*="${TABLE_FIELD}"]`)
+      .first()
+      .waitFor({ state: "attached", timeout: 60_000 })
+      .catch(() => {})
+    if (
+      !(await this.loc(`input[lsdata*="${TABLE_FIELD}"]`)
+        .count()
+        .catch(() => 0))
+    ) {
+      throw new Error(
+        `se16n: reloading SE16N did not return to its table selection screen for ` +
+          `${this.spec.table}; the table-name input is not present.`
+      )
+    }
+    await this.setHeaderField(TABLE_FIELD, "")
+    await this.openTable()
     await this.pressToolbar("Delete Sorting of Selection Fields")
     await this.pressToolbar("Delete All Entries")
     await this.pressToolbar("Deselect All")
-
-    if (Object.values(await this.readRows()).some(row => row.marked)) {
-      await this.focusGrid()
-      await this.page.keyboard.press("Shift+F6")
-      await this.sap.settle("Deselect All")
-    }
-
-    await this.scrollToTop()
-    const rows = await this.readRows()
-    const dirty = Object.entries(rows).filter(
-      ([, r]) => r.low || r.high || r.marked || (r.optionIcon && r.optionIcon !== OPTION_UNSET_ICON)
-    )
-    if (dirty.length) {
-      throw new Error(
-        `se16n: reset did not clear the selection screen — rows still dirty: ` +
-          dirty.map(([i, r]) => `${r.field || `#${i}`}`).join(", ") +
-          `. Something is holding state (an open popup, or a SE16N variant loaded via the ` +
-          `Layout field). Close SE16N and retry.`
-      )
-    }
   }
 
   // ---------- phase 2: field placement ----------
@@ -403,16 +424,21 @@ class Se16nDriver {
   private async placeFields(): Promise<void> {
     const wanted = this.wantedFields()
     if (!wanted.length) return
-    for (const field of wanted) {
-      await this.scrollToTop() // Get Field only searches forward from the window top.
-      await this.setHeaderField(GET_FIELD, field)
+    const getFieldAvailable =
+      (await this.loc(`input[lsdata*="${GET_FIELD}"]`)
+        .count()
+        .catch(() => 0)) > 0
+    if (getFieldAvailable) {
+      for (const field of wanted) {
+        await this.scrollToTop() // Get Field only searches forward from the window top.
+        await this.setHeaderField(GET_FIELD, field)
+      }
     }
 
     // Get Field moves most requested fields into a top block, but valid fields can remain
-    // elsewhere (verified live: TC-002 left MATNR at absolute row 20 and GEWEI at row 34).
+    // elsewhere.
     // Scan the grid ONCE by name, stopping as soon as all requested fields are found.
-    // This is order-independent without the N full-grid searches that caused the earlier
-    // timeout regression; an invalid field costs one complete scan, not one per field.
+
     this.fieldRow = await this.scanFields(wanted)
     const missing = wanted.filter(f => !this.fieldRow.has(f))
     if (missing.length) {
@@ -789,6 +815,8 @@ class Se16nDriver {
     const cell = this.loc('td[id^="grid#"]').filter({
       hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`)
     })
+    // Inside the multi-selection popup the block layer is already up, so wait for the rows themselves.
+    for (let i = 0; i < 40 && !(await cell.count()); i++) await this.page.waitForTimeout(250)
     if (!(await cell.count())) {
       throw new Error(
         `se16n: option "${label}" is not offered by SE16N's option picker for ${field}. ` +
@@ -829,37 +857,34 @@ class Se16nDriver {
   // ---------- phase 5: execute + read result ----------
 
   private async execute(): Promise<Se16nResult> {
-    await this.pressToolbar("Online")
-    await this.sap.settle("execute SE16N")
-
-    // settle()'s DOM-quiet wait can elapse while SAP is still mid-flight: "Data Selection" is
-    // a transient progress-indicator pushed over an async channel (not a normal page load), so
-    // the DOM can go quiet with that text showing before the real terminal state (result screen,
-    // "No values found", or a genuine error) arrives. Poll for an actual terminal condition
-    // instead of trusting the very first post-settle read. A blank message is NOT treated as
-    // terminal by itself — it could just as easily mean "not finished yet" as "done with
-    // nothing to report", and wrongly trusting it risks reading zero/stale hits mid-flight.
-    let title = await this.page.title()
-    let message = (await this.messageInfo()).text
-    let onResult = /Display of Entries Found/i.test(title)
-    let sawProgress = /data selection/i.test(message)
-    let blankSince = 0
-    const expectedEmptyComplete = () =>
-      this.spec.expect?.empty === true &&
-      sawProgress &&
-      blankSince > 0 &&
-      Date.now() - blankSince >= 1_000
-    const isTerminal = () =>
-      onResult || /no values found|no data/i.test(message) || expectedEmptyComplete()
-    const deadline = Date.now() + EXECUTE_MAX_WAIT_MS
-    while (!isTerminal() && Date.now() < deadline) {
-      await this.page.waitForTimeout(EXECUTE_POLL_INTERVAL_MS)
-      title = await this.page.title()
-      message = (await this.messageInfo()).text
-      onResult = /Display of Entries Found/i.test(title)
-      if (/data selection/i.test(message)) sawProgress = true
-      blankSince = !message ? blankSince || Date.now() : 0
-    }
+    await this.pressToolbar("Online", 0, false)
+    const terminal = await this.scope
+      .waitForFunction(
+        () => {
+          const title = document.title
+          const bar = document.querySelector('[class*="lsMessageBar"]')
+          const lsdata = bar?.getAttribute("lsdata") ?? "{}"
+          let applicationText = ""
+          try {
+            applicationText = JSON.parse(lsdata)["11"]?.applicationText ?? ""
+          } catch {}
+          const message =
+            applicationText ||
+            document.querySelector(".lsMessageBar__text")?.textContent?.trim() ||
+            bar?.getAttribute("aria-label") ||
+            ""
+          return /Display of Entries Found/i.test(title) || /no values found|no data/i.test(message)
+            ? { title, message }
+            : null
+        },
+        undefined,
+        { timeout: EXECUTE_MAX_WAIT_MS, polling: "raf" }
+      )
+      .then(handle => handle.jsonValue())
+      .catch(() => null)
+    const title = terminal?.title ?? (await this.page.title())
+    const message = terminal?.message ?? (await this.sap.statusMessage()).text
+    const onResult = /Display of Entries Found/i.test(title)
 
     if (!onResult) {
       // SE16N stays on the selection screen for an empty result ("No values found") and
@@ -869,7 +894,7 @@ class Se16nDriver {
       // isError from messageInfo() is NOT a usable disqualifier here (unlike in openTable(),
       // where the header echoes back an invalid value regardless of validity) — the message
       // TEXT is the only reliable signal that this is a legitimate zero-row outcome.
-      if (!/no values found|no data/i.test(message) && !expectedEmptyComplete()) {
+      if (!/no values found|no data/i.test(message)) {
         throw new Error(
           `se16n: execution did not reach the result list for ${this.spec.table}. ` +
             `Screen title is still "${title}".${message ? ` SAP says: "${message}".` : ""}`
@@ -1070,10 +1095,17 @@ class Se16nDriver {
   private scrollPos(windowIndex = 0): Promise<{ top: number; total: number }> {
     return this.scope
       .evaluate((win: number) => {
-        const sb = document.querySelector(`[ct="SCB"][id^="M${win}:"][id$="_vscroll"]`)
+        // Some themes prefix the id with the window ("M0:...") and emit strict JSON; others use
+        // the bare table id and unquoted keys, so match by suffix and parse the keys by regex.
+        const all = Array.from(document.querySelectorAll('[ct="SCB"][id$="_vscroll"]'))
+        const prefixed = all.filter(e => e.id.startsWith(`M${win}:`))
+        const sb =
+          prefixed[0] ?? (win === 0 ? all[0] : all.length > 1 ? all[all.length - 1] : undefined)
         if (!sb) return { top: 1, total: 1 }
-        const d = JSON.parse(sb.getAttribute("lsdata") ?? "{}")
-        return { top: Number(d["0"] ?? 1), total: Number(d["10"] ?? 1) }
+        const raw = sb.getAttribute("lsdata") ?? ""
+        const key = (k: number) =>
+          raw.match(new RegExp(`[{,]\\s*["']?${k}["']?\\s*:\\s*(-?\\d+)`))?.[1]
+        return { top: Number(key(0) ?? 1), total: Number(key(10) ?? 1) }
       }, windowIndex)
       .catch(() => ({ top: 1, total: 1 }))
   }
@@ -1096,20 +1128,39 @@ class Se16nDriver {
    * included), not the field count — T001D advertised 21 rows for 5 fields.
    */
   private async pageDown(windowIndex = 0): Promise<boolean> {
-    const before = (await this.scrollPos(windowIndex)).top
-    if (windowIndex === 0) await this.focusGrid()
-    else await this.focusMultiGrid()
-    await this.page.keyboard.press("PageDown")
-    await this.sap.settle("page selection grid")
-    return (await this.scrollPos(windowIndex)).top !== before
+    const signature = async () => {
+      const top = (await this.scrollPos(windowIndex)).top
+      const first = windowIndex === 0 ? Object.values(await this.readRows())[0]?.field : ""
+      return `${top}|${first ?? ""}`
+    }
+    const before = await signature()
+    // Slow systems can drop or delay the key, so retry once before declaring the end of the grid.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (windowIndex === 0) await this.focusGrid()
+      else await this.focusMultiGrid()
+      await this.page.keyboard.press("PageDown")
+      await this.sap.settle("page selection grid")
+      for (let i = 0; i < 16; i++) {
+        if ((await signature()) !== before) return true
+        await this.page.waitForTimeout(250)
+      }
+    }
+    return false
   }
 
   /** Move the main selection grid up one row when PageDown skips over a boundary row. */
   private async lineUp(): Promise<boolean> {
     const before = (await this.scrollPos()).top
-    const button = this.loc(`[ct="SCB"][id^="M0:"][id$="_vscroll"] [id$="_vscroll-Prev"]`).last()
-    if (!(await button.count())) return false
-    await button.evaluate(element => (element as HTMLElement).click())
+    const clicked = await this.scope
+      .evaluate(() => {
+        const all = Array.from(document.querySelectorAll('[ct="SCB"][id$="_vscroll"]'))
+        const sb = all.find(e => e.id.startsWith("M0:")) ?? all[0]
+        const prev = sb?.querySelector('[id$="_vscroll-Prev"]') as HTMLElement | null
+        prev?.click()
+        return !!prev
+      })
+      .catch(() => false)
+    if (!clicked) return false
     await this.sap.settle("move selection grid up one row")
     return (await this.scrollPos()).top !== before
   }
@@ -1303,82 +1354,50 @@ class Se16nDriver {
    * Resolve accessible toolbar buttons first, then title/SID-backed toolbar controls, then
    * menu items in the More overflow. The presentation differs by WebGUI theme and release.
    */
-  private async pressToolbar(titlePrefix: string, windowIndex = 0): Promise<void> {
-    const escapedTitlePrefix = titlePrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-    const accessibleButton = this.scope
-      .getByRole("button", { name: new RegExp(`^${escapedTitlePrefix}`, "i") })
-      .first()
-    if (await accessibleButton.count().catch(() => 0)) {
-      await accessibleButton.click({ timeout: 3_000 })
-      await this.sap.settle(titlePrefix)
+  private async pressToolbar(
+    titlePrefix: string,
+    windowIndex = 0,
+    waitUntilSettled = true
+  ): Promise<void> {
+    const shortcut =
+      windowIndex === 0 ? MAIN_TOOLBAR_SHORTCUTS[titlePrefix] : MULTI_TOOLBAR_SHORTCUTS[titlePrefix]
+    if (shortcut) {
+      await this.page.keyboard.press(shortcut)
+      if (waitUntilSettled) await this.sap.settle(titlePrefix)
       return
     }
 
-    const title = await this.scope.evaluate(
-      ({ prefix, win }: { prefix: string; win: number }) => {
-        for (const el of Array.from(document.querySelectorAll('[role="button"][title]'))) {
-          const sid = ((el.getAttribute("lsdata") ?? "")
-            .replace(/\\/g, "")
-            .match(/"SID":"(wnd\[\d+\][^"]*)"/) ?? [])[1]
-          if (!sid || !sid.startsWith(`wnd[${win}]/tbar`)) continue
-          const t = (el as HTMLElement).title
-          if (t.toLowerCase().startsWith(prefix.toLowerCase())) return t
-        }
-        return null
-      },
-      { prefix: titlePrefix, win: windowIndex }
-    )
-    if (!title) {
-      const menuPrefixes =
-        titlePrefix === "Delete All Entries" ? [titlePrefix, "All Entries"] : [titlePrefix]
-      const locateMenuItem = async (): Promise<Locator | undefined> => {
-        for (const prefix of menuPrefixes) {
-          const item = this.scope.getByRole("menuitem", { name: prefix }).first()
-          if (await item.count().catch(() => 0)) return item
-        }
-        return undefined
-      }
-
-      let menuItem = await locateMenuItem()
-      if (!menuItem) {
-        const more = this.scope.getByRole("button", { name: /^More$/i }).last()
-        if (await more.count().catch(() => 0)) {
-          await more.click({ timeout: 3_000 }).catch(() => {})
-          await this.sap.settle("Open SE16N toolbar overflow")
-        }
-        menuItem = await locateMenuItem()
-      }
-
-      if (menuItem) {
-        await menuItem.click({ timeout: 3_000 })
-        await this.sap.settle(titlePrefix)
-        return
-      }
-
-      throw new Error(
-        `se16n: toolbar function "${titlePrefix}" is not available on the visible toolbar or its ` +
-          `More menu. Either the screen is not the one expected, or this SAP release names it differently.`
-      )
+    const escapedTitlePrefix = titlePrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const buttonName = { name: new RegExp(`^${escapedTitlePrefix}`, "i") }
+    // Popups are accessible dialogs; the main window must not match a same-named button.
+    const popup = this.scope.getByRole("dialog").last()
+    const inPopup = windowIndex > 0 && (await popup.count().catch(() => 0)) > 0
+    const accessibleButton = inPopup
+      ? popup.getByRole("button", buttonName).first()
+      : windowIndex === 0
+        ? this.scope.getByRole("button", buttonName).first()
+        : undefined
+    if (accessibleButton && (await accessibleButton.count().catch(() => 0))) {
+      await accessibleButton.click({ timeout: 3_000 })
+      if (waitUntilSettled) await this.sap.settle(titlePrefix)
+      return
     }
 
-    const clicked = await this.loc(`[role="button"][title="${cssQuote(title)}"]`)
-      .last()
+    const clicked = await (
+      inPopup
+        ? popup.getByRole("button", buttonName).first()
+        : this.scope.getByRole("button", buttonName).first()
+    )
       .click({ timeout: 3_000 })
       .then(() => true)
       .catch(() => false)
 
     if (!clicked) {
-      const key = shortcutFrom(title)
-      if (!key) {
-        throw new Error(
-          `se16n: toolbar function "${title}" could not be clicked (most likely collapsed into ` +
-            `the toolbar overflow) and advertises no keyboard shortcut.`
-        )
-      }
-      if (windowIndex === 0) await this.focusGrid()
-      await this.page.keyboard.press(key)
+      throw new Error(
+        `se16n: toolbar function "${titlePrefix}" has no configured keyboard shortcut and could not be clicked.`
+      )
     }
-    await this.sap.settle(title)
+    if (waitUntilSettled) await this.sap.settle(titlePrefix)
   }
 
   private modalOpen(): Promise<boolean> {
@@ -1400,51 +1419,12 @@ class Se16nDriver {
     )
   }
 
-  private messageInfo(): Promise<{ text: string; isError: boolean }> {
-    return this.scope
-      .evaluate(() => {
-        const el = document.querySelector(".lsMessageBar__text") as HTMLElement | null
-        const bar = document.querySelector('[class*="lsMessageBar"]')
-        if (!el || !bar || String(bar.className).includes("invisible")) {
-          return { text: "", isError: false }
-        }
-        // aria-roledescription is a generic wrapper role ("Information Bar") even for error
-        // messages — the real severity lives in aria-label ("Error Message Bar ...") and in
-        // the lsdata JSON's messageType/"1" field. Verified live: SE16N's "table does not
-        // exist" error carries messageType:"Error" but aria-roledescription:"Information Bar".
-        const ariaLabel = bar.getAttribute("aria-label") ?? ""
-        const lsdata = bar.getAttribute("lsdata") ?? ""
-        const messageType = (lsdata.match(/"messageType":"(\w+)"/) ?? [])[1] ?? ""
-        return {
-          text: (el.innerText ?? "").trim(),
-          isError: /error/i.test(`${ariaLabel} ${messageType}`)
-        }
-      })
-      .catch(() => ({ text: "", isError: false }))
-  }
-
   private async messageText(): Promise<string> {
-    return (await this.messageInfo()).text
+    return (await this.sap.statusMessage()).text
   }
 
   private async messageSuffix(): Promise<string> {
     const m = await this.messageText()
     return m ? ` SAP says: "${m}".` : ""
   }
-}
-
-/** "Delete All Entries (Ctrl+F1)" → "Control+F1". Returns "" when no shortcut is advertised. */
-function shortcutFrom(title: string): string {
-  const m = title.match(/\(([^)]+)\)\s*$/)
-  if (!m) return ""
-  const keys = m[1].split("+").map(k => k.trim())
-  if (!keys.length) return ""
-  const last = keys[keys.length - 1]
-  if (!/^(F\d{1,2}|[A-Za-z0-9])$/.test(last)) return ""
-  return keys.map(k => (k.toLowerCase() === "ctrl" ? "Control" : k)).join("+")
-}
-
-/** Escape a value for use inside a CSS attribute selector's double quotes. */
-function cssQuote(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
 }

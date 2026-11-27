@@ -20,6 +20,7 @@ const BUSY_SELECTORS = [
   ".lsdocblock",
   ".urFakeBrowserBlockOverlay",
   '[id$="_blockOverlay"]',
+  '[role="dialog"][alt*="Please wait"]',
   ".sapMBusyIndicator"
 ]
 const NETWORK_IDLE_BEST_EFFORT_MS = 1_500

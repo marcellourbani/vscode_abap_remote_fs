@@ -243,6 +243,13 @@ export function playwrightArgs(configPath: string, tcIds?: string[]): string[] {
   return ["test", "--config", configPath, ...(tcIds?.map(tcId => `${tcId}.spec.ts`) ?? [])]
 }
 
+function splitTcIds(tcIds: string[], maxTasks: number): string[][] {
+  const taskCount = Math.min(tcIds.length, maxTasks)
+  const tasks = Array.from({ length: taskCount }, () => [] as string[])
+  tcIds.forEach((tcId, index) => tasks[index % taskCount].push(tcId))
+  return tasks
+}
+
 export function cleanupStorageState(storageStateFile: string): Promise<void> {
   return fs.rm(storageStateFile, { force: true }).catch(() => {})
 }
@@ -342,62 +349,87 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     const extPath = extensionPath()
     const cliPath = await resolvePlaywrightCli(extPath)
     const configPath = path.join(vendorDir(extPath), "playwright.config.js")
-    const runDir = await fs.mkdtemp(path.join(os.tmpdir(), "abapfs-testing-"))
-    const reportFile = path.join(runDir, "report.json")
-    // Holds a live session cookie, so it lives in the temp dir and is deleted after the run.
-    const storageStateFile = path.join(runDir, "storage-state.json")
-
-    const args = playwrightArgs(configPath, tcIds)
-
     const browser = await timed("resolve browser executable", () => resolveBrowserExecutable())
     if (browser.warning) {
       funWindow.showWarningMessage(browser.warning)
     }
 
-    const loginUrl = await tryLoginUrl(connectionId, url)
-    // Logged host-side so the auto-login decision is visible even if the child says nothing.
-    log.debug(
-      loginUrl
-        ? "[playwright] auto-login enabled, login URL passed to globalSetup"
-        : "[playwright] auto-login not in use — SAP must authenticate this session by other means"
+    let taskIds: string[][]
+    if (!runInParallel) {
+      taskIds = [tcIds ?? []]
+    } else {
+      const selectedIds =
+        tcIds ??
+        (await fs.readdir(specDir))
+          .filter(name => /^TC-[A-Za-z0-9-]+\.spec\.ts$/i.test(name))
+          .map(name => name.replace(/\.spec\.ts$/i, ""))
+          .sort()
+      taskIds = splitTcIds(selectedIds, maxTasks)
+    }
+
+    const workerReports = await Promise.all(
+      taskIds.map(async (workerTcIds, workerIndex) => {
+        const runDir = await fs.mkdtemp(path.join(os.tmpdir(), "abapfs-testing-"))
+        const reportFile = path.join(runDir, "report.json")
+        // A parallel worker must establish its own SAP session, not clone a sibling's cookie.
+        const storageStateFile = path.join(runDir, "storage-state.json")
+        const loginUrl = await tryLoginUrl(connectionId, url)
+        log.debug(
+          loginUrl
+            ? `[playwright] worker ${workerIndex + 1}: own SAP login URL ready`
+            : `[playwright] worker ${workerIndex + 1}: auto-login unavailable`
+        )
+        const env: NodeJS.ProcessEnv = {
+          ...process.env,
+          SAP_TESTING_ROOT: testFolder,
+          SAP_TESTING_SPEC_DIR: specDir,
+          SAP_TESTING_HEADED: headed ? "1" : "0",
+          SAP_TESTING_MAX_FAILURES: String(maxFailures),
+          SAP_TESTING_PARALLEL: "0",
+          SAP_TESTING_MAX_TASKS: "1",
+          SAP_TESTING_REPORT_FILE: reportFile,
+          SAP_TESTING_STORAGE_STATE: storageStateFile,
+          SAP_SYSTEM: connectionId,
+          [`SAP_URL_${connectionId.toUpperCase()}`]: url
+        }
+        if (loginUrl) env.SAP_TESTING_LOGIN_URL = loginUrl.url
+        if (browser.executablePath) {
+          env.SAP_TESTING_BROWSER_EXECUTABLE = browser.executablePath
+        }
+
+        try {
+          const args = playwrightArgs(configPath, runInParallel ? workerTcIds : tcIds)
+          const { code, stdout, stderr } = await timed(`playwright worker ${workerIndex + 1}`, () =>
+            runProcess(process.execPath, [cliPath, ...args], { cwd: testFolder, env }, token)
+          )
+          try {
+            return JSON.parse(await fs.readFile(reportFile, "utf8")) as JsonReport
+          } catch {
+            return {
+              errors: [
+                {
+                  message:
+                    `Playwright worker ${workerIndex + 1} did not produce a report ` +
+                    `(exit code ${code}).\n${stderr || stdout}`
+                }
+              ]
+            } satisfies JsonReport
+          }
+        } finally {
+          // A cancelled worker may leave its one-shot ticket unused; always close its listener.
+          loginUrl?.dispose()
+          await cleanupStorageState(storageStateFile)
+          await fs.rm(runDir, { recursive: true, force: true })
+        }
+      })
     )
-    const env: NodeJS.ProcessEnv = {
-      ...process.env,
-      SAP_TESTING_ROOT: testFolder,
-      SAP_TESTING_SPEC_DIR: specDir,
-      SAP_TESTING_HEADED: headed ? "1" : "0",
-      SAP_TESTING_MAX_FAILURES: String(maxFailures),
-      SAP_TESTING_PARALLEL: runInParallel ? "1" : "0",
-      SAP_TESTING_MAX_TASKS: String(maxTasks),
-      SAP_TESTING_REPORT_FILE: reportFile,
-      SAP_TESTING_STORAGE_STATE: storageStateFile,
-      SAP_SYSTEM: connectionId,
-      [`SAP_URL_${connectionId.toUpperCase()}`]: url
-    }
-    if (loginUrl) env.SAP_TESTING_LOGIN_URL = loginUrl.url
-    if (browser.executablePath) {
-      env.SAP_TESTING_BROWSER_EXECUTABLE = browser.executablePath
-    }
 
-    const { code, stdout, stderr } = await timed("playwright run", () =>
-      runProcess(process.execPath, [cliPath, ...args], { cwd: testFolder, env }, token)
-    ).finally(() => {
-      // A cancelled run never fetches the login URL, so without this a usable ticket stays
-      // served on a loopback port until its expiry elapses.
-      loginUrl?.dispose()
-      return cleanupStorageState(storageStateFile)
-    })
-
-    let summary: string
+    const mergedReport: JsonReport = {
+      suites: workerReports.flatMap(worker => worker.suites ?? []),
+      errors: workerReports.flatMap(worker => worker.errors ?? [])
+    }
     const summaryStarted = Date.now()
-    try {
-      const reportRaw = await fs.readFile(reportFile, "utf8")
-      summary = summarizeReport(JSON.parse(reportRaw), maxFailures)
-    } catch {
-      // JSON reporter didn't produce a file — likely a config/spec-load error before
-      // any test ran. Fall back to raw process output so the AI can still diagnose it.
-      summary = `Playwright did not produce a report (exit code ${code}).\n\n${stderr || stdout}`
-    }
+    const summary = summarizeReport(mergedReport, maxFailures)
     log.debug(`[playwright] summarized report in ${Date.now() - summaryStarted}ms`)
     log.debug(`[playwright] returning to model after ${Date.now() - invokeStarted}ms total`)
 

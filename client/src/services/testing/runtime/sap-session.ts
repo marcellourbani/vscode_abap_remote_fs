@@ -104,9 +104,10 @@ export class SapSession {
       "ERR_ABORTED",
       "ERR_CONNECTION_ABORTED",
       "ERR_CONNECTION_RESET",
-      "ERR_CONNECTION_CLOSED"
+      "ERR_CONNECTION_CLOSED",
+      "ERR_BLOCKED_BY_CLIENT"
     ]
-    const retryDelays = [500, 1_500, 3_000]
+    const retryDelays = [500, 1_500, 3_000, 5_000, 8_000]
     for (let attempt = 0; ; attempt++) {
       try {
         await this.page.goto(url, { waitUntil: "commit", timeout: 12_000 })
@@ -128,8 +129,7 @@ export class SapSession {
    */
   async open(): Promise<void> {
     await this.navigate(this.buildUrl())
-    await waitForServer(this.page)
-    await dismissKnownPopups(this.page, this.extraInterrupters)
+    await this.settle("open SAP WebGUI")
     await this.recordStep("Opened SAP home")
   }
 
@@ -1231,6 +1231,8 @@ export class SapSession {
       )
     }
 
+    await this.throwOnStatusError(description)
+
     if (this.captureSteps && captureEvidence) await this.evidence.step(description)
   }
 
@@ -1254,10 +1256,77 @@ export class SapSession {
    */
   async contentScope(): Promise<Page | Frame> {
     await this.ensureContentFrame()
+    if (!this.contentFrameResolved) {
+      const contentSelectors = [
+        this.page.locator("[lsdata]").first(),
+        this.page.frameLocator("iframe#ITSFRAME1").locator("[lsdata]").first(),
+        this.page.frameLocator("iframe:not(#ITSTERMFRAME)").locator("[lsdata]").first()
+      ]
+      await Promise.any(
+        contentSelectors.map(locator => locator.waitFor({ state: "attached", timeout: 60_000 }))
+      ).catch(() => {})
+      await this.ensureContentFrame()
+    }
     if (this.hasContentFrame === false) return this.page
     const handle = await this.page.$(this.contentFrameSelector).catch(() => null)
     const frame = handle ? await handle.contentFrame().catch(() => null) : null
     return frame ?? this.page
+  }
+
+  async statusMessage(): Promise<{ text: string; isError: boolean }> {
+    const scope = await this.contentScope()
+    return scope
+      .evaluate(() => {
+        const selectors =
+          '[class*="lsMessageBar"], .lsStatusMessageArea, .lsStatusMessage, [role="alert"]'
+        const elements = Array.from(document.querySelectorAll<HTMLElement>(selectors))
+        const visible = elements.filter(element => {
+          const style = getComputedStyle(element)
+          const rect = element.getBoundingClientRect()
+          return (
+            style.display !== "none" &&
+            style.visibility !== "hidden" &&
+            rect.width > 0 &&
+            rect.height > 0 &&
+            element.getAttribute("aria-hidden") !== "true"
+          )
+        })
+        const status =
+          visible.find(element => element.matches('[class*="lsMessageBar"]')) ?? visible[0]
+        if (!status || String(status.className).includes("invisible")) {
+          return { text: "", isError: false }
+        }
+
+        const serialized = status.getAttribute("lsdata") ?? ""
+        let applicationText = ""
+        let messageType = ""
+        try {
+          const data = JSON.parse(serialized)
+          applicationText = data["11"]?.applicationText ?? ""
+          messageType = data["11"]?.messageType ?? data["1"] ?? ""
+        } catch {
+          messageType =
+            serialized.match(/(?:^|[,\{\s])['"]?1['"]?\s*:\s*['"]?([A-Za-z]+)/)?.[1] ?? ""
+          applicationText =
+            serialized.match(/(?:^|[,\{\s])['"]?0['"]?\s*:\s*['"]([^'"]*)['"]/)?.[1] ?? ""
+        }
+        const textElement = status.querySelector<HTMLElement>(".lsMessageBar__text")
+        const text =
+          applicationText ||
+          (textElement?.innerText ?? status.innerText ?? status.textContent ?? "").trim()
+        const ariaLabel = status.getAttribute("aria-label") ?? ""
+        const errorIcon = status.querySelector(
+          '[role="alert"], [class*="Error"], [class*="error"], img[alt*="Error"]'
+        )
+        return {
+          text,
+          isError:
+            !!errorIcon ||
+            /^(error|e|abort|a)$/i.test(String(messageType).trim()) ||
+            /error|invalid/i.test(`${ariaLabel} ${String(status.className)} ${text}`)
+        }
+      })
+      .catch(() => ({ text: "", isError: false }))
   }
 
   /** Resolve the active SAP document and return its body for one-off raw locators. */
@@ -1291,6 +1360,17 @@ export class SapSession {
       throw new Error(
         `SAP runtime error during "${context}" (${err.kind}): "${err.title}"\n` +
           `URL: ${err.url}\n--- snippet ---\n${err.snippet}`
+      )
+    }
+    await this.throwOnStatusError(context)
+  }
+
+  private async throwOnStatusError(context: string): Promise<void> {
+    const status = await this.statusMessage()
+    if (status.isError) {
+      throw new Error(
+        `SAP status error during "${context}".` +
+          (status.text ? ` SAP says: "${status.text}".` : " The SAP status bar indicates an error.")
       )
     }
   }

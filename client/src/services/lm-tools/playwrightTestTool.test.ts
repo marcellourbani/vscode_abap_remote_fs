@@ -255,7 +255,7 @@ describe("PlaywrightTestTool", () => {
     ).resolves.toEqual({ invocationMessage: "Running all specs for PROGRAM on DEV" })
   })
 
-  it("runs an exact parallel subset with capped limits and one shared login URL", async () => {
+  it("runs an exact parallel subset with capped limits and a login URL per worker", async () => {
     await fs.writeFile(path.join(specDir, "TC-001.spec.ts"), "test")
     await fs.writeFile(path.join(specDir, "TC-002.spec.ts"), "test")
     const launcher = { url: "http://launcher", dispose: vi.fn() }
@@ -284,22 +284,62 @@ describe("PlaywrightTestTool", () => {
     ) as Promise<any>
     const value = await invocation
 
-    expect(value.parts[0].text).toContain("1 passed")
-    expect(spawn).toHaveBeenCalledTimes(1)
-    const [_command, args, processOptions] = (spawn as unknown as Mock).mock.calls[0]
-    expect(args).toEqual(expect.arrayContaining(["TC-001.spec.ts", "TC-002.spec.ts"]))
-    expect(processOptions.env).toMatchObject({
-      SAP_TESTING_PARALLEL: "1",
-      SAP_TESTING_MAX_TASKS: "5",
-      SAP_TESTING_MAX_FAILURES: "10",
-      SAP_TESTING_HEADED: "1",
-      SAP_TESTING_LOGIN_URL: "http://launcher",
-      SAP_TESTING_BROWSER_EXECUTABLE: "C:/browser.exe",
-      SAP_SYSTEM: "dev100",
-      SAP_URL_DEV100: "http://sap/webgui"
-    })
+    expect(value.parts[0].text).toContain("2 passed, 0 failed")
+    expect(spawn).toHaveBeenCalledTimes(2)
+    const workers = (spawn as unknown as Mock).mock.calls.map(call => call[2].env)
+    expect(workers.map(env => env.SAP_TESTING_LOGIN_URL)).toEqual([
+      "http://launcher",
+      "http://launcher"
+    ])
+    expect(new Set(workers.map(env => env.SAP_TESTING_STORAGE_STATE)).size).toBe(2)
+    expect(workers.every(env => env.SAP_TESTING_PARALLEL === "0")).toBe(true)
+    expect(workers.every(env => env.SAP_TESTING_MAX_TASKS === "1")).toBe(true)
+    expect(workers.every(env => env.SAP_TESTING_MAX_FAILURES === "10")).toBe(true)
+    expect(workers.every(env => env.SAP_TESTING_HEADED === "1")).toBe(true)
+    expect(workers.every(env => env.SAP_TESTING_BROWSER_EXECUTABLE === "C:/browser.exe")).toBe(true)
+    expect(workers.every(env => env.SAP_SYSTEM === "dev100")).toBe(true)
+    expect(workers.every(env => env.SAP_URL_DEV100 === "http://sap/webgui")).toBe(true)
     expect(funWindow.showWarningMessage).toHaveBeenCalledWith("browser warning")
-    expect(launcher.dispose).toHaveBeenCalledTimes(1)
+    expect(launcher.dispose).toHaveBeenCalledTimes(2)
+  })
+
+  it("gives each parallel worker a distinct SAP login and isolated report state", async () => {
+    await fs.writeFile(path.join(specDir, "TC-001.spec.ts"), "test")
+    await fs.writeFile(path.join(specDir, "TC-002.spec.ts"), "test")
+    await fs.writeFile(path.join(specDir, "TC-003.spec.ts"), "test")
+    ;(RemoteManager.get as Mock).mockReturnValue({
+      byIdAsync: vi.fn().mockResolvedValue({ webGuiAutoLogin: true })
+    })
+    ;(ssoLoginUrl as Mock)
+      .mockResolvedValueOnce({ url: "http://launcher/one", dispose: vi.fn() })
+      .mockResolvedValueOnce({ url: "http://launcher/two", dispose: vi.fn() })
+      .mockResolvedValueOnce({ url: "http://launcher/three", dispose: vi.fn() })
+    mockProcess(report({ title: "worker", results: [result("passed")] }))
+
+    const value: any = await tool.invoke(
+      options({
+        program: "PROGRAM",
+        tcIds: ["TC-001", "TC-002", "TC-003"],
+        connectionId: "DEV100",
+        runInParallel: true,
+        maxTasks: 3,
+        skipWorkflowValidation: true,
+        overrideReason: "User requested parallel testing"
+      }),
+      token()
+    )
+
+    expect(value.parts[0].text).toContain("3 passed, 0 failed")
+    expect(spawn).toHaveBeenCalledTimes(3)
+    expect(ssoLoginUrl).toHaveBeenCalledTimes(3)
+    const workers = (spawn as unknown as Mock).mock.calls.map(call => call[2].env)
+    expect(workers.map(env => env.SAP_TESTING_LOGIN_URL).sort()).toEqual([
+      "http://launcher/one",
+      "http://launcher/three",
+      "http://launcher/two"
+    ])
+    expect(new Set(workers.map(env => env.SAP_TESTING_STORAGE_STATE)).size).toBe(3)
+    expect(workers.every(env => env.SAP_TESTING_PARALLEL === "0")).toBe(true)
   })
 
   it("runs all specs sequentially and falls back to process output without JSON", async () => {
@@ -312,7 +352,9 @@ describe("PlaywrightTestTool", () => {
       }),
       token()
     )
-    expect(value.parts[0].text).toContain("Playwright did not produce a report (exit code 1)")
+    expect(value.parts[0].text).toContain(
+      "Playwright worker 1 did not produce a report (exit code 1)"
+    )
     expect(value.parts[0].text).toContain("load failed")
     const [_command, args, processOptions] = (spawn as unknown as Mock).mock.calls[0]
     expect(args.some((arg: string) => arg.endsWith(".spec.ts"))).toBe(false)

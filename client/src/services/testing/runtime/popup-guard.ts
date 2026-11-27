@@ -67,11 +67,6 @@ export const KNOWN_INTERRUPTERS: Interrupter[] = [
     note: "System broadcast messages (SM02)."
   },
   {
-    matchTitle: "Multiple Logon",
-    dismissButton: "Continue with this logon and end any other logons in the system",
-    note: "Same user has another session — end the other so this one wins. Critical for parallel CI."
-  },
-  {
     matchTitle: "Copyright",
     dismissButton: "Continue",
     note: "Legal notice shown once per client on some systems."
@@ -190,6 +185,14 @@ export async function dismissKnownPopups(
       for (const dlg of dialogs) {
         const title = await readDialogTitle(dlg)
         if (!title) continue // unnamed dialog — leave alone, might be F4 help
+
+        if (title.toLowerCase().includes("multiple logon")) {
+          throw new Error(
+            `SAP blocked this concurrent session with a Multiple Logon dialog. The runtime ` +
+              `will not end another session automatically; allow multiple logons for the ` +
+              `test user or run fewer concurrent workers.`
+          )
+        }
 
         const match = patterns.find(p => title.toLowerCase().includes(p.matchTitle.toLowerCase()))
         if (!match) continue
