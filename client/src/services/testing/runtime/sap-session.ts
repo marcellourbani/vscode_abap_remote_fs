@@ -1275,6 +1275,11 @@ export class SapSession {
 
   async statusMessage(): Promise<{ text: string; isError: boolean }> {
     const scope = await this.contentScope()
+    if (this.hasContentFrame === true && scope === this.page) {
+      throw new Error(
+        "Could not inspect the SAP status bar: the WebGUI content frame is unavailable."
+      )
+    }
     return scope
       .evaluate(() => {
         const selectors =
@@ -1311,9 +1316,16 @@ export class SapSession {
             serialized.match(/(?:^|[,\{\s])['"]?0['"]?\s*:\s*['"]([^'"]*)['"]/)?.[1] ?? ""
         }
         const textElement = status.querySelector<HTMLElement>(".lsMessageBar__text")
-        const text =
+        const decode = (value: string) =>
+          value.replace(/\\(?:x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4}))/g, (_, x, u) =>
+            String.fromCharCode(parseInt(x ?? u, 16))
+          )
+        const rawText =
           applicationText ||
           (textElement?.innerText ?? status.innerText ?? status.textContent ?? "").trim()
+        // Element labels (not SAP messages) that appear when the bar carries no real text.
+        const placeholder = /^(message bar|list output)$/i.test(decode(rawText).trim())
+        const text = placeholder ? "" : decode(rawText).trim()
         const ariaLabel = status.getAttribute("aria-label") ?? ""
         const errorIcon = status.querySelector(
           '[role="alert"], [class*="Error"], [class*="error"], img[alt*="Error"]'
@@ -1326,7 +1338,10 @@ export class SapSession {
             /error|invalid/i.test(`${ariaLabel} ${String(status.className)} ${text}`)
         }
       })
-      .catch(() => ({ text: "", isError: false }))
+      .catch(error => {
+        const detail = error instanceof Error ? error.message : String(error)
+        throw new Error(`Could not inspect the SAP status bar: ${detail}`, { cause: error })
+      })
   }
 
   /** Resolve the active SAP document and return its body for one-off raw locators. */

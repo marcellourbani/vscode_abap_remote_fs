@@ -37,6 +37,13 @@ import {
   normalizeTcIds
 } from "../testing/playwright-limits"
 import { findSqlVerificationGateErrors } from "../testing/verification-gate"
+import {
+  createRunDir,
+  newRunId,
+  pruneRuns,
+  runsRoot,
+  writeRunLog
+} from "../testing/playwright-run-store"
 import { type TestingWorkflowOverride, workflowBypassNotice } from "./testingWorkflowOverride"
 
 /** Time a startup phase into the debug channel, so a slow run points at a specific step. */
@@ -58,6 +65,7 @@ export interface IPlaywrightTestParameters extends TestingWorkflowOverride {
   maxFailures?: number
   runInParallel?: boolean
   maxTasks?: number
+  keepArtifacts?: boolean
   prerequisiteConfirmation?: string
 }
 
@@ -155,6 +163,11 @@ type JsonReport = {
   errors?: Array<{ message?: string }>
 }
 
+/** Playwright colors its error text with ANSI escapes, which show up as noise in tool output. */
+export function stripAnsi(text: string): string {
+  return text.replace(/\x1b\[[0-9;]*m/g, "")
+}
+
 function collectSpecs(suite: JsonReportSuite | undefined, out: JsonReportSpec[]): void {
   if (!suite) return
   for (const s of suite.specs ?? []) out.push(s)
@@ -166,7 +179,7 @@ export function summarizeReport(report: JsonReport, maxFailures: number): string
   for (const suite of report.suites ?? []) collectSpecs(suite, specs)
 
   if (!specs.length) {
-    const errs = (report.errors ?? []).map(e => e.message).filter(Boolean)
+    const errs = (report.errors ?? []).map(e => e.message && stripAnsi(e.message)).filter(Boolean)
     return errs.length ? `No tests ran. Errors:\n${errs.join("\n")}` : "No tests matched."
   }
 
@@ -195,7 +208,7 @@ export function summarizeReport(report: JsonReport, maxFailures: number): string
         lines.push(`FAIL  ${spec.title}`)
         if (last?.error?.message) {
           lines.push(
-            last.error.message
+            stripAnsi(last.error.message)
               .split("\n")
               .slice(0, 8)
               .map(l => `        ${l}`)
@@ -209,7 +222,7 @@ export function summarizeReport(report: JsonReport, maxFailures: number): string
         }
         // Surface artifact paths (trace zip, failure screenshot, error context) so the model
         // can open the trace — which contains the HTTP request/response bodies and per-step DOM
-        // snapshots — instead of guessing. Traces live under <root>/.playwright-artifacts/.
+        // snapshots — instead of guessing. Traces live under the per-call folder reported below.
         for (const att of last?.attachments ?? []) {
           if (att.path && /trace|screenshot|snapshot|\.zip$|\.png$/i.test(att.name + att.path)) {
             lines.push(`        [${att.name}] ${att.path}`)
@@ -231,7 +244,7 @@ export function summarizeReport(report: JsonReport, maxFailures: number): string
   }
   if (failed > 0) {
     lines.push(
-      "For each FAIL: open the trace (path above, under <test-folder>/.playwright-artifacts/) " +
+      "For each FAIL: open the trace (path above, under the per-call run folder) " +
         "for request/response bodies and per-step DOM; the last step + screenshot are in " +
         "test-results/<CONNECTION-ID>/<TC-ID>/ (connectionId UPPERCASE). Diagnose before rerunning."
     )
@@ -367,9 +380,15 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
       taskIds = splitTcIds(selectedIds, maxTasks)
     }
 
+    const runId = newRunId(connectionId)
+    const callDir = await createRunDir(testFolder, runId)
+    const keepArtifacts = options.input.keepArtifacts === true
+
     const workerReports = await Promise.all(
       taskIds.map(async (workerTcIds, workerIndex) => {
         const runDir = await fs.mkdtemp(path.join(os.tmpdir(), "abapfs-testing-"))
+        const workerDir = path.join(callDir, `worker-${workerIndex + 1}`)
+        await fs.mkdir(workerDir, { recursive: true })
         const reportFile = path.join(runDir, "report.json")
         // A parallel worker must establish its own SAP session, not clone a sibling's cookie.
         const storageStateFile = path.join(runDir, "storage-state.json")
@@ -389,6 +408,8 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
           SAP_TESTING_MAX_TASKS: "1",
           SAP_TESTING_REPORT_FILE: reportFile,
           SAP_TESTING_STORAGE_STATE: storageStateFile,
+          SAP_TESTING_ARTIFACTS_DIR: path.join(workerDir, "artifacts"),
+          SAP_TESTING_KEEP_ARTIFACTS: keepArtifacts ? "1" : "0",
           SAP_SYSTEM: connectionId,
           [`SAP_URL_${connectionId.toUpperCase()}`]: url
         }
@@ -402,8 +423,11 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
           const { code, stdout, stderr } = await timed(`playwright worker ${workerIndex + 1}`, () =>
             runProcess(process.execPath, [cliPath, ...args], { cwd: testFolder, env }, token)
           )
+          await writeRunLog(workerDir, stdout, stderr)
           try {
-            return JSON.parse(await fs.readFile(reportFile, "utf8")) as JsonReport
+            const raw = await fs.readFile(reportFile, "utf8")
+            await fs.writeFile(path.join(workerDir, "report.json"), raw, "utf8").catch(() => {})
+            return JSON.parse(raw) as JsonReport
           } catch {
             return {
               errors: [
@@ -433,7 +457,12 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     log.debug(`[playwright] summarized report in ${Date.now() - summaryStarted}ms`)
     log.debug(`[playwright] returning to model after ${Date.now() - invokeStarted}ms total`)
 
-    const output = bypassNotice ? `${bypassNotice}\n\n${summary}` : summary
+    await pruneRuns(testFolder, runId)
+    const runsNote =
+      `\nFull report, runner log and traces for this call: ${callDir}` +
+      ` (kept automatically; only the newest runs under ${runsRoot(testFolder)} are retained).`
+    const withNote = summary + runsNote
+    const output = bypassNotice ? `${bypassNotice}\n\n${withNote}` : withNote
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(output)])
   }
 }

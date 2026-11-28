@@ -103,6 +103,17 @@ describe("summarizeReport", () => {
     expect(summary).toContain("1 passed, 2 failed, 1 interrupted, 2 not run (6 selected)")
   })
 
+  it("strips ANSI color codes from error text", () => {
+    const colored = "\x1b[2mexpect(\x1b[22m\x1b[31mreceived\x1b[39m\x1b[2m).\x1b[22mtoEqual"
+    const summary = summarizeReport(
+      report({ title: "colored", results: [result("failed", { error: { message: colored } })] }),
+      3
+    )
+
+    expect(summary).toContain("expect(received).toEqual")
+    expect(summary).not.toContain("\x1b")
+  })
+
   it("reports native max-failure early stopping", () => {
     const value: any = report(
       { title: "fail 1", results: [result("failed")] },

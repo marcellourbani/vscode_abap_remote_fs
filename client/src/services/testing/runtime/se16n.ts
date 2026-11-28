@@ -207,6 +207,10 @@ const CLIPBOARD_THRESHOLD = 5
  */
 const EXECUTE_MAX_WAIT_MS = 10 * 60 * 1000
 
+/** Upper bound for any single UI reaction (a tick, a popup, a re-rendered grid). */
+const UI_WAIT_MS = 2_000
+const UI_POLL_MS = 100
+
 type RowState = {
   field: string
   low: string
@@ -221,6 +225,42 @@ type RowState = {
 export async function runSe16n(sap: SapSession, spec: Se16nSpec): Promise<Se16nResult> {
   const driver = new Se16nDriver(sap, spec)
   return driver.run()
+}
+
+export function isClipboardPromptOpen(): boolean {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>('[role="dialog"], [class*="lsPopupWindow"]')
+  ).some(popup => {
+    const style = getComputedStyle(popup)
+    const rect = popup.getBoundingClientRect()
+    return (
+      style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      rect.width > 0 &&
+      rect.height > 0 &&
+      popup.getAttribute("aria-hidden") !== "true" &&
+      /Clipboard Access/i.test(popup.textContent ?? "")
+    )
+  })
+}
+
+/** True while a SAP popup is up: the shared block layer or a visible dialog-like window. */
+export function isModalOpen(): boolean {
+  const layer = document.getElementById("urPopupWindowBlockLayer")
+  if (layer && getComputedStyle(layer).display !== "none") return true
+  return Array.from(
+    document.querySelectorAll<HTMLElement>('[role="dialog"], [class*="lsPopupWindow"]')
+  ).some(popup => {
+    const style = getComputedStyle(popup)
+    const rect = popup.getBoundingClientRect()
+    return (
+      style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      rect.width > 0 &&
+      rect.height > 0 &&
+      popup.getAttribute("aria-hidden") !== "true"
+    )
+  })
 }
 
 class Se16nDriver {
@@ -249,6 +289,7 @@ class Se16nDriver {
     ) {
       throw new Error(`se16n: expect.empty cannot be combined with a positive row expectation.`)
     }
+    this.validateSpec()
 
     // Re-entering the transaction by URL starts a fresh ITS session, which is what actually
     // clears SE16N's remembered field order and criteria — verified: a dirtied MARA screen
@@ -299,6 +340,55 @@ class Se16nDriver {
     return this.execute()
   }
 
+  /** Reject malformed specs before SAP is touched, so these errors never depend on screen state. */
+  private validateSpec(): void {
+    this.wantedFields()
+    const assertShape = (v: Se16nValue, label: string) => {
+      this.optionKey(v)
+      if (v.high !== undefined && v.high !== "" && !this.isRangeOption(v)) {
+        throw new Error(
+          `se16n: ${label} supplies a "high" value but option ` +
+            `"${v.option ?? "EQ"}" is not a range option (BT/NB) — SE16N has no To-value cell ` +
+            `for it. Remove "high", or use option: "BT"/"NB".`
+        )
+      }
+    }
+    for (const c of this.spec.where ?? []) {
+      const field = c.field.toUpperCase()
+      if (c.values?.length) {
+        c.values.forEach((v, i) => assertShape(v, `multiple-selection value ${i + 1} for ${field}`))
+        continue
+      }
+      if (c.low === undefined) {
+        throw new Error(`se16n: criterion for ${field} has neither "low" nor "values".`)
+      }
+      assertShape(c, `criterion for ${field}`)
+    }
+  }
+
+  /** Poll `read` until `done` accepts it or `ms` passes; returns the last value read. */
+  private async until<T>(
+    read: () => Promise<T>,
+    done: (value: T) => boolean,
+    ms = UI_WAIT_MS
+  ): Promise<T> {
+    const deadline = Date.now() + ms
+    let value = await read()
+    while (!done(value) && Date.now() < deadline) {
+      await this.page.waitForTimeout(UI_POLL_MS)
+      value = await read()
+    }
+    return value
+  }
+
+  /** Selection-grid rows once at least one technical-name cell has rendered. */
+  private readRowsReady(): Promise<Record<number, RowState>> {
+    return this.until(
+      () => this.readRows(),
+      rows => Object.values(rows).some(r => r.field)
+    )
+  }
+
   // ---------- phase 1: table + reset ----------
 
   private async openTable(): Promise<void> {
@@ -309,7 +399,10 @@ class Se16nDriver {
     // nonexistent table still shows it in the field while SAP raises an ERROR-severity status
     // message ("XYZ does not exist; check the name") and leaves the OLD table's field grid
     // in place underneath. The message check is the one that actually catches this.
-    const shown = await this.headerValue(TABLE_FIELD)
+    const shown = await this.until(
+      () => this.headerValue(TABLE_FIELD),
+      value => value.toUpperCase() === this.spec.table.toUpperCase()
+    )
     const { isError, text: message } = await this.sap.statusMessage()
     if (shown.toUpperCase() !== this.spec.table.toUpperCase() || isError) {
       throw new Error(
@@ -320,7 +413,7 @@ class Se16nDriver {
     }
     await this.assertNoStrayLayout()
     // The technical-name column is the safety anchor for every write below.
-    const names = await this.readRows()
+    const names = await this.readRowsReady()
     if (!Object.keys(names).length) {
       throw new Error(
         `se16n: table "${this.spec.table}" did not stick — no selection fields were loaded. ` +
@@ -377,25 +470,8 @@ class Se16nDriver {
     )
   }
 
-  /** Reload SE16N, change tables to reset user-specific selections, then deselect all fields. */
+  /** Change tables to reset user-specific selections, then deselect all fields. */
   private async reset(): Promise<void> {
-    await this.page.reload({ waitUntil: "commit" })
-    await this.sap.settle("reload SE16N before reset")
-    this.scope = await this.sap.contentScope()
-    await this.loc(`input[lsdata*="${TABLE_FIELD}"]`)
-      .first()
-      .waitFor({ state: "attached", timeout: 60_000 })
-      .catch(() => {})
-    if (
-      !(await this.loc(`input[lsdata*="${TABLE_FIELD}"]`)
-        .count()
-        .catch(() => 0))
-    ) {
-      throw new Error(
-        `se16n: reloading SE16N did not return to its table selection screen for ` +
-          `${this.spec.table}; the table-name input is not present.`
-      )
-    }
     await this.setHeaderField(TABLE_FIELD, "")
     await this.openTable()
     await this.pressToolbar("Delete Sorting of Selection Fields")
@@ -409,8 +485,16 @@ class Se16nDriver {
   private wantedFields(): string[] {
     const out: string[] = []
     const requested = this.spec.outputFields === "*" ? [] : this.spec.outputFields
-    for (const f of [...requested, ...(this.spec.where ?? []).map(c => c.field)]) {
-      const u = f.toUpperCase()
+    const fields = [...requested, ...(this.spec.where ?? []).map(c => c.field)]
+    for (const [index, field] of fields.entries()) {
+      if (typeof field !== "string" || !field.trim()) {
+        const source =
+          index < requested.length
+            ? `outputFields[${index}]`
+            : `where[${index - requested.length}].field`
+        throw new Error(`se16n: ${source} must be a non-empty technical field name.`)
+      }
+      const u = field.toUpperCase()
       if (u === "MANDT")
         throw new Error(
           `se16n: MANDT cannot be selected or filtered in SE16N — it is fixed to the logon ` +
@@ -502,12 +586,16 @@ class Se16nDriver {
   private async setOutputColumns(): Promise<void> {
     if (this.spec.outputFields === "*") {
       await this.pressToolbar("Select All")
-      const rows = await this.readRows()
-      const unticked = Object.values(rows).filter(r => r.field && r.field !== "MANDT" && !r.marked)
-      if (unticked.length) {
+      const unticked = (rows: Record<number, RowState>) =>
+        Object.values(rows).filter(r => r.field && r.field !== "MANDT" && !r.marked)
+      const rows = await this.until(
+        () => this.readRows(),
+        value => unticked(value).length === 0
+      )
+      if (unticked(rows).length) {
         throw new Error(
           `se16n: "Select All" did not tick every output column (e.g. ` +
-            `${unticked[0].field}).${await this.messageSuffix()}`
+            `${unticked(rows)[0].field}).${await this.messageSuffix()}`
         )
       }
       return
@@ -526,7 +614,11 @@ class Se16nDriver {
       if (!(await this.readRows())[row]?.marked) {
         await this.click(MARK(row), `tick output column ${field}`)
       }
-      if (!(await this.readRows())[row]?.marked) missing.push(field)
+      const after = await this.until(
+        () => this.readRows(),
+        value => !!value[row]?.marked
+      )
+      if (!after[row]?.marked) missing.push(field)
     }
     if (missing.length) {
       throw new Error(
@@ -726,22 +818,19 @@ class Se16nDriver {
     }, text)
     if (!copied) return false
     await this.pressToolbar("Upload from Clipboard", 1)
-    let opened = false
-    for (let i = 0; i < 60; i++) {
-      if (await this.clipboardPromptOpen()) {
-        opened = true
-        break
-      }
-      await this.page.waitForTimeout(250)
-    }
+    const opened = await this.until(
+      () => this.clipboardPromptOpen(),
+      value => value
+    )
     if (!opened) return false
     await this.page.keyboard.press("Control+V")
-    for (let i = 0; i < 60; i++) {
-      if (!(await this.clipboardPromptOpen())) {
-        await this.sap.settle("clipboard upload")
-        return true
-      }
-      await this.page.waitForTimeout(250)
+    const stillOpen = await this.until(
+      () => this.clipboardPromptOpen(),
+      value => !value
+    )
+    if (!stillOpen) {
+      await this.sap.settle("clipboard upload")
+      return true
     }
     throw new Error(
       `se16n: SAP's "Clipboard Access" dialog did not close after Control+V — SAP never ` +
@@ -753,13 +842,7 @@ class Se16nDriver {
   }
 
   private clipboardPromptOpen(): Promise<boolean> {
-    return this.scope
-      .evaluate(() =>
-        Array.from(document.querySelectorAll('[role="dialog"]')).some(d =>
-          /Clipboard Access/i.test(d.textContent ?? "")
-        )
-      )
-      .catch(() => false)
+    return this.scope.evaluate(isClipboardPromptOpen).catch(() => false)
   }
 
   /** Skip the popup entirely when SAP's own default already means what the caller asked. */
@@ -816,7 +899,10 @@ class Se16nDriver {
       hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`)
     })
     // Inside the multi-selection popup the block layer is already up, so wait for the rows themselves.
-    for (let i = 0; i < 40 && !(await cell.count()); i++) await this.page.waitForTimeout(250)
+    await this.until(
+      async () => cell.count(),
+      count => count > 0
+    )
     if (!(await cell.count())) {
       throw new Error(
         `se16n: option "${label}" is not offered by SE16N's option picker for ${field}. ` +
@@ -832,10 +918,10 @@ class Se16nDriver {
     // popup (setPopupOption), the shared #urPopupWindowBlockLayer stays visible because the
     // PARENT popup is still open — waiting for it to disappear here hangs forever. The
     // picker's own row list disappearing is the correct, parent-agnostic completion signal.
-    for (let i = 0; i < 80; i++) {
-      if (!(await cell.count())) break
-      await this.page.waitForTimeout(250)
-    }
+    await this.until(
+      async () => cell.count(),
+      count => count === 0
+    )
     if (await cell.count()) {
       throw new Error(
         `se16n: option picker for ${field} did not close after selecting "${label}".` +
@@ -860,8 +946,21 @@ class Se16nDriver {
     await this.pressToolbar("Online", 0, false)
     const terminal = await this.scope
       .waitForFunction(
-        () => {
+        hitsField => {
           const title = document.title
+          const resultHeading = Array.from(document.querySelectorAll('h1, [role="heading"]')).some(
+            heading =>
+              heading.getClientRects().length > 0 &&
+              /Display of Entries Found/i.test(heading.textContent ?? "")
+          )
+          const onResult =
+            /Display of Entries Found/i.test(title) ||
+            resultHeading ||
+            Array.from(document.querySelectorAll(`input[lsdata*="${hitsField}"]`)).some(
+              input =>
+                input.getClientRects().length > 0 &&
+                getComputedStyle(input).visibility === "visible"
+            )
           const bar = document.querySelector('[class*="lsMessageBar"]')
           const lsdata = bar?.getAttribute("lsdata") ?? "{}"
           let applicationText = ""
@@ -871,20 +970,19 @@ class Se16nDriver {
           const message =
             applicationText ||
             document.querySelector(".lsMessageBar__text")?.textContent?.trim() ||
-            bar?.getAttribute("aria-label") ||
             ""
-          return /Display of Entries Found/i.test(title) || /no values found|no data/i.test(message)
-            ? { title, message }
+          return onResult || /no values found|no data/i.test(message)
+            ? { title, message, onResult }
             : null
         },
-        undefined,
+        HITS_FIELD,
         { timeout: EXECUTE_MAX_WAIT_MS, polling: "raf" }
       )
       .then(handle => handle.jsonValue())
       .catch(() => null)
     const title = terminal?.title ?? (await this.page.title())
-    const message = terminal?.message ?? (await this.sap.statusMessage()).text
-    const onResult = /Display of Entries Found/i.test(title)
+    const message = (await this.sap.statusMessage()).text || terminal?.message || ""
+    const onResult = terminal?.onResult ?? /Display of Entries Found/i.test(title)
 
     if (!onResult) {
       // SE16N stays on the selection screen for an empty result ("No values found") and
@@ -1078,7 +1176,9 @@ class Se16nDriver {
             out[row].high = text
             break
           case "chkGS_SELFIELDS-MARK":
-            out[row].marked = el.getAttribute("aria-checked") === "true"
+            out[row].marked =
+              (el.getAttribute("aria-checked") ??
+                raw.match(/(?:^|[,\{\s])["']?1["']?\s*:\s*(true|false)/i)?.[1]) === "true"
             break
           case "btnOPTION":
             out[row].optionIcon = icon
@@ -1116,7 +1216,12 @@ class Se16nDriver {
     await this.focusGrid()
     await this.page.keyboard.press("Control+Home")
     await this.sap.settle("scroll selection grid to top")
-    const top = (await this.scrollPos()).top
+    const top = (
+      await this.until(
+        () => this.scrollPos(),
+        pos => pos.top === 1
+      )
+    ).top
     if (top !== 1) {
       throw new Error(`se16n: could not scroll the selection grid back to the top (at row ${top}).`)
     }
@@ -1134,16 +1239,13 @@ class Se16nDriver {
       return `${top}|${first ?? ""}`
     }
     const before = await signature()
-    // Slow systems can drop or delay the key, so retry once before declaring the end of the grid.
+    // A dropped key looks identical to the end of the grid, so press once more before concluding.
     for (let attempt = 0; attempt < 2; attempt++) {
       if (windowIndex === 0) await this.focusGrid()
       else await this.focusMultiGrid()
       await this.page.keyboard.press("PageDown")
       await this.sap.settle("page selection grid")
-      for (let i = 0; i < 16; i++) {
-        if ((await signature()) !== before) return true
-        await this.page.waitForTimeout(250)
-      }
+      if ((await this.until(signature, value => value !== before)) !== before) return true
     }
     return false
   }
@@ -1210,10 +1312,13 @@ class Se16nDriver {
 
   /** Park focus on a read-only cell so keyboard shortcuts reach the table control. */
   private async focusGrid(): Promise<void> {
-    await this.loc(`[lsdata*="${FIELDNAME(1)}"]:not(td)`)
-      .last()
+    const firstField = Object.entries(await this.readRowsReady()).find(([, state]) => state.field)
+    if (!firstField) {
+      throw new Error(`se16n: no rendered technical-name row to focus in the selection grid.`)
+    }
+    await this.loc(`[lsdata*="${FIELDNAME(Number(firstField[0]))}"]:not(td):visible`)
+      .first()
       .click()
-      .catch(() => {})
   }
 
   private async focusMultiGrid(): Promise<void> {
@@ -1401,19 +1506,15 @@ class Se16nDriver {
   }
 
   private modalOpen(): Promise<boolean> {
-    return this.scope
-      .evaluate(() => {
-        const bl = document.getElementById("urPopupWindowBlockLayer")
-        return !!bl && getComputedStyle(bl).display !== "none"
-      })
-      .catch(() => false)
+    return this.scope.evaluate(isModalOpen).catch(() => false)
   }
 
   private async waitModal(open: boolean): Promise<void> {
-    for (let i = 0; i < 80; i++) {
-      if ((await this.modalOpen()) === open) return
-      await this.page.waitForTimeout(250)
-    }
+    const state = await this.until(
+      () => this.modalOpen(),
+      value => value === open
+    )
+    if (state === open) return
     throw new Error(
       `se16n: SE16N's modal dialog did not ${open ? "open" : "close"}.${await this.messageSuffix()}`
     )

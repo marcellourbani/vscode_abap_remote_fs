@@ -466,7 +466,8 @@ async function walkForFile(dir: string, target: string): Promise<string | null> 
     }
     if (stat.isDirectory()) {
       // Skip Playwright's own output folders — no test data lives there
-      if (e === "test-results" || e === ".playwright-artifacts") continue
+      if (e === "test-results" || e === ".playwright-artifacts" || e === ".playwright-runs")
+        continue
       const hit = await walkForFile(p, target)
       if (hit) return hit
     } else if (e === target) {

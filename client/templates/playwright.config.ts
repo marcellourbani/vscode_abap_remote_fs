@@ -12,7 +12,7 @@ const parallel = process.env.SAP_TESTING_PARALLEL === "1"
 
 export default defineConfig({
   testDir: process.env.SAP_TESTING_SPEC_DIR,
-  timeout: Number(process.env.SAP_TESTING_TIMEOUT_MS ?? 60_000),
+  timeout: Number(process.env.SAP_TESTING_TIMEOUT_MS ?? 120_000),
   // Bounds the whole run, not just one test. Without it a wedged browser or worker leaves the
   // runner alive indefinitely and the caller waiting on output that never comes.
   globalTimeout: Number(process.env.SAP_TESTING_GLOBAL_TIMEOUT_MS ?? 3_600_000),
@@ -25,14 +25,16 @@ export default defineConfig({
   globalSetup: "./sso-global-setup.js",
   // Traces and videos, NOT our evidence. Must be set explicitly: Playwright derives this from
   // the config file's location, and this config ships inside the extension install.
-  outputDir: process.env.SAP_TESTING_ROOT
-    ? path.join(process.env.SAP_TESTING_ROOT, ".playwright-artifacts")
-    : undefined,
+  outputDir:
+    process.env.SAP_TESTING_ARTIFACTS_DIR ||
+    (process.env.SAP_TESTING_ROOT
+      ? path.join(process.env.SAP_TESTING_ROOT, ".playwright-artifacts")
+      : undefined),
   reporter: [["json", { outputFile: process.env.SAP_TESTING_REPORT_FILE }]],
   use: {
     headless: process.env.SAP_TESTING_HEADED !== "1",
     actionTimeout: 15_000,
-    trace: "retain-on-failure",
+    trace: process.env.SAP_TESTING_KEEP_ARTIFACTS === "1" ? "on" : "retain-on-failure",
     storageState,
     launchOptions: process.env.SAP_TESTING_BROWSER_EXECUTABLE
       ? { executablePath: process.env.SAP_TESTING_BROWSER_EXECUTABLE }

@@ -1521,6 +1521,11 @@
               "default": 3,
               "description": "Maximum concurrent tests when runInParallel is true. Defaults to 3; values above 5 are capped at 5."
             },
+            "keepArtifacts": {
+              "type": "boolean",
+              "default": false,
+              "description": "Off by default and not needed normally. Every call already saves its full report, runner log and failure traces in its own folder and returns that path; read those files when a case fails. Only the 15 newest call folders (max 500 MB total) are kept and older ones are deleted automatically, so read what you need soon after the run. Set true only to also record traces for passing cases, e.g. to compare a passing and a failing run."
+            },
             "prerequisiteConfirmation": {
               "type": "string",
               "description": "Required unless skipWorkflowValidation is true. Certifies the run-scripts readiness gate genuinely completed. Exact text: 'I verified all upstream phase gates and test data readiness for this program'. Never certify intentionally skipped work."
