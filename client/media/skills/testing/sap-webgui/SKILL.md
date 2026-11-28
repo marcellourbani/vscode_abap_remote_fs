@@ -233,7 +233,7 @@ Current allow-list of auto-dismissed dialogs:
 
 - `License` → Continue — SAP EULA reminder
 - `System messages` → Continue — SM02 broadcasts
-- `Multiple Logon` → "Continue with this logon and end any other logons in the system" — keeps parallel runs working. **Note it ends the user's OTHER sessions too**, including a WebGUI tab they have open, because tests run under the developer's own SAP user unless a dedicated test user is configured.
+- `Multiple Logon` is **not** auto-dismissed: the helper fails without ending other sessions. Reduce concurrent runs or ask the user to resolve SAP logon policy. Never select an option that ends another logon or add it as an interrupter.
 - `Copyright` → Continue — legal notice
 - `Data Privacy` → Accept — GDPR consent on modern S/4
 - `Password` → Cancel — password-expiration prompts; NEVER let a test change credentials silently
@@ -267,7 +267,7 @@ When detected, the guard captures evidence and throws with `kind`, title, URL, a
 
 **Silent transaction bounce** — SAP sometimes doesn't produce ANY error and just drops the user back to SAP Easy Access (SAPMSYST/40 / S000) when a transaction doesn't exist in this client or the user lacks `S_TCODE`. `sap.openTx(...)` verifies the target loaded via `detectSilentBounce` and throws a specific `S_TCODE`/authorisation hint.
 
-**Explicit assertion**: use `sap.expectNoRuntimeError()` at a point where dump-freedom is part of the test contract (e.g. after a long batch execution). Redundant most of the time — the `guarded()` path already checks — but useful for post-condition assertions.
+**Explicit assertion**: use `sap.expectNoRuntimeError()` at a point where dump-freedom is part of the test contract (e.g. after a long batch execution). Redundant most of the time — SapSession interactions already check — but useful for post-condition assertions.
 
 ## Current helper reliability
 

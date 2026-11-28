@@ -1,12 +1,15 @@
 /**
  * Per-call storage for Playwright runs: the full JSON report, runner output and traces.
  *
- * Each tool call gets its own folder, so concurrent calls cannot wipe each other's traces
- * (Playwright empties its outputDir at the start of every run). Old folders are pruned
- * automatically so the test folder cannot grow without bound.
+ * Each tool call gets a unique output folder. Active calls in this extension process
+ * are protected from housekeeping. Retention is best effort: active/current runs can
+ * temporarily exceed the count and size budgets.
  */
 import * as fs from "fs/promises"
 import * as path from "path"
+import { randomUUID } from "crypto"
+
+const activeRuns = new Set<string>()
 
 export const RUNS_DIR_NAME = ".playwright-runs"
 /** Newest call folders to keep. */
@@ -22,13 +25,21 @@ export function runsRoot(testFolder: string): string {
 
 export function newRunId(connectionId: string, now = new Date()): string {
   const stamp = now.toISOString().replace(/[:.]/g, "-")
-  return `${stamp}_${connectionId.replace(/[^\w-]/g, "_")}`
+  return `${stamp}_${connectionId.replace(/[^\w-]/g, "_")}_${randomUUID()}`
 }
 
 export async function createRunDir(testFolder: string, runId: string): Promise<string> {
   const dir = path.join(runsRoot(testFolder), runId)
-  await fs.mkdir(dir, { recursive: true })
-  return dir
+  if (activeRuns.has(dir)) throw new Error("A Playwright call already owns this run directory.")
+  activeRuns.add(dir)
+  try {
+    await fs.mkdir(runsRoot(testFolder), { recursive: true })
+    await fs.mkdir(dir)
+    return dir
+  } catch (error) {
+    activeRuns.delete(dir)
+    throw error
+  }
 }
 
 export async function writeRunLog(workerDir: string, stdout: string, stderr: string) {
@@ -49,7 +60,12 @@ async function dirSize(dir: string): Promise<number> {
   return total
 }
 
-/** Delete the oldest call folders beyond the count and size limits. Never throws. */
+/** Release a completed call before pruning. Always release in the runner's finally block. */
+export function releaseRun(testFolder: string, runId: string): void {
+  activeRuns.delete(path.join(runsRoot(testFolder), runId))
+}
+
+/** Best-effort retention; active calls and the protected current call are never deleted. */
 export async function pruneRuns(
   testFolder: string,
   keepRunId?: string,
@@ -57,7 +73,8 @@ export async function pruneRuns(
 ): Promise<void> {
   try {
     const root = runsRoot(testFolder)
-    const names = await fs.readdir(root).catch(() => [] as string[])
+    const entries = await fs.readdir(root, { withFileTypes: true }).catch(() => [])
+    const names = entries.filter(entry => entry.isDirectory()).map(entry => entry.name)
     // The ISO-timestamp prefix makes name order chronological.
     const runs = names.filter(name => name !== keepRunId).sort()
     const sizes = new Map<string, number>()
@@ -70,7 +87,12 @@ export async function pruneRuns(
     let count = runs.length + (keepRunId ? 1 : 0)
     for (const name of runs) {
       if (count <= limits.maxRuns && total <= limits.maxBytes) break
-      await fs.rm(path.join(root, name), { recursive: true, force: true }).catch(() => {})
+      if (activeRuns.has(path.join(root, name))) continue
+      try {
+        await fs.rm(path.join(root, name), { recursive: true, force: true })
+      } catch {
+        continue
+      }
       count--
       total -= sizes.get(name) ?? 0
     }

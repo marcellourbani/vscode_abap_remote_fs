@@ -1474,7 +1474,7 @@
         "name": "abapfs_run_playwright_tests",
         "canRequestPreApproval": true,
         "displayName": "Run Playwright Test",
-        "modelDescription": "Run exact tcIds or every Playwright spec in one program using ABAP FS's bundled tool; NEVER run terminal Playwright. Use runInParallel only after reading case/data/automation notes and confirming cases are independent. Batch producers before consumers and shared-state/order-dependent cases sequentially; when uncertain, stay sequential. Parallel mode uses up to maxTasks isolated workers after one authentication setup. maxFailures defaults 3, caps 10. By default, requires prerequisiteConfirmation and SE16N coverage. For an explicit user-directed workflow override such as an execution-only smoke check, use skipWorkflowValidation: true with overrideReason; this waives the readiness certification and SE16N gate, so planning/case/index/data artifacts are not required by this tool. An executable spec under test-scripts and any inputs it actually consumes are still required. Never claim skipped checks passed.",
+        "modelDescription": "Run exact tcIds or every Playwright spec in one program using ABAP FS's bundled tool; NEVER run terminal Playwright. Use runInParallel only after reading case/data/automation notes and confirming cases are independent. Batch producers before consumers and shared-state/order-dependent cases sequentially; when uncertain, stay sequential. Parallel mode partitions specs across up to maxTasks independent runner processes, each establishing its own SAP session. maxFailures applies per runner process (default 3, cap 10), not across the invocation. Start sequentially; concurrent calls and browsers add load and can cause local or SAP timeouts. Reduce concurrency before retrying load-related failures. By default, requires prerequisiteConfirmation and SE16N coverage. For an explicit user-directed workflow override such as an execution-only smoke check, use skipWorkflowValidation: true with overrideReason; this waives the readiness certification and SE16N gate, so planning/case/index/data artifacts are not required by this tool. An executable spec under test-scripts and any inputs it actually consumes are still required. Never claim skipped checks passed.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_run_playwright_tests",
         "icon": "$(play)",
@@ -1508,23 +1508,23 @@
               "type": "integer",
               "minimum": 1,
               "default": 3,
-              "description": "Stop a suite after this many total failed cases. Defaults to 3; values above 10 are capped at 10."
+              "description": "Stop each runner process after this many failed tests. In parallel mode each partition has its own threshold; this is not an invocation-wide failure budget. Defaults to 3; values above 10 are capped at 10."
             },
             "runInParallel": {
               "type": "boolean",
               "default": false,
-              "description": "Run selected spec files concurrently after one authentication setup. Use only for cases confirmed independent; keep producer/consumer, shared-state, and order-dependent cases in sequential batches."
+              "description": "Partition selected spec files across independent runner processes, each with its own SAP authentication/session. Use only for independent cases; keep producer/consumer and shared-state/order-dependent cases sequential. Start sequentially and reduce concurrency if browsers or SAP slow down; never terminate other SAP logons."
             },
             "maxTasks": {
               "type": "integer",
               "minimum": 1,
               "default": 3,
-              "description": "Maximum concurrent tests when runInParallel is true. Defaults to 3; values above 5 are capped at 5."
+              "description": "Maximum runner processes for this call when runInParallel is true. Defaults to 3; capped at 5. This is a ceiling, not a recommended load: start with 2 only after sequential success, and account for other calls/browsers and SAP capacity."
             },
             "keepArtifacts": {
               "type": "boolean",
               "default": false,
-              "description": "Off by default and not needed normally. Every call already saves its full report, runner log and failure traces in its own folder and returns that path; read those files when a case fails. Only the 15 newest call folders (max 500 MB total) are kept and older ones are deleted automatically, so read what you need soon after the run. Set true only to also record traces for passing cases, e.g. to compare a passing and a failing run."
+              "description": "Off by default and not needed normally. Every call already saves its full report, runner log and failure traces in its own folder and returns that path; read those files when a case fails. Best-effort cleanup targets 15 call folders and 500 MB total. Active calls in this extension process and the just-completed call are protected, so these are not hard bounds. Copy evidence you need to retain before later cleanup. Set true only to also record traces for passing cases, e.g. to compare a passing and a failing run."
             },
             "prerequisiteConfirmation": {
               "type": "string",

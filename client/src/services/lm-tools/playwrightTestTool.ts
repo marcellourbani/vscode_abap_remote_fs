@@ -41,6 +41,7 @@ import {
   createRunDir,
   newRunId,
   pruneRuns,
+  releaseRun,
   runsRoot,
   writeRunLog
 } from "../testing/playwright-run-store"
@@ -174,7 +175,7 @@ function collectSpecs(suite: JsonReportSuite | undefined, out: JsonReportSpec[])
   for (const child of suite.suites ?? []) collectSpecs(child, out)
 }
 
-export function summarizeReport(report: JsonReport, maxFailures: number): string {
+export function summarizeReport(report: JsonReport, maxFailures: number, parallel = false): string {
   const specs: JsonReportSpec[] = []
   for (const suite of report.suites ?? []) collectSpecs(suite, specs)
 
@@ -239,8 +240,13 @@ export function summarizeReport(report: JsonReport, maxFailures: number): string
   const stoppedEarly = (report.errors ?? []).some(error =>
     /stopped early|maximum allowed failures/i.test(error.message ?? "")
   )
-  if (stoppedEarly || (failed >= maxFailures && interrupted + notRun > 0)) {
-    lines.push(`Run stopped early after reaching maxFailures=${maxFailures}.`)
+  if (stoppedEarly || (!parallel && failed >= maxFailures && interrupted + notRun > 0)) {
+    lines.push(
+      `A runner stopped early after reaching maxFailures=${maxFailures} (per runner process).`
+    )
+  }
+  for (const error of report.errors ?? []) {
+    if (error.message) lines.push(`Runner error: ${stripAnsi(error.message)}`)
   }
   if (failed > 0) {
     lines.push(
@@ -377,6 +383,8 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
           .filter(name => /^TC-[A-Za-z0-9-]+\.spec\.ts$/i.test(name))
           .map(name => name.replace(/\.spec\.ts$/i, ""))
           .sort()
+      if (!selectedIds.length)
+        throw new Error("No TC-*.spec.ts files found for parallel execution.")
       taskIds = splitTcIds(selectedIds, maxTasks)
     }
 
@@ -384,86 +392,100 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     const callDir = await createRunDir(testFolder, runId)
     const keepArtifacts = options.input.keepArtifacts === true
 
-    const workerReports = await Promise.all(
-      taskIds.map(async (workerTcIds, workerIndex) => {
-        const runDir = await fs.mkdtemp(path.join(os.tmpdir(), "abapfs-testing-"))
-        const workerDir = path.join(callDir, `worker-${workerIndex + 1}`)
-        await fs.mkdir(workerDir, { recursive: true })
-        const reportFile = path.join(runDir, "report.json")
-        // A parallel worker must establish its own SAP session, not clone a sibling's cookie.
-        const storageStateFile = path.join(runDir, "storage-state.json")
-        const loginUrl = await tryLoginUrl(connectionId, url)
-        log.debug(
-          loginUrl
-            ? `[playwright] worker ${workerIndex + 1}: own SAP login URL ready`
-            : `[playwright] worker ${workerIndex + 1}: auto-login unavailable`
-        )
-        const env: NodeJS.ProcessEnv = {
-          ...process.env,
-          SAP_TESTING_ROOT: testFolder,
-          SAP_TESTING_SPEC_DIR: specDir,
-          SAP_TESTING_HEADED: headed ? "1" : "0",
-          SAP_TESTING_MAX_FAILURES: String(maxFailures),
-          SAP_TESTING_PARALLEL: "0",
-          SAP_TESTING_MAX_TASKS: "1",
-          SAP_TESTING_REPORT_FILE: reportFile,
-          SAP_TESTING_STORAGE_STATE: storageStateFile,
-          SAP_TESTING_ARTIFACTS_DIR: path.join(workerDir, "artifacts"),
-          SAP_TESTING_KEEP_ARTIFACTS: keepArtifacts ? "1" : "0",
-          SAP_SYSTEM: connectionId,
-          [`SAP_URL_${connectionId.toUpperCase()}`]: url
-        }
-        if (loginUrl) env.SAP_TESTING_LOGIN_URL = loginUrl.url
-        if (browser.executablePath) {
-          env.SAP_TESTING_BROWSER_EXECUTABLE = browser.executablePath
-        }
-
-        try {
-          const args = playwrightArgs(configPath, runInParallel ? workerTcIds : tcIds)
-          const { code, stdout, stderr } = await timed(`playwright worker ${workerIndex + 1}`, () =>
-            runProcess(process.execPath, [cliPath, ...args], { cwd: testFolder, env }, token)
-          )
-          await writeRunLog(workerDir, stdout, stderr)
+    try {
+      const workerReports = await Promise.allSettled(
+        taskIds.map(async (workerTcIds, workerIndex) => {
+          const runDir = await fs.mkdtemp(path.join(os.tmpdir(), "abapfs-testing-"))
+          const workerDir = path.join(callDir, `worker-${workerIndex + 1}`)
+          const storageStateFile = path.join(runDir, "storage-state.json")
+          let loginUrl: SsoLauncher | undefined
           try {
-            const raw = await fs.readFile(reportFile, "utf8")
-            await fs.writeFile(path.join(workerDir, "report.json"), raw, "utf8").catch(() => {})
-            return JSON.parse(raw) as JsonReport
-          } catch {
-            return {
-              errors: [
-                {
-                  message:
-                    `Playwright worker ${workerIndex + 1} did not produce a report ` +
-                    `(exit code ${code}).\n${stderr || stdout}`
-                }
-              ]
-            } satisfies JsonReport
+            await fs.mkdir(workerDir, { recursive: true })
+            const reportFile = path.join(runDir, "report.json")
+            // A parallel worker must establish its own SAP session, not clone a sibling's cookie.
+            loginUrl = await tryLoginUrl(connectionId, url)
+            log.debug(
+              loginUrl
+                ? `[playwright] worker ${workerIndex + 1}: own SAP login URL ready`
+                : `[playwright] worker ${workerIndex + 1}: auto-login unavailable`
+            )
+            const env: NodeJS.ProcessEnv = {
+              ...process.env,
+              SAP_TESTING_ROOT: testFolder,
+              SAP_TESTING_SPEC_DIR: specDir,
+              SAP_TESTING_HEADED: headed ? "1" : "0",
+              SAP_TESTING_MAX_FAILURES: String(maxFailures),
+              SAP_TESTING_PARALLEL: "0",
+              SAP_TESTING_MAX_TASKS: "1",
+              SAP_TESTING_REPORT_FILE: reportFile,
+              SAP_TESTING_STORAGE_STATE: storageStateFile,
+              SAP_TESTING_ARTIFACTS_DIR: path.join(workerDir, "artifacts"),
+              SAP_TESTING_KEEP_ARTIFACTS: keepArtifacts ? "1" : "0",
+              SAP_SYSTEM: connectionId,
+              [`SAP_URL_${connectionId.toUpperCase()}`]: url
+            }
+            delete env.SAP_TESTING_LOGIN_URL
+            if (loginUrl) env.SAP_TESTING_LOGIN_URL = loginUrl.url
+            if (browser.executablePath) {
+              env.SAP_TESTING_BROWSER_EXECUTABLE = browser.executablePath
+            }
+
+            const args = playwrightArgs(configPath, runInParallel ? workerTcIds : tcIds)
+            const { code, stdout, stderr } = await timed(
+              `playwright worker ${workerIndex + 1}`,
+              () =>
+                runProcess(process.execPath, [cliPath, ...args], { cwd: testFolder, env }, token)
+            )
+            await writeRunLog(workerDir, stdout, stderr)
+            try {
+              const raw = await fs.readFile(reportFile, "utf8")
+              await fs.writeFile(path.join(workerDir, "report.json"), raw, "utf8").catch(() => {})
+              return JSON.parse(raw) as JsonReport
+            } catch {
+              return {
+                errors: [
+                  {
+                    message:
+                      `Playwright worker ${workerIndex + 1} did not produce a report ` +
+                      `(exit code ${code}).\n${stderr || stdout}`
+                  }
+                ]
+              } satisfies JsonReport
+            }
+          } finally {
+            // A cancelled worker may leave its one-shot ticket unused; always close its listener.
+            loginUrl?.dispose()
+            await cleanupStorageState(storageStateFile)
+            await fs.rm(runDir, { recursive: true, force: true })
           }
-        } finally {
-          // A cancelled worker may leave its one-shot ticket unused; always close its listener.
-          loginUrl?.dispose()
-          await cleanupStorageState(storageStateFile)
-          await fs.rm(runDir, { recursive: true, force: true })
-        }
-      })
-    )
+        })
+      )
 
-    const mergedReport: JsonReport = {
-      suites: workerReports.flatMap(worker => worker.suites ?? []),
-      errors: workerReports.flatMap(worker => worker.errors ?? [])
+      const mergedReport: JsonReport = {
+        suites: workerReports.flatMap(worker =>
+          worker.status === "fulfilled" ? (worker.value.suites ?? []) : []
+        ),
+        errors: workerReports.flatMap(worker =>
+          worker.status === "fulfilled"
+            ? (worker.value.errors ?? [])
+            : [{ message: `Playwright worker setup failed: ${String(worker.reason)}` }]
+        )
+      }
+      const summaryStarted = Date.now()
+      const summary = summarizeReport(mergedReport, maxFailures, runInParallel)
+      log.debug(`[playwright] summarized report in ${Date.now() - summaryStarted}ms`)
+      log.debug(`[playwright] returning to model after ${Date.now() - invokeStarted}ms total`)
+
+      const runsNote =
+        `\nFull report, runner log and traces for this call: ${callDir}` +
+        ` (best-effort retention under ${runsRoot(testFolder)}; active/current runs may exceed the budgets).`
+      const withNote = summary + runsNote
+      const output = bypassNotice ? `${bypassNotice}\n\n${withNote}` : withNote
+      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(output)])
+    } finally {
+      await pruneRuns(testFolder, runId)
+      releaseRun(testFolder, runId)
     }
-    const summaryStarted = Date.now()
-    const summary = summarizeReport(mergedReport, maxFailures)
-    log.debug(`[playwright] summarized report in ${Date.now() - summaryStarted}ms`)
-    log.debug(`[playwright] returning to model after ${Date.now() - invokeStarted}ms total`)
-
-    await pruneRuns(testFolder, runId)
-    const runsNote =
-      `\nFull report, runner log and traces for this call: ${callDir}` +
-      ` (kept automatically; only the newest runs under ${runsRoot(testFolder)} are retained).`
-    const withNote = summary + runsNote
-    const output = bypassNotice ? `${bypassNotice}\n\n${withNote}` : withNote
-    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(output)])
   }
 }
 

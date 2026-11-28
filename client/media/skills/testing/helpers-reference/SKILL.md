@@ -85,15 +85,36 @@ SQL metadata, `_units.md`, or the TC, research them; never avoid that work with 
 | A safety/business ceiling must not be exceeded | `{ maxRows: N }` |
 | Both lower and upper bounds matter | `{ minRows: N, maxRows: M }` |
 
+The helper opens SE16N, clears inherited criteria, places and verifies requested fields,
+selects output columns, applies include/exclude/range/multiple-selection criteria, executes,
+and captures criteria/output evidence. Do not script SE16N paging, selection dialogs,
+clipboard upload, toolbar overflow, waits, or result polling yourself. It refuses an
+inherited layout unless you explicitly supply `layout`; do not bypass that failure because
+a layout can override the requested columns. Supply a layout only when it is part of the
+intended proof.
+
+`sign` defaults to `"I"`; `option` defaults to `"EQ"`, or `"BT"` when `high` is supplied.
+A `values` entry is `{ low: string, high?: string, sign?: "I" | "E", option?: Se16nOption }`.
+The criterion still requires a `low` value in its type contract; when supplying `values`,
+use `low: ""` on the criterion and put the actual selections in `values`.
+`maxHits` is left at the screen's setting when omitted; it is a fetch cap, not proof that
+more matching records do not exist. Choose a cap above an asserted upper/exact bound and
+use authoritative SQL when complete-table cardinality matters. Result fields follow SAP's
+actual output order, not the order of `outputFields`; address row cells by the returned
+`fields`/`columns`, not guessed offsets. Evidence flags default to true; disable them only
+when the user explicitly declines those screenshots.
+
 Do not weaken a known exact outcome to `minRows: 1` merely because it is easier to pass.
 Derive the cardinality from the TC and SQL postcondition. For example, EKKO at a created
 PO key is normally `exactRows: 1`; EKPO should use the expected item count when known,
 and only `minRows: 1` when the case genuinely permits a variable number of items.
 
 `where` entries support `sign: "I" | "E"`, options `EQ NE BT NB CP NP GT LT GE LE`,
-`high` for BT/NB, and `values` for multiple selection. The result exposes `hits`,
+`high` for BT/NB, and `values` for multiple selection. Do not supply a nonempty `high`
+with non-range options. Use the SAP user's display format for dates/numbers; do not assume
+an ISO date string will be accepted by the target system. The result exposes `hits`,
 `runtime`, technical `fields`, display `columns`, visible `rows`, `partial`, and `message`.
-Use `expect` for authoritative hit-count assertions and explicit `expect(...)` checks on
+Use `expect` for SE16N hit-count assertions and explicit `expect(...)` checks on
 returned rows only when the needed row is guaranteed visible (`partial === false`).
 
 All exported from the single specifier `@sap-testing/runtime` — see `build-scripts` for the full method reference and translation table from `.md` steps to calls.
@@ -107,7 +128,7 @@ All exported from the single specifier `@sap-testing/runtime` — see `build-scr
 | `sap.clickTab(name)`                                    | Any dynpro tab strip (Delivery/Invoice, Conditions, Org. Data on ME21N; Where, Detail Data on MIGO; etc.). NEVER use `clickButton` on a tab — the ITS DOM contracts are different. |
 | `sap.setGridCell(columnTitle, rowIndex, value)`         | Any editable ALV/table cell whose input has no accessible name (item-overview / posting tables). Handles BOTH WebGUI renderers (dynpro table control AND `CL_GUI_ALV_GRID`) and fires the commit the ALV grid needs to read the value — so never hand-roll a `raw()` `fill()` on a grid cell (it skips the commit and the cell reverts). Row index is 1-based; row 0 is the header row.  |
 | `sap.setField(name, value, { technicalName: "EKORG" })` | Last-resort disambiguation when two visible fields share the same accessible name. The technical name (e.g. `EKORG`, `LIFNR`, `WERKS`) must be verified against ADT, not guessed.  |
-| `sap.setRange(name, from, to)`                           | Select-option helper. Uses the shared accessible label when both endpoints have it, otherwise resolves the low/high pair from verified `lsdata` SID metadata. Pass `""` to clear the high endpoint. |
+| `sap.setRange(name, from, to)`                           | Select-option helper. Fills the low/high pair even when the endpoint labels differ. Pass `""` to clear the high endpoint. |
 | `sap.selectOption(fieldName, optionName)`                | Native select or SAP textbox/listbox control. Picks an option by exact accessible name and verifies the resulting selection; it does not depend on visual position or option order. |
 | `sap.contentRoot()`                                      | One-off raw locator scope. Resolves whether SAP controls are in the top-level page or an ITS frame, then returns that document's body locator. Use instead of hard-coding `ITSFRAME1` or choosing the first iframe. |
 
@@ -115,15 +136,17 @@ If you find yourself considering `sap.raw()` for a tab click, an editable grid c
 
 ### Runtime-safety helpers (popups, dumps, session loss)
 
-Three related mechanisms keep the test loud when SAP misbehaves. All are wired into every `guarded()` action — you rarely call them yourself.
+SapSession interactions automatically apply these safety checks; do not reproduce their implementation in specs.
 
 | Mechanism                                  | Purpose                                                                                                                                                                     |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dismissKnownPopups` (auto)                | Curated allow-list of safe-to-dismiss dialogs (License, System messages, Multiple Logon, Copyright, Data Privacy, Password). Unknown dialogs are LEFT ALONE — including "Exit Document" ("Do you want to save?") which tests handle explicitly via `sap.clickButton("Yes"\|"No", { dialog: "Exit Document" })`. |
+| `dismissKnownPopups` (auto)                | Curated allow-list of safe-to-dismiss dialogs (License, System messages, Copyright, Data Privacy, Password). Unknown dialogs are LEFT ALONE — including "Exit Document" ("Do you want to save?") which tests handle explicitly via `sap.clickButton("Yes"\|"No", { dialog: "Exit Document" })`. |
 | `detectRuntimeError` (auto)                | Detects ABAP short dumps, ITS/ICM errors, and dropped-to-logon-screen states. Throws with `kind`, title, URL, body snippet.                                                 |
 | `detectSilentBounce` (auto, from `openTx`) | SAP silently drops the user back to Easy Access (SAPMSYST/40 / S000) when a tx doesn't exist or the user lacks `S_TCODE`. `openTx` throws instead of silently continuing.   |
 | `SapSessionOptions.extraInterrupters`      | Per-test additional interrupters — for program-specific "Reprint?" / "Continue with X?" popups your report shows.                                                           |
-| `sap.expectNoRuntimeError()`               | Explicit dump-freedom assertion. Redundant most of the time (guarded already runs it) but useful as a post-condition after a long-running batch step.                       |
+| `sap.expectBusinessError(action, message)` | One-action assertion for an expected SAP business-error status; runtime/session failures remain fatal. |
+| `sap.statusMessage()` | Returns `Promise<{ text: string; isError: boolean }>` for the visible SAP status message. |
+| `sap.expectNoRuntimeError()`               | Explicit dump-freedom assertion. Normally automatic after interactions but useful as a post-condition after a long-running batch step.                       |
 
 Failure messages are actionable and unique — treat them as diagnostic contracts:
 
@@ -131,25 +154,35 @@ Failure messages are actionable and unique — treat them as diagnostic contract
 - `Popup guard: recognised interrupter "X" but could not click its "Y" button` → SAP version has a different button label; add `extraInterrupters`, don't disable the guard.
 - `SAP runtime error detected (dump|its|logon): "..."` → real short dump / session loss / ITS error. Fix the SAP-side cause (ST22, SM21, SMICM) before touching the test.
 
-Load `sap-webgui` for the full popup allow-list, dialog DOM contracts, and dump-signature list.
+A Multiple Logon dialog is a failure, not a safe interrupter. The helper never ends other
+sessions. Reduce concurrency or ask the user to resolve SAP logon policy; do not add this
+dialog to `extraInterrupters`.
 
-## The "guarded" pattern
+Load `sap-webgui` for supported screen/control patterns.
 
-Every `SapSession` action goes through:
+## Interaction and expected-error contract
+
+Await each `SapSession` interaction. The helper handles SAP processing waits, supported
+interrupters, runtime-error checks, unexpected SAP status errors, and step evidence. Do not
+add fixed sleeps, duplicate popup handling, or manual screenshots around ordinary calls.
+Screenshots remain enabled unless the user explicitly declines them.
+
+An ordinary action fails on a SAP error status before a following `expectAlert()` can run.
+For a deliberate negative validation case, prepare the input first, then wrap **one**
+interaction that produces the expected business error:
 
 ```typescript
-private async guarded(description, fn) {
-  await dismissKnownPopups(...)   // before
-  await fn()                      // the action
-  await waitForServer(...)        // networkidle + WebGUI busy overlay gone
-  await waitForDomStable(...)     // DOM mutations settled
-  await dismissKnownPopups(...)   // after
-  await detectRuntimeError(...)   // dump / ITS / logon — throws if hit
-  await this.evidence.step(...)   // screenshot + record
-}
+await sap.setField("Site", "INVALID")
+await sap.expectBusinessError(() => sap.pressKey("Enter"), /Enter a valid site/i)
 ```
 
-Specs never call wait/screenshot/popup logic directly — this is exactly why a spec reads as clean SAP vocabulary (`sap.setField(...)`, `sap.clickButton(...)`) with no manual waits anywhere.
+`expectBusinessError(action: () => Promise<void>, message: string | RegExp): Promise<void>`
+requires an error status whose text includes the string or matches the regular expression.
+A missing error, wrong message, action failure, dump, ITS error, or session loss still fails.
+Do not nest assertions or put setup/multiple interactions inside the callback. Do not use
+broad try/catch to suppress failures. `expectAlert(text)` remains appropriate for ordinary
+success/information messages; `statusMessage()` returns `{ text, isError }` for inspection,
+not as a substitute for the expected-error assertion.
 
 ## Generic helper boundary
 

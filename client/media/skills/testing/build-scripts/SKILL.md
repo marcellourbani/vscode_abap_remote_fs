@@ -95,11 +95,11 @@ Rules:
 Interaction (via `SapSession`):
 
 - `sap.open()`, `sap.openTx(tcode)`, `sap.runReport(programName)`
-- `sap.setField(name, value, { group?, nth?, technicalName? })` — use `technicalName: "<ABAP_FIELD>"` (e.g. `"EKORG"`, `"LIFNR"`) when the accessible name is **ambiguous (shared by more than one field) OR absent (a nameless control)**, and the ABAP field name was verified in `_screens.md` or live inspection (read from the live `lsdata` during exploration — see `sap-webgui`). The runtime tries the accessible name first and falls back to `input[lsdata*="-<FIELD>"]` whenever the name matches 0 or >1 elements, so this is the correct tool for a nameless field, not only a duplicate-label one. For a nameless control, still pass a human-readable `name` (used only for the step description) plus the `technicalName` that actually locates it — e.g. `sap.setField("Header amount", data.sample_amount, { technicalName: "GV_SAMPLE_FIELD" })`. Never guess the technical name.
-- `sap.setRange(name, from, to, { group? })`
+- `sap.setField(name, value, { group?, nth?, technicalName? })` — use `technicalName: "<ABAP_FIELD>"` (e.g. `"EKORG"`, `"LIFNR"`) when the accessible name is **ambiguous (shared by more than one field) OR absent (a nameless control)**, and the ABAP field name was verified in `_screens.md` or live inspection (read from the live `lsdata` during exploration — see `sap-webgui`). The helper uses the accessible name when unique and the verified technical name when the accessible name is missing or ambiguous. For a nameless control, still pass a human-readable `name` (used only for the step description) plus the `technicalName` that actually locates it — e.g. `sap.setField("Header amount", data.sample_amount, { technicalName: "GV_SAMPLE_FIELD" })`. Never guess the technical name.
+- `sap.setRange(name, from, to, { group? })` — handles low/high endpoints even when their labels differ; pass `""` to clear the high endpoint.
 - `sap.selectOption(fieldName, optionName, { group? })` — native select and SAP textbox/listbox dropdowns; exact option name, with post-selection verification. Do not select by the option's position.
 - `sap.check(name, { group?, value? })`
-- `sap.selectRadio(name, { group? })`
+- `sap.selectRadio(name, { group? })` — supports native and SAP custom radio controls and verifies selection; do not replace it with raw `.check()`.
 - `sap.contentRoot()` — for a narrowly scoped raw locator, returns the body of the SAP document selected by the runtime (top-level page or actual ITS frame). Do not reproduce frame discovery in a spec.
 - `sap.clickButton(name, { group?, dialog?, nth? })`
 - `sap.clickTab(tabName)` — for dynpro header/detail tab strips (Delivery/Invoice, Conditions, Org. Data on ME21N; Where, Detail Data on MIGO; etc.). NEVER use `clickButton` on a tab — the ITS DOM has no `role="tab"` and no `title` on tabs, so the button fallback finds nothing. `sap-webgui` covers the ItemTitle/ItmWidthHelper trap.
@@ -114,15 +114,18 @@ Interaction (via `SapSession`):
 
 Assertions (via `SapSession`):
 
-- `sap.expectAlert(text)`, `sap.expectNoAlert()`
+- `sap.expectAlert(text)`, `sap.expectNoAlert()` — assert ordinary success/information messages. An unexpected SAP error status fails the preceding interaction.
+- `sap.expectBusinessError(() => sap.pressKey("Enter"), /expected validation message/i)` — assert the business error from exactly one awaited SapSession interaction. Prepare invalid input before this call. A missing/different error, dump, ITS failure, or session loss still fails. Never use broad try/catch suppression or ordinary action → `expectAlert()` for expected error statuses.
+- `sap.statusMessage()` → `{ text, isError }` for status inspection, not error suppression.
 - `sap.expectTitle(text)`
 - `sap.expectDialogOpen(title)`, `sap.expectNoDialog()`
 - `sap.expectGridHasRow(text)`, `sap.expectGridEmpty()`
-- `sap.expectNoRuntimeError()` — redundant most of the time (every `guarded()` action already runs `detectRuntimeError`), but useful as an explicit post-condition after a long batch execution / job step.
+- `sap.expectNoRuntimeError()` — redundant most of the time (SapSession interactions already check for dumps and session loss), but useful as an explicit post-condition after a long batch execution / job step.
 
 Runtime-safety mechanisms (automatic, no explicit call needed unless noted):
 
-- Popup guard runs before and after every action against a curated allow-list (License, System messages, Multiple Logon, Copyright, Data Privacy, Password). Unknown dialogs are left alone — including "Exit Document" ("Do you want to save?") which tests must handle explicitly with `sap.clickButton("Yes"|"No", { dialog: "Exit Document" })`.
+- Popup guard runs before and after every action against a curated allow-list (License, System messages, Copyright, Data Privacy, Password). Unknown dialogs are left alone — including "Exit Document" ("Do you want to save?") which tests must handle explicitly with `sap.clickButton("Yes"|"No", { dialog: "Exit Document" })`.
+- Multiple Logon fails rather than terminating other sessions. Reduce concurrent runs or ask the user to resolve the SAP policy; never dismiss it by ending another logon.
 - Program-specific interrupters go via `new SapSession(page, { tcId, title, extraInterrupters: [{ matchTitle, dismissButton, note }] })` — never edit the built-in list.
 - Runtime-error detection catches ABAP short dumps, ITS/ICM errors, and dropped-to-logon states after every action; throws with `kind`, title, URL, and a body snippet.
 - `sap.openTx(...)` verifies the transaction actually loaded and throws a specific `S_TCODE`/client-missing message if SAP silently bounces to Easy Access.
@@ -131,8 +134,8 @@ Load `helpers-reference` for `sap.se16n()` usage and the auto-mechanism table; l
 
 Background artifacts (via `SapArtifacts`) — only these two methods exist. For anything about job status, IDoc counts, or table rows, use the TC's `## Post-test verification` section instead (see `design-cases` and `run-scripts`) — that covers all DB-backed state now. These two remain because a filesystem path and rendered spool output have no SQL equivalent:
 
-- `artifacts.verifyAL11FilePresent(fullPath)` — does NOT actually use AL11's tree UI (that's fragile to navigate deterministically); it uses CG3Y (file download) as a proxy, which fails loudly if the file doesn't exist. Slower than it sounds. Still unverified against a real system — suspect this helper first if it misbehaves.
-- `artifacts.captureLatestSpoolForUser(user)` → returns text, via SP01. Also unverified.
+- `artifacts.verifyAL11FilePresent(fullPath)` — does NOT actually use AL11's tree UI (that's fragile to navigate deterministically); it requires a completed CG3Y download as proof; an absent error alone does not count. This downloads a local probe copy and requires the applicable authorization. Slower than it sounds. Still unverified against a real system — suspect this helper first if it misbehaves.
+- `artifacts.captureLatestSpoolForUser(user)` → returns text from the SAP document via SP01 only when exactly one user-matching request is rendered; ambiguous/missing requests fail. It cannot establish latest ordering across multiple requests. Also unverified.
 
 Data (default sidecar path only): `resolveTestData(tcId, testInfo)` → returns `{ [key]: string }` from the .data.md + cache. ALWAYS pass `testInfo` (available as the test function's second argument) — it scopes the lookup to THIS program, preventing a same-numbered TC-ID in another program from being resolved by mistake.
 
@@ -269,8 +272,7 @@ test("TC-002 <title>", async ({ page }, testInfo) => {
   try {
     await sap.openTx("Z_MY_TCODE");
     await sap.selectRadio("Some Mode");
-    await sap.execute();
-    await sap.expectAlert(/required/i);
+    await sap.expectBusinessError(() => sap.execute(), /required/i);
     await sap.finish("pass");
   } catch (err) {
     await sap.finish("fail", (err as Error).message);
@@ -345,7 +347,8 @@ Once state-table actions are emitted, Steps become mostly nav + Execute + follow
 | "Press F4 and pick V"                                                              | `sap.pickFromValueHelp("F", "V", { group })`                                                                                                                         |
 | "Upload file P"                                                                    | Native `<input type="file">` → `sap.uploadFile(...)`; SAP path textbox → `sap.setField(...)`, as verified in the map or live                                           |
 | "Download Excel"                                                                   | `const p = await sap.captureDownload(() => sap.clickButton("Export"))`                                                                                               |
-| "Expected: message M appears"                                                      | `sap.expectAlert("M")`                                                                                                                                               |
+| "Expected: success/information message M appears"                                 | `sap.expectAlert("M")`                                                                                                                                               |
+| "Submit and expect SAP validation error M" | `await sap.expectBusinessError(() => sap.execute(), "M")` — wrap only the triggering action, not setup |
 | "Expected: title Y"                                                                | `sap.expectTitle("Y")`                                                                                                                                               |
 | "Expected: job J finishes" / "IDoc of type T created" / "row in table T where K=V" | Default reusable path: keep SQL in `## Post-test verification` and SE16N for `sql|mixed`; scoped path: verify only the requested outcome |
 | "Expected: file P on app server"                                                   | `await artifacts.verifyAL11FilePresent("P")`                                                                                                                         |

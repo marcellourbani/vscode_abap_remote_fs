@@ -55,6 +55,26 @@
  */
 import type { Page, Frame } from "@playwright/test"
 import type { SapSession } from "./sap-session"
+import { detectRuntimeError } from "./dump-detector"
+
+/** Accept only an unambiguous empty-result message, never "No data authorization". */
+export function isEmptyResultMessage(message: string): boolean {
+  return /^(?:no values found|no data(?: found| selected| available)?)[.!]?$/i.test(message.trim())
+}
+
+/** Hit counts must be readable integers; a missing or localized value is not zero. */
+export function parseHitCount(value: string): number {
+  const text = value.trim()
+  const grouped = /^\d{1,3}(?:([., '’\u00a0\u202f])\d{3})(?:\1\d{3})*$/
+  if (!/^\d+$/.test(text) && !grouped.test(text)) {
+    throw new Error(`se16n: could not read an unambiguous hit count: "${value}".`)
+  }
+  const count = Number(text.replace(/[., '’\u00a0\u202f]/g, ""))
+  if (!Number.isSafeInteger(count)) {
+    throw new Error(`se16n: could not read an unambiguous hit count: "${value}".`)
+  }
+  return count
+}
 
 /** ABAP range sign: I = include (select), E = exclude (do not select). */
 export type Se16nSign = "I" | "E"
@@ -263,7 +283,8 @@ export function isModalOpen(): boolean {
   })
 }
 
-class Se16nDriver {
+/** Internal driver; not part of the published runtime entry point. */
+export class Se16nDriver {
   private page: Page
   private scope!: Page | Frame
   /** field -> absolute row, populated once by placeFields(). See resolvedRow(). */
@@ -343,6 +364,28 @@ class Se16nDriver {
   /** Reject malformed specs before SAP is touched, so these errors never depend on screen state. */
   private validateSpec(): void {
     this.wantedFields()
+    if (
+      this.spec.maxHits !== undefined &&
+      (!Number.isSafeInteger(this.spec.maxHits) || this.spec.maxHits < 0)
+    ) {
+      throw new Error("se16n: maxHits must be a non-negative safe integer.")
+    }
+    const expected = this.spec.expect ?? {}
+    for (const [name, value] of Object.entries(expected)) {
+      if (name !== "empty" && (!Number.isSafeInteger(value) || Number(value) < 0)) {
+        throw new Error(`se16n: expect.${name} must be a non-negative safe integer.`)
+      }
+    }
+    if (
+      (expected.minRows !== undefined &&
+        expected.maxRows !== undefined &&
+        expected.minRows > expected.maxRows) ||
+      (expected.exactRows !== undefined &&
+        ((expected.minRows !== undefined && expected.exactRows < expected.minRows) ||
+          (expected.maxRows !== undefined && expected.exactRows > expected.maxRows)))
+    ) {
+      throw new Error("se16n: expect row bounds are contradictory.")
+    }
     const assertShape = (v: Se16nValue, label: string) => {
       this.optionKey(v)
       if (v.high !== undefined && v.high !== "" && !this.isRangeOption(v)) {
@@ -944,44 +987,77 @@ class Se16nDriver {
 
   private async execute(): Promise<Se16nResult> {
     await this.pressToolbar("Online", 0, false)
-    const terminal = await this.scope
-      .waitForFunction(
-        hitsField => {
-          const title = document.title
-          const resultHeading = Array.from(document.querySelectorAll('h1, [role="heading"]')).some(
-            heading =>
-              heading.getClientRects().length > 0 &&
-              /Display of Entries Found/i.test(heading.textContent ?? "")
-          )
-          const onResult =
-            /Display of Entries Found/i.test(title) ||
-            resultHeading ||
-            Array.from(document.querySelectorAll(`input[lsdata*="${hitsField}"]`)).some(
-              input =>
-                input.getClientRects().length > 0 &&
-                getComputedStyle(input).visibility === "visible"
+    // Short bounded waits let runtime/session failures interrupt a slow query promptly.
+    const deadline = Date.now() + EXECUTE_MAX_WAIT_MS
+    let terminal: { title: string; message: string; onResult: boolean } | null = null
+    while (!terminal && Date.now() < deadline) {
+      const runtimeError = await detectRuntimeError(this.page)
+      if (runtimeError) {
+        throw new Error(
+          `se16n: SAP ${runtimeError.kind}: ${runtimeError.title}. ${runtimeError.snippet}`
+        )
+      }
+      const status = await this.sap.statusMessage()
+      if (status.isError && !isEmptyResultMessage(status.text)) {
+        throw new Error(`se16n: execution failed. SAP says: "${status.text}".`)
+      }
+      terminal = await this.scope
+        .waitForFunction(
+          hitsField => {
+            const title = document.title
+            const resultHeading = Array.from(
+              document.querySelectorAll('h1, [role="heading"]')
+            ).some(
+              heading =>
+                heading.getClientRects().length > 0 &&
+                /Display of Entries Found/i.test(heading.textContent ?? "")
             )
-          const bar = document.querySelector('[class*="lsMessageBar"]')
-          const lsdata = bar?.getAttribute("lsdata") ?? "{}"
-          let applicationText = ""
-          try {
-            applicationText = JSON.parse(lsdata)["11"]?.applicationText ?? ""
-          } catch {}
-          const message =
-            applicationText ||
-            document.querySelector(".lsMessageBar__text")?.textContent?.trim() ||
-            ""
-          return onResult || /no values found|no data/i.test(message)
-            ? { title, message, onResult }
-            : null
-        },
-        HITS_FIELD,
-        { timeout: EXECUTE_MAX_WAIT_MS, polling: "raf" }
+            const onResult =
+              /Display of Entries Found/i.test(title) ||
+              resultHeading ||
+              Array.from(document.querySelectorAll(`input[lsdata*="${hitsField}"]`)).some(
+                input =>
+                  input.getClientRects().length > 0 &&
+                  getComputedStyle(input).visibility === "visible"
+              )
+            const bar = document.querySelector('[class*="lsMessageBar"]')
+            const lsdata = bar?.getAttribute("lsdata") ?? "{}"
+            let applicationText = ""
+            try {
+              applicationText = JSON.parse(lsdata)["11"]?.applicationText ?? ""
+            } catch {}
+            const message =
+              applicationText ||
+              document.querySelector(".lsMessageBar__text")?.textContent?.trim() ||
+              ""
+            return onResult ||
+              /^(?:no values found|no data(?: found| selected| available)?)[.!]?$/i.test(
+                message.trim()
+              )
+              ? { title, message, onResult }
+              : null
+          },
+          HITS_FIELD,
+          { timeout: Math.min(1_000, Math.max(1, deadline - Date.now())), polling: 100 }
+        )
+        .then(handle => handle.jsonValue())
+        .catch(error => {
+          if (error instanceof Error && error.name === "TimeoutError") return null
+          throw error
+        })
+    }
+    const runtimeError = await detectRuntimeError(this.page)
+    if (runtimeError) {
+      throw new Error(
+        `se16n: SAP ${runtimeError.kind}: ${runtimeError.title}. ${runtimeError.snippet}`
       )
-      .then(handle => handle.jsonValue())
-      .catch(() => null)
+    }
     const title = terminal?.title ?? (await this.page.title())
-    const message = (await this.sap.statusMessage()).text || terminal?.message || ""
+    const status = await this.sap.statusMessage()
+    const message = status.text || terminal?.message || ""
+    if (status.isError && !isEmptyResultMessage(message)) {
+      throw new Error(`se16n: execution failed. SAP says: "${message}".`)
+    }
     const onResult = terminal?.onResult ?? /Display of Entries Found/i.test(title)
 
     if (!onResult) {
@@ -992,7 +1068,7 @@ class Se16nDriver {
       // isError from messageInfo() is NOT a usable disqualifier here (unlike in openTable(),
       // where the header echoes back an invalid value regardless of validity) — the message
       // TEXT is the only reliable signal that this is a legitimate zero-row outcome.
-      if (!/no values found|no data/i.test(message)) {
+      if (!isEmptyResultMessage(message)) {
         throw new Error(
           `se16n: execution did not reach the result list for ${this.spec.table}. ` +
             `Screen title is still "${title}".${message ? ` SAP says: "${message}".` : ""}`
@@ -1015,7 +1091,7 @@ class Se16nDriver {
       return empty
     }
 
-    const hits = Number((await this.valueOf(HITS_FIELD)) || "0")
+    const hits = parseHitCount(await this.valueOf(HITS_FIELD))
     const runtime = (await this.valueOf(RUNTIME_FIELD)) || "0"
     const { fields, columns, rows } = await this.readResultGrid()
     this.assertOutputFields(fields)

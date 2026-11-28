@@ -197,7 +197,7 @@ export async function resolveTestData(
       continue
     }
 
-    if ((req.expect === "file" || req.source === "generated") && value) {
+    if (req.expect === "file" || req.source === "generated") {
       const fileError = await checkFileResolvable(value)
       if (fileError) {
         missing.push(`${req.key} (${req.description}) — ${fileError}`)

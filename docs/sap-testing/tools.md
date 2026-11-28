@@ -13,7 +13,7 @@ They appear only when SAP Testing is [enabled](getting-started.md), and they sit
 | `abapfs_split_test_cases` | Splits one bulk-authored file into individual test case files, validating each before writing |
 | `abapfs_verify_test_data_usage` | Cross-checks a script against its case and data spec: data keys must match, and by default every table in `se16nTables` must have matching SE16N proof. Explicit scope can bypass that proof, not data dependencies |
 | `abapfs_check_test_data` | Resolves managed sidecars on a system; optional `tcIds` limits checks to selected cases. Cases without sidecars are skipped, not certified; inline inputs are not validated |
-| `abapfs_run_playwright_tests` | Replaces terminal `npx playwright test`. Runs exact `tcIds` or a whole program; independent cases may run across up to 5 workers after one login, while dependent/shared-state cases stay in ordered sequential batches. Stops after 3 failures by default (`maxFailures` cap 10) and rejects incomplete SE16N proof |
+| `abapfs_run_playwright_tests` | Replaces terminal `npx playwright test`. Runs exact `tcIds` or a whole program; independent cases may run across up to 5 runner processes, each with its own SAP session, while dependent/shared-state cases stay in ordered sequential batches. Failure stopping is per runner (default 3, cap 10), not invocation-wide. Start sequentially and reduce concurrency if browsers or SAP slow down. Returns per-call diagnostics and by default rejects incomplete SE16N proof |
 | `abapfs_build_evidence_report` | Builds the aggregated Word evidence report for a program and system from all the run results |
 | `abapfs_analyze_anst_enhancements` | Classifies an [ANST export](anst.md) and writes a work list beside it |
 

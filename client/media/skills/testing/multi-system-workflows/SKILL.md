@@ -78,7 +78,11 @@ connection inside a spec or remove executable/authorization requirements.
 
 Stop when a stage fails or is blocked; later consumers become BLOCKED by their predecessor,
 not failed. Never run dependent stages together with `runInParallel: true`. Independent
-workflows may be batched separately after their independence is confirmed.
+workflows may be batched separately after their independence is confirmed. Cross-system calls
+still share local browser/CPU/memory capacity, and SAP backends may share infrastructure.
+Start sequentially, count all active sessions/calls, and follow `run-scripts` before increasing
+concurrency. A parallel-load timeout calls for evidence review and a lower-concurrency
+rerun, not guessed selectors or automatically longer waits.
 
 ## Phase integration (full-framework default)
 

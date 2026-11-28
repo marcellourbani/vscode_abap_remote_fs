@@ -122,7 +122,9 @@ describe("summarizeReport", () => {
     )
     value.errors = [{ message: "Testing stopped early after 2 maximum allowed failures." }]
 
-    expect(summarizeReport(value, 2)).toContain("Run stopped early after reaching maxFailures=2")
+    expect(summarizeReport(value, 2)).toContain(
+      "A runner stopped early after reaching maxFailures=2"
+    )
   })
 
   it("uses the count fallback when Playwright omits its stop error", () => {
@@ -130,7 +132,25 @@ describe("summarizeReport", () => {
       { title: "fail", results: [result("timedOut")] },
       { title: "queued", results: [result("skipped")] }
     )
-    expect(summarizeReport(value, 1)).toContain("Run stopped early after reaching maxFailures=1")
+    expect(summarizeReport(value, 1)).toContain(
+      "A runner stopped early after reaching maxFailures=1"
+    )
+  })
+
+  it("does not infer a shared failure threshold from merged parallel results", () => {
+    const value = report(
+      { title: "failed in one partition", results: [result("failed")] },
+      { title: "skipped elsewhere", results: [result("skipped")] }
+    )
+    expect(summarizeReport(value, 1, true)).not.toContain("stopped early")
+  })
+
+  it("surfaces worker setup errors even when a sibling passes", () => {
+    const value = {
+      ...report({ title: "pass", results: [result("passed")] }),
+      errors: [{ message: "Playwright worker setup failed: disk unavailable" }]
+    }
+    expect(summarizeReport(value, 3)).toContain("Runner error: Playwright worker setup failed")
   })
 
   it("handles discovery errors and empty matches", () => {
@@ -252,6 +272,44 @@ describe("PlaywrightTestTool", () => {
 
   afterEach(async () => {
     await fs.rm(root, { recursive: true, force: true })
+  })
+
+  it("rejects empty parallel discovery without creating a run", async () => {
+    await expect(
+      tool.invoke(
+        options({
+          program: "PROGRAM",
+          connectionId: "DEV100",
+          runInParallel: true,
+          skipWorkflowValidation: true,
+          overrideReason: "User requested a focused check"
+        }),
+        token()
+      )
+    ).rejects.toThrow("No TC-*.spec.ts files")
+    expect(spawn).not.toHaveBeenCalled()
+    await expect(fs.stat(path.join(root, ".playwright-runs"))).rejects.toThrow()
+  })
+
+  it("does not inherit a stale login ticket when automatic login is unavailable", async () => {
+    const previous = process.env.SAP_TESTING_LOGIN_URL
+    process.env.SAP_TESTING_LOGIN_URL = "https://example.invalid/expired"
+    try {
+      mockProcess(report({ title: "one", results: [result("passed")] }))
+      await tool.invoke(
+        options({
+          program: "PROGRAM",
+          connectionId: "DEV100",
+          skipWorkflowValidation: true,
+          overrideReason: "User requested a smoke check"
+        }),
+        token()
+      )
+      expect((spawn as unknown as Mock).mock.calls[0][2].env.SAP_TESTING_LOGIN_URL).toBeUndefined()
+    } finally {
+      if (previous === undefined) delete process.env.SAP_TESTING_LOGIN_URL
+      else process.env.SAP_TESTING_LOGIN_URL = previous
+    }
   })
 
   it("describes exact and all-spec invocations", async () => {

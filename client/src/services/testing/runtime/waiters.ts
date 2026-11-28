@@ -50,7 +50,12 @@ export async function waitForServer(page: Page, timeout = 30_000): Promise<void>
           s =>
             Array.from(document.querySelectorAll(s)).filter(el => {
               const r = (el as HTMLElement).getBoundingClientRect?.()
-              return !r || r.width > 0 || r.height > 0
+              const style = getComputedStyle(el)
+              return (
+                style.display !== "none" &&
+                style.visibility !== "hidden" &&
+                (!r || (r.width > 0 && r.height > 0))
+              )
             }).length === 0
         )
       },
@@ -71,7 +76,12 @@ export async function waitForServer(page: Page, timeout = 30_000): Promise<void>
             s =>
               Array.from(document.querySelectorAll(s)).filter(el => {
                 const r = (el as HTMLElement).getBoundingClientRect?.()
-                return !r || r.width > 0 || r.height > 0
+                const style = getComputedStyle(el)
+                return (
+                  style.display !== "none" &&
+                  style.visibility !== "hidden" &&
+                  (!r || (r.width > 0 && r.height > 0))
+                )
               }).length === 0
           ),
         BUSY_SELECTORS,

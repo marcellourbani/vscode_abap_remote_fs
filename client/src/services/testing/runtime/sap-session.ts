@@ -16,6 +16,23 @@
 import type { Page, Frame, TestInfo, Locator, FrameLocator } from "@playwright/test"
 import { runSe16n, type Se16nSpec, type Se16nResult } from "./se16n"
 
+/** Compare exact display values or equivalent ungrouped numeric formatting, never substrings. */
+export function gridValueMatches(actual: string, expected: string): boolean {
+  const shown = actual.trim()
+  const wanted = expected.trim()
+  if (shown === wanted) return true
+  const numeric = /^[+-]?\d+(?:\.\d+)?$/
+  if (!numeric.test(shown) || !numeric.test(wanted)) return false
+  const canonical = (value: string) => {
+    const [integer, fraction = ""] = value.replace(/^\+/, "").split(".")
+    const digits = integer.replace(/^-/, "").replace(/^0+(?=\d)/, "")
+    const decimals = fraction.replace(/0+$/, "")
+    const sign = integer.startsWith("-") && (digits !== "0" || decimals) ? "-" : ""
+    return `${sign}${digits}${decimals ? `.${decimals}` : ""}`
+  }
+  return canonical(shown) === canonical(wanted)
+}
+
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
@@ -62,6 +79,7 @@ export class SapSession {
   private evidence: Evidence
   private captureSteps: boolean
   private extraInterrupters: Interrupter[]
+  private expectedBusinessError?: { message: string | RegExp; consumed: boolean }
   private contentFrameSelector = "iframe#ITSFRAME1"
   private contentFrameResolved = false
   /** false = SAP controls are in the top document; an empty iframe may still exist. */
@@ -128,6 +146,8 @@ export class SapSession {
    * comment — so this navigates only.
    */
   async open(): Promise<void> {
+    this.contentFrameResolved = false
+    this.hasContentFrame = null
     await this.navigate(this.buildUrl())
     await this.settle("open SAP WebGUI")
     await this.recordStep("Opened SAP home")
@@ -149,6 +169,8 @@ export class SapSession {
     await this.guarded(
       `Open transaction ${tcode}`,
       async () => {
+        this.contentFrameResolved = false
+        this.hasContentFrame = null
         await this.navigate(this.buildUrl({ "~transaction": tcode }))
       },
       options.captureEvidence ?? true
@@ -898,7 +920,7 @@ export class SapSession {
     await input.fill(value)
     // Commit: a real keypress fires the change/blur the ALV grid listens for. Then let the
     // server round-trip settle before reading back.
-    await input.press("Tab").catch(() => {})
+    await input.press("Tab")
     await waitForServer(this.page)
     await this.verifyGridCellCommitted(cellId, value)
     return true
@@ -923,11 +945,9 @@ export class SapSession {
           `report this grid as a runtime gap (helpers-reference) rather than working around it.`
       )
     }
-    const want = value.trim()
-    // Loose match: SAP may reformat (e.g. "8" → "8.00", leading-zero padding). Accept when
-    // either contains the other; reject a clear mismatch (empty cell, or unrelated text).
-    const ok =
-      want === "" || rendered.includes(want) || (rendered !== "" && want.includes(rendered))
+    // Allow equivalent ungrouped numeric formatting, not arbitrary substrings
+    // ("18" must not satisfy "8", and clearing a cell must actually clear it).
+    const ok = gridValueMatches(rendered, value)
     if (!ok) {
       throw new Error(
         `setGridCell: value did not commit into ALV cell "${cellId}". Expected it to render ` +
@@ -1168,9 +1188,9 @@ export class SapSession {
 
   /** Assert the grid is empty (no data rows). */
   async expectGridEmpty() {
-    const rows = await this.content().getByRole("row").count()
-    // header row(s) still count — accept ≤ 2 header rows as empty
-    if (rows > 2) throw new Error(`Expected empty grid but found ${rows} rows (incl. headers)`)
+    const cells = this.content().locator('td:visible, [role="gridcell"]:visible')
+    const count = await cells.count()
+    if (count > 0) throw new Error(`Expected empty grid but found ${count} visible data cells`)
     await this.recordStep("Grid is empty (as expected)")
   }
 
@@ -1202,6 +1222,24 @@ export class SapSession {
     await this.evidence.finish(status, errorMessage)
   }
 
+  /** Assert the SAP business error produced by exactly one awaited interaction. */
+  async expectBusinessError(action: () => Promise<void>, message: string | RegExp): Promise<void> {
+    if (this.expectedBusinessError) throw new Error("Business-error assertions cannot be nested.")
+    if (typeof message === "string" && !message.trim()) {
+      throw new Error("An expected SAP business-error message is required.")
+    }
+    const expectation = { message, consumed: false }
+    this.expectedBusinessError = expectation
+    try {
+      await action()
+      if (!expectation.consumed) {
+        throw new Error("expectBusinessError requires exactly one SapSession interaction.")
+      }
+    } finally {
+      this.expectedBusinessError = undefined
+    }
+  }
+
   // ---------- internals ----------
 
   private async guarded(
@@ -1209,6 +1247,9 @@ export class SapSession {
     fn: () => Promise<void>,
     captureEvidence = true
   ): Promise<void> {
+    if (this.expectedBusinessError?.consumed) {
+      throw new Error("expectBusinessError requires exactly one SapSession interaction.")
+    }
     await this.ensureContentFrame()
     await dismissKnownPopups(this.page, this.extraInterrupters)
     await fn()
@@ -1328,14 +1369,20 @@ export class SapSession {
         const text = placeholder ? "" : decode(rawText).trim()
         const ariaLabel = status.getAttribute("aria-label") ?? ""
         const errorIcon = status.querySelector(
-          '[role="alert"], [class*="Error"], [class*="error"], img[alt*="Error"]'
+          '[class*="Error"], [class*="error"], img[alt="Error" i]'
+        )
+        const severity = String(messageType).trim()
+        const hasSeverity = /^(error|e|abort|a|success|s|warning|w|information|info|i)$/i.test(
+          severity
         )
         return {
           text,
           isError:
-            !!errorIcon ||
-            /^(error|e|abort|a)$/i.test(String(messageType).trim()) ||
-            /error|invalid/i.test(`${ariaLabel} ${String(status.className)} ${text}`)
+            /^(error|e|abort|a)$/i.test(severity) ||
+            (!hasSeverity &&
+              (!!errorIcon ||
+                /^(error|abort)(?:\s+message(?:\s+bar)?\b|\s*:|$)/i.test(ariaLabel.trim()) ||
+                /(?:^|[\s_-])(?:error|abort)(?:$|[\s_-])/i.test(String(status.className))))
         }
       })
       .catch(error => {
@@ -1382,6 +1429,29 @@ export class SapSession {
 
   private async throwOnStatusError(context: string): Promise<void> {
     const status = await this.statusMessage()
+    const expected = this.expectedBusinessError
+    if (status.isError && this.captureSteps) {
+      await this.evidence.step(`SAP status: ${status.text || "Error"}`).catch(() => {})
+    }
+    if (expected) {
+      if (expected.consumed) {
+        throw new Error("expectBusinessError requires exactly one SapSession interaction.")
+      }
+      expected.consumed = true
+      const matches =
+        typeof expected.message === "string"
+          ? status.text.includes(expected.message)
+          : new RegExp(expected.message.source, expected.message.flags.replace(/[gy]/g, "")).test(
+              status.text
+            )
+      if (!status.isError || !matches) {
+        throw new Error(
+          `Expected SAP business error ${String(expected.message)} during "${context}", ` +
+            `received ${status.isError ? "error" : "non-error"}: "${status.text}".`
+        )
+      }
+      return
+    }
     if (status.isError) {
       throw new Error(
         `SAP status error during "${context}".` +
