@@ -16,6 +16,23 @@
 import type { Page, Frame, TestInfo, Locator, FrameLocator } from "@playwright/test"
 import { runSe16n, type Se16nSpec, type Se16nResult } from "./se16n"
 
+/** Compare exact display values or equivalent ungrouped numeric formatting, never substrings. */
+export function gridValueMatches(actual: string, expected: string): boolean {
+  const shown = actual.trim()
+  const wanted = expected.trim()
+  if (shown === wanted) return true
+  const numeric = /^[+-]?\d+(?:\.\d+)?$/
+  if (!numeric.test(shown) || !numeric.test(wanted)) return false
+  const canonical = (value: string) => {
+    const [integer, fraction = ""] = value.replace(/^\+/, "").split(".")
+    const digits = integer.replace(/^-/, "").replace(/^0+(?=\d)/, "")
+    const decimals = fraction.replace(/0+$/, "")
+    const sign = integer.startsWith("-") && (digits !== "0" || decimals) ? "-" : ""
+    return `${sign}${digits}${decimals ? `.${decimals}` : ""}`
+  }
+  return canonical(shown) === canonical(wanted)
+}
+
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
@@ -62,17 +79,10 @@ export class SapSession {
   private evidence: Evidence
   private captureSteps: boolean
   private extraInterrupters: Interrupter[]
-  /**
-   * CSS selector for the iframe that actually holds the SAP ITS content. The page has
-   * TWO iframes — `ITSFRAME1` (the SAP application) and `ITSTERMFRAME` ("Blank ITS Page").
-   * Selecting "the first iframe" by DOM order can pick the blank one, which makes every
-   * locator and assertion query an empty document and report `Last seen: []` while the
-   * text is plainly on screen (the headless-vs-headed "impossible to diagnose" alert bug).
-   * We target `#ITSFRAME1` explicitly, and only fall back if it genuinely isn't present.
-   */
+  private expectedBusinessError?: { message: string | RegExp; consumed: boolean }
   private contentFrameSelector = "iframe#ITSFRAME1"
   private contentFrameResolved = false
-  /** false = this system renders SAP directly in the top document (no ITS iframe at all). */
+  /** false = SAP controls are in the top document; an empty iframe may still exist. */
   private hasContentFrame: boolean | null = null
 
   constructor(
@@ -89,11 +99,9 @@ export class SapSession {
 
   /**
    * Build the SAP WebGUI URL from baseURL + optional extra query params.
-   * We do NOT force a theme — on ITS WebGUI the user's SU3 theme already renders
-   * controls with usable accessible names, and forcing `sap_fiori_3` on some
-   * systems leaves a persistent "Please wait..." splash overlay covering the app.
-   * Iframe targeting + role-with-CSS-class fallbacks (see content(), selectRadio,
-   * clickButton, expectAlert) handle the ITS DOM regardless of theme.
+   * We do NOT force a theme: WebGUI theme selection is system/configuration dependent,
+   * and a URL override may be ignored or leave the session on a loading screen. Helpers
+   * identify the active SAP document and use the target screen's observed controls.
    */
   private buildUrl(extraParams: Record<string, string> = {}): string {
     const base =
@@ -114,9 +122,10 @@ export class SapSession {
       "ERR_ABORTED",
       "ERR_CONNECTION_ABORTED",
       "ERR_CONNECTION_RESET",
-      "ERR_CONNECTION_CLOSED"
+      "ERR_CONNECTION_CLOSED",
+      "ERR_BLOCKED_BY_CLIENT"
     ]
-    const retryDelays = [500, 1_500, 3_000]
+    const retryDelays = [500, 1_500, 3_000, 5_000, 8_000]
     for (let attempt = 0; ; attempt++) {
       try {
         await this.page.goto(url, { waitUntil: "commit", timeout: 12_000 })
@@ -137,9 +146,10 @@ export class SapSession {
    * comment — so this navigates only.
    */
   async open(): Promise<void> {
+    this.contentFrameResolved = false
+    this.hasContentFrame = null
     await this.navigate(this.buildUrl())
-    await waitForServer(this.page)
-    await dismissKnownPopups(this.page, this.extraInterrupters)
+    await this.settle("open SAP WebGUI")
     await this.recordStep("Opened SAP home")
   }
 
@@ -159,6 +169,8 @@ export class SapSession {
     await this.guarded(
       `Open transaction ${tcode}`,
       async () => {
+        this.contentFrameResolved = false
+        this.hasContentFrame = null
         await this.navigate(this.buildUrl({ "~transaction": tcode }))
       },
       options.captureEvidence ?? true
@@ -398,14 +410,63 @@ export class SapSession {
   }
 
   /** Fill both endpoints of a range (from/to) for a select-option.
-   *  SAP select-options render as two textboxes with the SAME accessible name
-   *  (both labeled after the field, e.g. "Site"). We target them by nth.
+   *  SAP select-options commonly share a label, but some WebGUI themes label the high
+   *  endpoint as "to". Use the SAP LOW/HIGH technical names when the accessible labels
+   *  do not identify both endpoints.
    */
   async setRange(fieldName: string, from: string, to: string, opts: { group?: string } = {}) {
-    await this.setField(fieldName, from, { ...opts, nth: 0 })
-    if (to !== undefined && to !== "") {
+    await this.ensureContentFrame()
+    const root: FrameLocator | Locator = opts.group
+      ? this.content().getByRole("group", { name: opts.group })
+      : this.content()
+    const namedFields = root.getByRole("textbox", { name: fieldName })
+    const namedFieldCount = await namedFields.count().catch(() => 0)
+
+    if (namedFieldCount === 2) {
+      await this.setField(fieldName, from, { ...opts, nth: 0 })
       await this.setField(fieldName, to, { ...opts, nth: 1 })
+      return
     }
+
+    if (namedFieldCount === 1) {
+      const technicalField = await namedFields
+        .first()
+        .evaluate(element => {
+          const serialized = element.getAttribute("lsdata")
+          if (!serialized) return ""
+          const sid = serialized.match(/["']?SID["']?\s*:\s*["']([^"']+)["']/i)?.[1]
+          const match = sid?.match(/(?:ctxt|txt|cmb|chk|rad)([A-Z0-9_]+)-(LOW|HIGH)$/i)
+          return match ? match[1].toUpperCase() : ""
+        })
+        .catch(() => "")
+
+      if (technicalField) {
+        const low = root.locator(`input[lsdata*="${technicalField}-LOW"]`)
+        const high = root.locator(`input[lsdata*="${technicalField}-HIGH"]`)
+        const [lowCount, highCount] = await Promise.all([
+          low.count().catch(() => 0),
+          high.count().catch(() => 0)
+        ])
+        if (lowCount === 1 && highCount === 1) {
+          await this.guarded(`Set ${fieldName} range from "${from}" to "${to}"`, async () => {
+            await low.fill(from)
+            await high.fill(to)
+          })
+          return
+        }
+      }
+    }
+
+    const hint = await this.suggestControls(root, fieldName, {
+      selector: "input, textarea",
+      kindLabel: "Text fields",
+      group: opts.group
+    }).catch(() => "")
+    throw new Error(
+      `setRange could not identify both endpoints for "${fieldName}" from the live controls.` +
+        hint +
+        ` Verify the low/high controls and their SAP technical names on this screen.`
+    )
   }
 
   async check(checkboxName: string, opts: { group?: string; value?: boolean } = {}) {
@@ -433,14 +494,88 @@ export class SapSession {
     })
   }
 
+  async selectOption(fieldName: string, optionName: string, opts: { group?: string } = {}) {
+    await this.guarded(`Select "${optionName}" in "${fieldName}"`, async () => {
+      const root: FrameLocator | Locator = opts.group
+        ? this.content().getByRole("group", { name: opts.group })
+        : this.content()
+      const select = root.getByRole("combobox", { name: fieldName }).first()
+
+      if (await select.count().catch(() => 0)) {
+        const isNativeSelect = await select
+          .evaluate(element => element instanceof HTMLSelectElement)
+          .catch(() => false)
+        if (isNativeSelect) {
+          await select.selectOption({ label: optionName })
+          const selectedLabel = await select.locator("option:checked").textContent()
+          if (selectedLabel?.trim() !== optionName) {
+            throw new Error(
+              `selectOption chose "${optionName}" in "${fieldName}" but it is not selected.`
+            )
+          }
+          return
+        }
+      }
+
+      const field = root.getByRole("textbox", { name: fieldName }).first()
+      if (!(await field.count().catch(() => 0))) {
+        const hint = await this.suggestControls(root, fieldName, {
+          selector: 'select, input, [role="combobox"]',
+          kindLabel: "Dropdown fields",
+          group: opts.group
+        }).catch(() => "")
+        throw new Error(
+          `selectOption could not locate a dropdown field named "${fieldName}".` +
+            hint +
+            ` Verify the accessible name on the live screen.`
+        )
+      }
+
+      await field.click()
+      const option = root.getByRole("option", { name: optionName, exact: true })
+      if (!(await option.count().catch(() => 0))) {
+        const hint = await this.suggestControls(root, optionName, {
+          selector: '[role="option"], option',
+          kindLabel: "Dropdown options",
+          group: opts.group
+        }).catch(() => "")
+        throw new Error(
+          `selectOption could not locate option "${optionName}" for "${fieldName}".` +
+            hint +
+            ` Confirm the option is available and visible in the open list.`
+        )
+      }
+
+      await option.first().click()
+      const [currentValue, selectedState] = await Promise.all([
+        field.inputValue().catch(() => ""),
+        option
+          .first()
+          .getAttribute("aria-selected")
+          .catch(() => null)
+      ])
+      if (selectedState === "false" || (selectedState !== "true" && currentValue !== optionName)) {
+        throw new Error(
+          `selectOption clicked "${optionName}" for "${fieldName}" but could not verify the selection.`
+        )
+      }
+    })
+  }
+
   async selectRadio(radioName: string, opts: { group?: string } = {}) {
+    let radioToVerify: Locator | undefined
     await this.guarded(`Select radio "${radioName}"`, async () => {
       const root: FrameLocator | Locator = opts.group
         ? this.content().getByRole("group", { name: opts.group })
         : this.content()
       const byRole = root.getByRole("radio", { name: radioName }).first()
       if (await byRole.count().catch(() => 0)) {
-        await byRole.check()
+        radioToVerify = byRole
+        const isNativeRadio = await byRole
+          .evaluate(el => el instanceof HTMLInputElement && el.type === "radio")
+          .catch(() => false)
+        if (isNativeRadio) await byRole.check()
+        else await byRole.click()
         return
       }
       // ponytail: SAP ITS WebGUI renders radios as <span class="lsRadioButton--{checked,unchecked}">
@@ -461,8 +596,25 @@ export class SapSession {
             `if it's wrong). Do NOT blindly swap in a similar name.`
         )
       }
+      radioToVerify = span
       await span.click({ force: true })
     })
+    if (radioToVerify && (await this.radioSelected(radioToVerify)) === false) {
+      throw new Error(`selectRadio clicked "${radioName}" but it did not become selected.`)
+    }
+  }
+
+  private async radioSelected(radio: Locator): Promise<boolean | undefined> {
+    return radio
+      .evaluate(el => {
+        if (el instanceof HTMLInputElement && el.type === "radio") return el.checked
+        const ariaChecked = el.getAttribute("aria-checked")
+        if (ariaChecked !== null) return ariaChecked === "true"
+        if (el.classList.contains("lsRadioButton--checked")) return true
+        if (el.classList.contains("lsRadioButton--unchecked")) return false
+        return undefined
+      })
+      .catch(() => undefined)
   }
 
   async clickButton(
@@ -768,7 +920,7 @@ export class SapSession {
     await input.fill(value)
     // Commit: a real keypress fires the change/blur the ALV grid listens for. Then let the
     // server round-trip settle before reading back.
-    await input.press("Tab").catch(() => {})
+    await input.press("Tab")
     await waitForServer(this.page)
     await this.verifyGridCellCommitted(cellId, value)
     return true
@@ -793,11 +945,9 @@ export class SapSession {
           `report this grid as a runtime gap (helpers-reference) rather than working around it.`
       )
     }
-    const want = value.trim()
-    // Loose match: SAP may reformat (e.g. "8" → "8.00", leading-zero padding). Accept when
-    // either contains the other; reject a clear mismatch (empty cell, or unrelated text).
-    const ok =
-      want === "" || rendered.includes(want) || (rendered !== "" && want.includes(rendered))
+    // Allow equivalent ungrouped numeric formatting, not arbitrary substrings
+    // ("18" must not satisfy "8", and clearing a cell must actually clear it).
+    const ok = gridValueMatches(rendered, value)
     if (!ok) {
       throw new Error(
         `setGridCell: value did not commit into ALV cell "${cellId}". Expected it to render ` +
@@ -1038,9 +1188,9 @@ export class SapSession {
 
   /** Assert the grid is empty (no data rows). */
   async expectGridEmpty() {
-    const rows = await this.content().getByRole("row").count()
-    // header row(s) still count — accept ≤ 2 header rows as empty
-    if (rows > 2) throw new Error(`Expected empty grid but found ${rows} rows (incl. headers)`)
+    const cells = this.content().locator('td:visible, [role="gridcell"]:visible')
+    const count = await cells.count()
+    if (count > 0) throw new Error(`Expected empty grid but found ${count} visible data cells`)
     await this.recordStep("Grid is empty (as expected)")
   }
 
@@ -1072,6 +1222,24 @@ export class SapSession {
     await this.evidence.finish(status, errorMessage)
   }
 
+  /** Assert the SAP business error produced by exactly one awaited interaction. */
+  async expectBusinessError(action: () => Promise<void>, message: string | RegExp): Promise<void> {
+    if (this.expectedBusinessError) throw new Error("Business-error assertions cannot be nested.")
+    if (typeof message === "string" && !message.trim()) {
+      throw new Error("An expected SAP business-error message is required.")
+    }
+    const expectation = { message, consumed: false }
+    this.expectedBusinessError = expectation
+    try {
+      await action()
+      if (!expectation.consumed) {
+        throw new Error("expectBusinessError requires exactly one SapSession interaction.")
+      }
+    } finally {
+      this.expectedBusinessError = undefined
+    }
+  }
+
   // ---------- internals ----------
 
   private async guarded(
@@ -1079,6 +1247,9 @@ export class SapSession {
     fn: () => Promise<void>,
     captureEvidence = true
   ): Promise<void> {
+    if (this.expectedBusinessError?.consumed) {
+      throw new Error("expectBusinessError requires exactly one SapSession interaction.")
+    }
     await this.ensureContentFrame()
     await dismissKnownPopups(this.page, this.extraInterrupters)
     await fn()
@@ -1101,6 +1272,8 @@ export class SapSession {
       )
     }
 
+    await this.throwOnStatusError(description)
+
     if (this.captureSteps && captureEvidence) await this.evidence.step(description)
   }
 
@@ -1109,13 +1282,8 @@ export class SapSession {
   }
 
   /**
-   * Content root. SAP WebGUI (ITS) renders the whole screen inside an <iframe>.
-   * Every action/assertion locator must go through the frame — page-level
-   * getByRole/locator will return zero matches. We use frameLocator("iframe").first()
-   * which is stable across the two iframes present (the second is "Blank ITS Page").
-   *
-   * If the frame is missing (edge case: full-page redirect), we fall back to page.
-   * ponytail: single method, all helpers call it. Upgrade: cache after first non-zero probe.
+   * WebGUI may render SAP in an ITS frame or directly in the page.
+   * `ensureContentFrame()` identifies the document that actually contains SAP controls.
    */
   content(): FrameLocator | Locator {
     if (this.hasContentFrame === false) return this.page.locator("body")
@@ -1123,17 +1291,116 @@ export class SapSession {
   }
 
   /**
-   * JS execution scope for the SAP content — the ITS iframe's `Frame`, or the `Page`
-   * itself on systems that render SAP directly in the top document. Needed by helpers
-   * that read control metadata with `evaluate` (see `se16n`), because a `FrameLocator`
-   * cannot evaluate.
+   * JS execution scope for the SAP content — its `Frame`, or the `Page` itself when SAP
+   * controls are in the top document. Needed by helpers that read control metadata with
+   * `evaluate` (see `se16n`), because a `FrameLocator` cannot evaluate.
    */
   async contentScope(): Promise<Page | Frame> {
     await this.ensureContentFrame()
+    if (!this.contentFrameResolved) {
+      const contentSelectors = [
+        this.page.locator("[lsdata]").first(),
+        this.page.frameLocator("iframe#ITSFRAME1").locator("[lsdata]").first(),
+        this.page.frameLocator("iframe:not(#ITSTERMFRAME)").locator("[lsdata]").first()
+      ]
+      await Promise.any(
+        contentSelectors.map(locator => locator.waitFor({ state: "attached", timeout: 60_000 }))
+      ).catch(() => {})
+      await this.ensureContentFrame()
+    }
     if (this.hasContentFrame === false) return this.page
     const handle = await this.page.$(this.contentFrameSelector).catch(() => null)
     const frame = handle ? await handle.contentFrame().catch(() => null) : null
     return frame ?? this.page
+  }
+
+  async statusMessage(): Promise<{ text: string; isError: boolean }> {
+    const scope = await this.contentScope()
+    if (this.hasContentFrame === true && scope === this.page) {
+      throw new Error(
+        "Could not inspect the SAP status bar: the WebGUI content frame is unavailable."
+      )
+    }
+    return scope
+      .evaluate(() => {
+        const selectors =
+          '[class*="lsMessageBar"], .lsStatusMessageArea, .lsStatusMessage, [role="alert"]'
+        const elements = Array.from(document.querySelectorAll<HTMLElement>(selectors))
+        const visible = elements.filter(element => {
+          const style = getComputedStyle(element)
+          const rect = element.getBoundingClientRect()
+          return (
+            style.display !== "none" &&
+            style.visibility !== "hidden" &&
+            rect.width > 0 &&
+            rect.height > 0 &&
+            element.getAttribute("aria-hidden") !== "true"
+          )
+        })
+        const status =
+          visible.find(element => element.matches('[class*="lsMessageBar"]')) ?? visible[0]
+        if (!status || String(status.className).includes("invisible")) {
+          return { text: "", isError: false }
+        }
+
+        const serialized = status.getAttribute("lsdata") ?? ""
+        let applicationText = ""
+        let messageType = ""
+        try {
+          const data = JSON.parse(serialized)
+          applicationText = data["11"]?.applicationText ?? ""
+          messageType = data["11"]?.messageType ?? data["1"] ?? ""
+        } catch {
+          messageType =
+            serialized.match(/(?:^|[,\{\s])['"]?1['"]?\s*:\s*['"]?([A-Za-z]+)/)?.[1] ?? ""
+          applicationText =
+            serialized.match(/(?:^|[,\{\s])['"]?0['"]?\s*:\s*['"]([^'"]*)['"]/)?.[1] ?? ""
+        }
+        const textElement = status.querySelector<HTMLElement>(".lsMessageBar__text")
+        const decode = (value: string) =>
+          value.replace(/\\(?:x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4}))/g, (_, x, u) =>
+            String.fromCharCode(parseInt(x ?? u, 16))
+          )
+        const rawText =
+          applicationText ||
+          (textElement?.innerText ?? status.innerText ?? status.textContent ?? "").trim()
+        // Element labels (not SAP messages) that appear when the bar carries no real text.
+        const placeholder = /^(message bar|list output)$/i.test(decode(rawText).trim())
+        const text = placeholder ? "" : decode(rawText).trim()
+        const ariaLabel = status.getAttribute("aria-label") ?? ""
+        const errorIcon = status.querySelector(
+          '[class*="Error"], [class*="error"], img[alt="Error" i]'
+        )
+        const severity = String(messageType).trim()
+        const hasSeverity = /^(error|e|abort|a|success|s|warning|w|information|info|i)$/i.test(
+          severity
+        )
+        return {
+          text,
+          isError:
+            /^(error|e|abort|a)$/i.test(severity) ||
+            (!hasSeverity &&
+              (!!errorIcon ||
+                /^(error|abort)(?:\s+message(?:\s+bar)?\b|\s*:|$)/i.test(ariaLabel.trim()) ||
+                /(?:^|[\s_-])(?:error|abort)(?:$|[\s_-])/i.test(String(status.className))))
+        }
+      })
+      .catch(error => {
+        const detail = error instanceof Error ? error.message : String(error)
+        throw new Error(`Could not inspect the SAP status bar: ${detail}`, { cause: error })
+      })
+  }
+
+  /** Resolve the active SAP document and return its body for one-off raw locators. */
+  async contentRoot(): Promise<Locator> {
+    await this.ensureContentFrame()
+    if (this.hasContentFrame === false) return this.page.locator("body")
+    if (this.hasContentFrame === true) {
+      return this.page.frameLocator(this.contentFrameSelector).locator("body")
+    }
+    throw new Error(
+      "Could not identify the SAP WebGUI document: no SAP controls were found in the page or its ITS frame."
+    )
   }
 
   /**
@@ -1157,6 +1424,40 @@ export class SapSession {
           `URL: ${err.url}\n--- snippet ---\n${err.snippet}`
       )
     }
+    await this.throwOnStatusError(context)
+  }
+
+  private async throwOnStatusError(context: string): Promise<void> {
+    const status = await this.statusMessage()
+    const expected = this.expectedBusinessError
+    if (status.isError && this.captureSteps) {
+      await this.evidence.step(`SAP status: ${status.text || "Error"}`).catch(() => {})
+    }
+    if (expected) {
+      if (expected.consumed) {
+        throw new Error("expectBusinessError requires exactly one SapSession interaction.")
+      }
+      expected.consumed = true
+      const matches =
+        typeof expected.message === "string"
+          ? status.text.includes(expected.message)
+          : new RegExp(expected.message.source, expected.message.flags.replace(/[gy]/g, "")).test(
+              status.text
+            )
+      if (!status.isError || !matches) {
+        throw new Error(
+          `Expected SAP business error ${String(expected.message)} during "${context}", ` +
+            `received ${status.isError ? "error" : "non-error"}: "${status.text}".`
+        )
+      }
+      return
+    }
+    if (status.isError) {
+      throw new Error(
+        `SAP status error during "${context}".` +
+          (status.text ? ` SAP says: "${status.text}".` : " The SAP status bar indicates an error.")
+      )
+    }
   }
 
   /**
@@ -1170,13 +1471,9 @@ export class SapSession {
   }
 
   /**
-   * Resolve, once, which iframe carries the SAP ITS content. Prefer `#ITSFRAME1`; if that
-   * id isn't present on this system, pick the first iframe that is NOT the blank
-   * `ITSTERMFRAME`; only if neither can be determined, fall back to the first iframe.
-   *
-   * Some WebGUI configurations render SAP directly in the top document with NO iframe at
-   * all (observed on ITS + `sap_fiori_3`). In that case every `frameLocator` query returns
-   * an empty document, so we record `hasContentFrame = false` and scope to the page.
+   * Resolve, once, which document contains the SAP controls. A frame's existence alone is
+   * insufficient: some configurations keep an empty `ITSFRAME1` while rendering SAP in
+   * the top document. Probe for SAP controls before choosing the frame or page.
    *
    * Called at the start of every `guarded()` action, so by the time any assertion runs
    * (a spec always performs an action before asserting) the correct scope is already
@@ -1190,33 +1487,21 @@ export class SapSession {
         .count()
         .catch(() => 0)
       if (its1 > 0) {
-        this.contentFrameSelector = "iframe#ITSFRAME1"
-        this.hasContentFrame = true
-        this.contentFrameResolved = true
-        return
+        const its1HasSapContent = await this.page
+          .frameLocator("iframe#ITSFRAME1")
+          .locator("[lsdata]")
+          .count()
+          .catch(() => 0)
+        if (its1HasSapContent > 0) {
+          this.contentFrameSelector = "iframe#ITSFRAME1"
+          this.hasContentFrame = true
+          this.contentFrameResolved = true
+          return
+        }
       }
-      const nonBlank = await this.page
-        .locator("iframe:not(#ITSTERMFRAME)")
-        .count()
-        .catch(() => 0)
-      if (nonBlank > 0) {
-        this.contentFrameSelector = "iframe:not(#ITSTERMFRAME)"
-        this.hasContentFrame = true
-        this.contentFrameResolved = true
-        return
-      }
-      const any = await this.page
-        .locator("iframe")
-        .count()
-        .catch(() => 0)
-      if (any > 0) {
-        this.contentFrameSelector = "iframe"
-        this.hasContentFrame = true
-        this.contentFrameResolved = true
-        return
-      }
-      // No iframe at all: this system renders SAP in the top document. Only conclude that
-      // once the SAP DOM is actually present, so a still-loading page isn't misdetected.
+
+      // Some WebGUI configurations keep an empty ITSFRAME1 while rendering SAP in the
+      // top document. Prefer the document that actually contains SAP controls.
       const sapInPage = await this.page
         .locator("[lsdata]")
         .count()
@@ -1224,9 +1509,44 @@ export class SapSession {
       if (sapInPage > 0) {
         this.hasContentFrame = false
         this.contentFrameResolved = true
+        return
+      }
+
+      const nonBlank = await this.page
+        .locator("iframe:not(#ITSTERMFRAME)")
+        .count()
+        .catch(() => 0)
+      if (nonBlank > 0) {
+        const nonBlankHasSapContent = await this.page
+          .frameLocator("iframe:not(#ITSTERMFRAME)")
+          .locator("[lsdata]")
+          .count()
+          .catch(() => 0)
+        if (nonBlankHasSapContent > 0) {
+          this.contentFrameSelector = "iframe:not(#ITSTERMFRAME)"
+          this.hasContentFrame = true
+          this.contentFrameResolved = true
+          return
+        }
+      }
+      const any = await this.page
+        .locator("iframe")
+        .count()
+        .catch(() => 0)
+      if (any > 0) {
+        const anyHasSapContent = await this.page
+          .frameLocator("iframe")
+          .locator("[lsdata]")
+          .count()
+          .catch(() => 0)
+        if (anyHasSapContent > 0) {
+          this.contentFrameSelector = "iframe"
+          this.hasContentFrame = true
+          this.contentFrameResolved = true
+        }
       }
     } catch {
-      // Leave the default (#ITSFRAME1) in place; do not mark resolved so a later action retries.
+      // Do not cache an uncertain result; a later action can retry after the page settles.
     }
   }
 

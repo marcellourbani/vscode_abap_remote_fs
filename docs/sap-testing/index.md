@@ -19,9 +19,19 @@ You don't write Playwright code, you don't install Node or npm, and you don't op
 | **Per-landscape test data** | The same test runs on DEV, QAS, and PRD; the data is resolved separately for each |
 | **Evidence** | A Word report per program and system: pass/fail summary, every step with a screenshot, and the database checks that prove SAP really did what it said |
 
+## Quick checks and user-directed scope
+
+The seven-phase workflow is the default for building a comprehensive suite, not a prerequisite for every testing request. A valid configured test folder is always required: it gates the entire testing feature, including its skills and agents. You control the testing scope, not that prerequisite. For example:
+
+> Just sanity-test this report: open it, execute it with the agreed inputs, and check it doesn't dump. Don't build a regression suite or a Word report.
+
+Copilot can perform that smoke check directly, using the framework as technical guidance without requiring analysis documents, reviewer approvals, or the other suite artifacts. If the bundled runner is needed, it still needs a minimal executable spec and any inputs that spec actually consumes. Copilot should acknowledge the narrower scope once, not ask you to waive every phase individually. The same applies to testing one specific piece of report logic. User-supplied or verified values may be placed directly in that spec without separate data files; reusable suites still use the per-system data model by default. Screenshots stay enabled, including for smoke checks, unless you explicitly say they are not needed.
+
+Workflow overrides never waive safety, authorization, security, or truthful reporting. Executing a report can change real SAP data; a smoke request is not blanket permission for consequential writes. Results must state what was actually observed and what was not checked: an execution without an observed dump does not prove business correctness or regression coverage.
+
 ## Why it's built this way
 
-A test that passes for the wrong reason is worse than no test. So the framework deliberately slows Copilot down: work is split into seven phases, each producing artifacts on disk, and three of them are checked by an independent reviewer agent before the work is allowed to continue. Copilot cannot skip ahead — the tools that build the test index and run the tests refuse to run until the earlier steps have genuinely been done.
+A test that passes for the wrong reason is worse than no test. So the framework deliberately slows Copilot down: work is split into seven phases, each producing artifacts on disk, and three of them are checked by an independent reviewer agent before the work is allowed to continue. By default, the index and runner tools require workflow certifications and the runner checks SE16N proof. An explicit user-directed workflow exception can waive those checks; it must not be represented as completed review or verification.
 
 The other consequence is that **every phase can run in its own chat**. The artifacts on disk are the handoff, not the conversation, so you can analyse a program today and design cases next week without losing anything.
 

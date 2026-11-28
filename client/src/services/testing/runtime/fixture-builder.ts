@@ -92,6 +92,18 @@ export async function buildFixture(
   context: Record<string, string>,
   outDir: string
 ): Promise<string> {
+  if (
+    !spec.filename.trim() ||
+    /[\\/]/.test(spec.filename) ||
+    spec.filename === "." ||
+    spec.filename === ".." ||
+    path.isAbsolute(spec.filename)
+  ) {
+    throw new Error("Fixture filename must be a filename only, without directory components.")
+  }
+  if (spec.format !== "csv" && spec.format !== "xlsx") {
+    throw new Error("Fixture format must be csv or xlsx.")
+  }
   const dateFormat = spec.dateFormat ?? "MM/DD/YYYY"
   const rows = spec.rows.map(row => row.map(cell => resolveCell(cell, context, dateFormat)))
 
@@ -108,7 +120,7 @@ export async function buildFixture(
 
 function csvEscape(value: string | number): string {
   const s = String(value)
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
   return s
 }
 

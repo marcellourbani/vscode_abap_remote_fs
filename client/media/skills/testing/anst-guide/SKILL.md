@@ -12,27 +12,25 @@ description: >
 
 # ANST Guide — Collect the Enhancement Trace
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
+Use the full testing framework by default, but ANST is a runtime-discovery method, not a prerequisite for an explicit smoke or focused logic check; skip tracing and formal enhancement artifacts when outside that scope. A trace covers only exercised paths, and neither a user scope override nor an analyser result waives safe execution, authorization, truthful reporting, or technical limitations.
 
-## Non-negotiable execution gate
-
-When ANST analysis is required for the target, its trace, analyser result, and the resulting test cases are recorded prerequisites. The `abapfs_run_playwright_tests` tool verifies them and **will reject every affected case** if any requirement was skipped, deferred, left missing, stale, incomplete, or unverified. Creating a spec in a later phase cannot bypass this validation.
+For bounded support work, `sap-task-helper` can help; pass `userIntent` (outcome, scope, and overrides), explicit inputs, allowed writes, and an output contract.
 
 ## Workflow
 
 Walk the user through capturing a runtime enhancement trace using SAP transaction **ANST**.
 
-**Why ANST?** It captures every enhancement point actually executed at runtime, regardless of nesting depth — the definitive method for large standard transactions (ME21N, VA01, MIGO, etc.) where static analysis under-reports.
+**Why ANST?** It provides runtime evidence of customer code reached on the traced flows, including nested paths that static analysis may miss. It is useful for large standard transactions (ME21N, VA01, MIGO, etc.), but does not prove coverage of unexercised variants or all possible enhancements.
 
-> If the user already has an `.xlsx` exported from the ANST Customer Code screen, do not repeat the collection workflow; delegate analysis of that file directly to the **anst-enhancement-analyser** agent.
+> If the user already has an `.xlsx` exported from the ANST Customer Code screen, do not repeat the collection workflow; delegate analysis of that file directly to the **anst-enhancement-analyser** agent, passing `userIntent` and the file/system context.
 
 ---
 
 ## Step 0 — Standalone bootstrap
 
-1. Call `abapfs_get_test_folder` first. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat. If unset, ask the user to run "ABAP FS: Enable SAP UI Testing Features".
+1. For collection/analysis in the testing project, call `abapfs_get_test_folder` first and use its returned absolute path as `<TEST_FOLDER>`; if unset, ask the user to run "ABAP FS: Enable SAP UI Testing Features". A general question about using ANST needs no testing-folder setup.
 2. Confirm the target transaction/program from the current request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`; ask if more than one candidate exists.
-3. Call `abapfs_get_connected_systems` and confirm the exact `connectionId` where the trace will be recorded. Ask only if ambiguous.
+3. Confirm the exact `connectionId` where the trace will be recorded. Reuse an explicitly established system; otherwise ask the user which system, listing connected systems if needed. Do not silently choose one.
 4. Keep the exported trace under `<TEST_FOLDER>/tests/<PROGRAM>/sources/anst/` with a descriptive timestamped `.xlsx` filename so a new `analyze-and-plan` chat can find it from disk.
 
 ## Step 1 — Open ANST
@@ -55,9 +53,9 @@ Click **Execute**. The target transaction opens inside ANST's trace session.
 
 Tell the user to run through the transaction's flows. Tips:
 
-- **Finish at least one complete flow** (e.g. for ME21N: fill all fields and save a PO). The more flows completed, the more enhancements captured.
-- If the transaction has variants (different document types, account assignments, etc.), trigger a few — each may activate different enhancements.
-- Finishing is preferred but not mandatory.
+- Trace the agreed flows using safe test data; stop before Save, Post, Release, or other data-changing actions unless explicitly authorized for that target and data. ANST does not simulate or undo business changes.
+- Include variants (document types, account assignments, etc.) only when relevant to the requested scope and safe to execute; each may activate different enhancements.
+- Record incomplete paths and stopping points as coverage limits; never demand a save merely to make a trace look complete.
 
 ## Step 5 — Back to ANST
 
@@ -81,4 +79,4 @@ Tell the user to:
 
 ---
 
-Once you have the path, pass it to the **anst-enhancement-analyser** agent. In the final handoff, repeat `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, the absolute xlsx path, and the traced flows so a fresh `analyze-and-plan` chat does not need this conversation.
+Once you have the path, pass it to the **anst-enhancement-analyser** agent with `userIntent` (requested outcome, scope, and overrides), `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, and the traced flows/limits. Repeat those details and the absolute xlsx path in the handoff; do not claim untraced paths or reviews were completed, or create unrelated test-case artifacts for an enhancement-only request.

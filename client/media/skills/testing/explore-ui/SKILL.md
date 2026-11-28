@@ -5,34 +5,39 @@ description: Standalone Phase 2 of SAP UI testing. Opens the target transaction 
 
 # Explore UI — Phase 2 (of 7)
 
+## User-directed exploration scope
+
+The complete live screen map, findings reconciliation, coverage target, and review below remain the strict default for full UI exploration; all phase gates and handoffs below apply to that workflow. If the user explicitly asks only to open and execute a report to check for a dump, or inspect controls for specific report logic, explore that path without requiring Phase 1 artifacts, every screen, a reviewer, or a full suite. You may omit `_screens.md` and later phases for that scoped task, but never invent labels, observations, or execution results. Correct-system checks, authorization, and destructive-action approval still apply even when analysis artifacts are waived.
+
 Phase order: analyze-and-plan (1) → **explore-ui (2)** → design-cases (3) → define-data (4) → prepare-data (5) → build-scripts (6) → run-scripts (7).
 
 This phase produces ONE artifact: `tests/<PROGRAM>/test-cases/_screens.md`, and reconciles what you discover back into `_findings.md`. It does not write test cases or data specs.
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
+For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, an output contract, and optional `userIntent` carrying the user's goal/scope and waived methodology.
 
 ## What `_screens.md` IS — read this before anything else
 
-`_screens.md` is a map of the **live web UI as it renders in the browser** (SAP WebGUI, inside its ITS iframe). Phase 6 (`build-scripts`) turns each control it lists into a Playwright call — `sap.setField("File path", ...)`, `sap.clickButton("Execute")`, `sap.selectRadio("Report")` — using the EXACT accessible name / on-screen label you record here.
+`_screens.md` is a map of the **live web UI as it renders in the target browser session**. SAP may render directly in the top-level document or inside an ITS iframe, and different systems, releases, and themes can expose different roles, groups, labels, and control semantics. Phase 6 (`build-scripts`) turns each observed control into a Playwright call — `sap.setField("File path", ...)`, `sap.clickButton("Execute")`, `sap.selectRadio("Report")` — using the exact accessible name / on-screen label recorded for that target.
 
 `_screens.md` is NOT a description of the ABAP selection screen from the source code. It contains no ABAP variable names (`p_file`, `r_upl`, `s_site`), no MODIF IDs, no `LOOP AT SCREEN`/`MODIFY SCREEN` snippets, no message-class listings, no method names or line numbers, and no screens you did not actually open and observe. If a line couldn't be used by Phase 6 to write a locator, it does not belong here.
 
-You **must** produce this file by opening the browser and looking. A `_screens.md` derived from ABAP source instead of live observation is the specific failure this phase exists to prevent — it is worthless to Phase 6 because source-derived labels are not the browser's accessible names.
+When producing this file, you **must** open the browser and look. A `_screens.md` derived from ABAP source instead of live observation is the specific failure this phase exists to prevent — it is worthless to Phase 6 because source-derived labels are not the browser's accessible names.
 
 ## How to actually drive the WebGUI — read this, it is where runs fail
 
 You explore with your interactive browser tool's **accessibility snapshot**, NOT with Playwright code. This is the single most common time-sink: agents try Playwright selectors, everything times out, and they give up and derive from source. Don't.
 
-- **Snapshot with the accessibility-tree action, and act by `ref`.** In VS Code Copilot these are: `read_page` (returns the accessibility tree WITH element `ref` values — your PRIMARY tool), `click_element` with `ref=<ref>` (click a radio/button/cell), and `type_in_page` with `ref=<ref>` (enter text). Use your environment's equivalent snapshot/click-by-ref/type-by-ref actions if the names differ. `read_page` sees INSIDE the SAP ITS iframe automatically — you do NOT target the iframe yourself.
+- **Snapshot with the accessibility-tree action, and act by `ref`.** In VS Code Copilot these are: `read_page` (returns the accessibility tree WITH element `ref` values — your PRIMARY tool), `click_element` with `ref=<ref>` (click a radio/button/cell), and `type_in_page` with `ref=<ref>` (enter text). Use your environment's equivalent snapshot/click-by-ref/type-by-ref actions if the names differ. Inspect the snapshot for the SAP screen; do not assume whether its controls are top-level or framed, and do not manually add a frame selector to live-exploration actions.
 - **`read_page` before you act and after every server round-trip.** Clicking a radio or Execute triggers SAP's PBO round-trip and re-renders the screen; re-snapshot to get the new controls and fresh `ref`s (old refs go stale).
 - **`screenshot_page` is for visual confirmation ONLY** — it has no `ref`s, so you cannot act from it, and it does not give you accessible names. Never write `_screens.md` from a screenshot alone.
 - **Do NOT use Playwright during exploration.** `page.locator(...)`, `frameLocator(...)`, `getByRole(...)`, `page.evaluate(...)`, `text=...` do not reliably reach the ITS iframe from page level and will time out. Playwright runs only inside real specs (Phase 6/7 via `abapfs_run_playwright_tests`), never during exploration. If you catch yourself writing `page.locator`, stop and use `read_page` + `ref`.
 - **Generic roles are normal — record the accessible NAME.** ITS renders many controls (radios, F4 triggers, ALV cells) with role `generic` rather than `radio`/`button`. That is fine and expected: capture the accessible name (e.g. `"Upload"`, `"Report"`), because the runtime helpers (`selectRadio`, `clickButton`) locate by name and handle the missing ARIA role. Do not get stuck hunting for a `radio` role ITS never emits.
+- **Observe theme and control semantics for every target.** Do not assume an ECC screen's theme or locators carry over to S/4HANA, or vice versa; database type alone does not determine the UI. Record enough target/environment context in `_screens.md` for later phases to know which screen the observations describe. For multi-environment tests, note differences in role/name/group/initial state and reuse locators only when live evidence shows the same contract.
 - **If it seems stuck, VERIFY before reacting — and never shortcut.** SAP's PBO round-trip and the ITS "Please wait…" splash can look like a hang or a timeout when the page actually loaded fine. If an action seems to time out, re-run `read_page` and check whether the screen advanced (it usually did) before concluding anything failed. A perceived timeout is NEVER a reason to give up and write `_screens.md` from source. **Know your escape hatches from the start, so you reach for them instead of shortcutting:** if a control genuinely won't drive, or the browser is truly unreachable after a retry, STOP and either (a) ask the user for help/data, or (b) ask the user to record the flow via the `sap-webgui-recording` skill ("ABAP FS: Record SAP WebGUI Flow"). Asking is always allowed and always better than a source-derived guess — you were told this before you started precisely so you don't discover it only after cutting a corner.
 
-## Non-negotiable execution gate
+## Default full-exploration execution gate
 
-The `abapfs_run_playwright_tests` tool (Phase 7) and `build-scripts` (Phase 6) reject cases whose controls are missing from `_screens.md` or were never observed live. Do not guess locators or fabricate a screen you didn't open.
+The full workflow requires an observed `_screens.md` control map before scripting. An explicit scoped exception may omit the map and review; tools supporting workflow overrides use `skipWorkflowValidation: true` and an `overrideReason` grounded in that request. Omitting an artifact never permits guessed locators or fabricated observations.
 
 ## Why
 
@@ -48,14 +53,15 @@ The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_
 
 > **Say before acting:** "Starting Step 0: standalone bootstrap and Phase 1 input gate."
 
-1. Call `abapfs_get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
-2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
-3. Resolve `<PROGRAM>` from the request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_findings.md`; auto-select only when exactly one candidate matches, otherwise ask.
-4. **Enforce the Phase 1 input gate:** `tests/<PROGRAM>/test-cases/_findings.md` must exist (with `_flow.md` and `_units.md` beside it). If `_findings.md` is missing, STOP and follow `analyze-and-plan` first — you cannot cross-check the live UI against a decision surface you don't have. Read `_findings.md` now (selection-screen inputs, radios/checkboxes, predicted output) and skim `_flow.md` (the end-to-end scenarios tell you which screens the flow actually produces and how to reach each one) so your exploration covers every screen the object can render, not just the initial one.
+1. Call `abapfs_get_test_folder` first and use its result as `<TEST_FOLDER>`; a valid configured folder is required for all SAP Testing work, including scoped checks.
+2. If unset or invalid, STOP and ask the user to configure a valid folder. If not open in the workspace, ask them to add it. User scope cannot waive the folder prerequisite.
+3. Resolve `<PROGRAM>` from the request. If omitted and using artifacts, inspect `<TEST_FOLDER>/tests/*/test-cases/_findings.md`; auto-select only one unambiguous match, otherwise ask.
+4. **For full exploration, enforce the Phase 1 input gate:** `tests/<PROGRAM>/test-cases/_findings.md` must exist (with `_flow.md` and `_units.md` beside it). If `_findings.md` is missing, STOP and follow `analyze-and-plan` first — you cannot cross-check the live UI against a decision surface you don't have. Read `_findings.md` now (selection-screen inputs, radios/checkboxes, predicted output) and skim `_flow.md` (the end-to-end scenarios tell you which screens the flow actually produces and how to reach each one) so your exploration covers every screen the object can render, not just the initial one.
 5. Call `abapfs_get_connected_systems` and confirm the target `connectionId`; ask only if ambiguous.
 6. Use the SAME connection Phase 1 analysed unless the user says otherwise.
+7. When comparing systems or when the UI differs from prior evidence, call `abapfs_get_sap_system_info` for the target connection and record its actual type/release. Do not treat ECC/HANA as a locator rule; then inspect the live browser theme and controls independently.
 
-> **Say before continuing:** "Step 0 completed. Evidence: test folder, program, `_findings.md`, and connection confirmed. Next: Step 1 — decide exploration approach."
+> Confirm the target and connection, plus only the artifacts required by the agreed scope; then proceed to Step 1.
 
 ## Step 1 — Decide whether exploration can remain autonomous
 
@@ -124,10 +130,10 @@ How to determine `initial:`:
 
 **Destructive-mode gate — read before touching Execute.** Every ABAP report can be destructive. Before you click Execute:
 
-1. Read `_findings.md`'s branches and background artifacts to see whether this program writes data (`INSERT`/`UPDATE`/`MODIFY`/`DELETE`/`SUBMIT`, IDoc/job creation, external calls).
+1. Read `_findings.md`'s branches and background artifacts to see whether this program writes data (`INSERT`/`UPDATE`/`MODIFY`/`DELETE`/`SUBMIT`, IDoc/job creation, external calls). If scoped exploration waived those artifacts, inspect the relevant source and current mode or obtain a clear safety decision from the user; missing analysis is not evidence that Execute is harmless.
 2. Check for a Test/Simulate/Display versus Update/Live/Post/Commit radio or checkbox on the selection screen. Named variations include "Test Run", "Simulation", "Display Only", "Update Mode", "Update Run", "Production Run", "Commit", "Post". This pattern is present in most write-capable reports and is the single most likely place exploration destroys downstream test data.
 3. If any test/simulate mode exists, **you MUST select it before Execute** — that is the only "safe default" here. A default that ships as Update Mode does NOT make Update Mode safe to click.
-4. If NO test mode exists AND `_findings.md` shows the program writes/deletes data, STOP: do not click Execute. Ask the user for explicit approval AND ask whether the target `connectionId` is safe to write in. Record any decision in `## Notes for automation`.
+4. If NO test mode exists AND the program writes/deletes data or its effects remain unknown, STOP: do not click Execute. Ask the user for explicit approval AND ask whether the target `connectionId` is safe to write in. Record any decision in `## Notes for automation`.
 5. Selection-screen variants (`SUBMIT ... USING SELECTION-SET`) may pre-set the mode to Update — inspect the current state via `read_page` before Execute, don't assume the default is what the screen paints.
 
 
@@ -140,7 +146,7 @@ Fill only what's required (use realistic values discovered via ABAP SQL if neede
 - Bottom-of-screen buttons and menu-bar entries.
 - For editable ALV grids and header tab strips, follow `sap-webgui` to record column `title`s and exact tab labels.
 
-**First, respect `_findings.md`'s "Frontend integration & WebGUI compatibility" verdict.** A path flagged **SAP-GUI-only** (e.g. an OLE Excel upload via `ALSM_EXCEL_TO_INTERNAL_TABLE`/`KCD_EXCEL_OLE_TO_INT_CONVERT`) genuinely CANNOT run in a browser — do NOT try to observe or automate it here; that's not a screen you failed to reach, it's a path this toolchain can't drive. Record it in `_screens.md` as NOT observed with the reason "SAP-GUI-only (OLE), not automatable via WebGUI" and move on (its cases are already `runnable-elsewhere`). Likewise a native-OS-dialog path is `manual`. If `_findings.md` has no compatibility verdict for a path the object clearly has, that's a Phase 1 gap — STOP and follow `analyze-and-plan` to add it rather than guessing.
+**First, respect `_findings.md`'s "Frontend integration & WebGUI compatibility" verdict.** A path flagged **SAP-GUI-only** (e.g. an OLE Excel upload via `ALSM_EXCEL_TO_INTERNAL_TABLE`/`KCD_EXCEL_OLE_TO_INT_CONVERT`) genuinely CANNOT run in a browser — do NOT try to observe or automate it here; that's not a screen you failed to reach, it's a path this toolchain can't drive. Record it in `_screens.md` as NOT observed with the reason "SAP-GUI-only (OLE), not automatable via WebGUI" and move on (its cases are already `runnable-elsewhere`). Likewise a native-OS-dialog path is `manual`. If `_findings.md` has no compatibility verdict for a needed path, verify the relevant frontend mechanism rather than guessing; in the full workflow, follow `analyze-and-plan` to record the missing verdict.
 
 **Explore the CORE flow — for every path that IS WebGUI-runnable.** `_flow.md` tells you the object's main job; explore THAT, even when it's harder than a secondary read-only path — don't fully map an easy read-only output and hand-wave a runnable core path. Observe the ERROR/edge screens you can trigger without special data: Execute with no input (mandatory-field/status-bar behaviour), Execute with obviously-invalid input (validation/error rendering). Each error screen has controls Phase 6 needs.
 
@@ -252,7 +258,7 @@ Rules:
 
 ### 9.1 Adversarial review of `_screens.md` (mandatory)
 
-Delegate to the `sap-screens-reviewer` agent. Give it `<PROGRAM>` and confirm `_screens.md` exists (with `_findings.md`/`_flow.md` alongside). It statically checks that `_screens.md` describes the LIVE WEB-GUI rendering — accessible names/labels, initial states, dialogs, ALV — and is NOT an ABAP selection-screen/source description (no ABAP variable names, MODIF IDs, `LOOP AT SCREEN`/`MODIFY SCREEN` snippets, message classes, or method/line references), and that the screens the flow produces are actually covered.
+Delegate to the `sap-screens-reviewer` agent with `<PROGRAM>` and optional `userIntent` carrying the user's goal/scope and waived methodology, including on re-review. Confirm which of `_screens.md`, `_findings.md`, and `_flow.md` actually exist so it reviews the requested scope rather than resurrecting waived prerequisites. It statically checks that `_screens.md` describes the LIVE WEB-GUI rendering — accessible names/labels, initial states, dialogs, ALV — and is NOT an ABAP selection-screen/source description (no ABAP variable names, MODIF IDs, `LOOP AT SCREEN`/`MODIFY SCREEN` snippets, message classes, or method/line references), and that the screens the flow produces are actually covered.
 
 Expect `PASS` or an itemised gap list. Fix EVERY gap — if it flags source-derived content, that usually means you didn't actually explore that screen in the browser: go back, open it, and record what you observe (do NOT rewrite from source). Re-review until PASS. (The reviewer checks content and provenance, not live-label accuracy — that's confirmed by the first headed run in Phase 7.) Do not hand off on a FAIL.
 
@@ -264,7 +270,7 @@ Make on-disk state sufficient for a fresh `design-cases` chat:
 - `_findings.md` includes discovered-control cases and the recomputed target minimum.
 - Your final response names `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, the final target minimum, and any destructive controls that need a user decision.
 
-**Your final message MUST tell the user the exact next step: "Next: Phase 3 — start a new chat, load the `design-cases` skill, and say: Design the test cases for `<PROGRAM>` using the findings and screens on disk."** Naming the skill matters — without it the next chat tends to skip loading `design-cases` and improvise.
+For a scoped exploration, report the observed path, execution outcome, and untested areas without forcing a new phase. **For the default full-workflow handoff, your final message MUST tell the user the exact next step: "Next: Phase 3 — start a new chat, load the `design-cases` skill, and say: Design the test cases for `<PROGRAM>` using the findings and screens on disk."** Naming the skill matters — without it the next chat tends to skip loading `design-cases` and improvise.
 
 > **Say after the handoff is complete:** "Step 9 completed. Evidence: `sap-screens-reviewer` returned PASS (web-GUI content only), and `_screens.md` plus reconciled findings were handed off. Phase 2 completed. Next phase: Phase 3 — in a new chat, load the `design-cases` skill and follow it."
 

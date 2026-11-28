@@ -5,11 +5,9 @@ description: Reference for the bundled SAP Testing runtime (SapSession, SapArtif
 
 # Helpers Reference
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
+Use the full testing framework by default, but treat this skill as an API reference—not a requirement to complete every phase before using a helper. An explicit scoped check may omit unrelated artifacts, reviews, and data caches while preserving safety, authorization, truthful results, and the API contracts below; use `skipWorkflowValidation: true` with `overrideReason` on supported runner/index calls rather than certify checks not performed.
 
-## Non-negotiable execution gate
-
-Using a helper does not bypass the SAP Testing phase requirements. The `abapfs_run_playwright_tests` tool verifies required steps, artifacts, data caches, and script checks and **will reject the run** if any are missing, stale, incomplete, or unverified. A helper or escape-hatch workaround cannot bypass this validation.
+For bounded support work, `sap-task-helper` can help; pass `userIntent` (requested outcome, scope, and overrides), explicit inputs, allowed writes, and an output contract.
 
 ## Why
 
@@ -27,29 +25,29 @@ What you CAN see: the type declarations surfaced via `@sap-testing/runtime` (rea
 
 ## Standalone context rule
 
-For a general API question, answer directly from this reference. If the user wants you to inspect, write, or fix a real test artifact, first complete the standalone bootstrap in the relevant phase workflow:
+For a general API question, answer directly from this reference. If the user wants you to inspect, write, or fix a real test artifact, establish only the context needed for that task (the relevant phase supplies the full-framework procedure):
 
 1. Call `abapfs_get_test_folder` and use its returned absolute path as `<TEST_FOLDER>`.
 2. Resolve the program/TC-ID from the request and artifacts under `<TEST_FOLDER>/tests/`; never depend on a prior chat.
 3. Confirm the exact `connectionId` before any system-specific diagnosis.
 
-For findings/code errors follow `analyze-and-plan`; for screen-map errors follow `explore-ui`; for test-case errors follow `design-cases`; for data-spec errors follow `define-data`; for data/cache errors follow `prepare-data`; for spec translation errors follow `build-scripts`; and for execution failures follow `run-scripts`.
+Within the requested scope, use these skills as technical guidance rather than automatic phase prerequisites. For findings/code errors follow `analyze-and-plan`; for screen-map errors follow `explore-ui`; for test-case errors follow `design-cases`; for data-spec errors follow `define-data`; for data/cache errors follow `prepare-data`; for spec translation errors follow `build-scripts`; and for execution failures follow `run-scripts`.
 
 ## Modules
 
 | Module                                                                     | Purpose                                                                                                                                                                                                                                               |
 | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SapSession`                                                               | Main class — actions + assertions, including `sap.se16n()` business-visible table proof required by `verification: sql|mixed` specs |
+| `SapSession`                                                               | Main class — actions + assertions, including `sap.se16n()` business-visible table proof used by full-framework `verification: sql|mixed` specs |
 | `SapArtifacts`                                                             | Verify AL11 files and capture spool text — **unverified against a real system, see `build-scripts` §2 before relying on either**. Jobs/IDocs/table rows are NOT covered here — use `## Post-test verification` (see `design-cases`) for those |
 | `resolveTestData`                                                          | Reads `.data.md` + per-system cache at run time                                                                                                                                                                                                       |
 | `buildFixture`                                                             | Deterministic Excel/CSV generator, powers `source: "generated"`                                                                                                                                                                                       |
 | `padNumericId`, `stripLeadingZeros`, `relativeDate`, `isRelativeDateToken` | Pure formatting helpers                                                                                                                                                                                                                               |
 | `parseFrontmatter`                                                         | YAML-frontmatter parsing shared by `.data.md` and `TC-*.md`                                                                                                                                                                                           |
 
-`sap.se16n()` is supporting visual evidence, not an SQL replacement. SQL/mixed cases
-declare every expected table in `se16nTables` and call it once per listed table after the
-business action with key-addressable criteria; Phase 7 still executes authoritative SQL.
-Never use it for data preparation.
+`sap.se16n()` is supporting visual evidence, not an SQL replacement. In the full framework, SQL/mixed cases declare every expected table in `se16nTables`
+and call it once per listed table after the business action with key-addressable criteria;
+Phase 7 still executes authoritative SQL. A scoped check may omit visual table evidence,
+not claim an unperformed SQL check. Never use SE16N for data preparation.
 
 ### `sap.se16n()` contract
 
@@ -87,42 +85,68 @@ SQL metadata, `_units.md`, or the TC, research them; never avoid that work with 
 | A safety/business ceiling must not be exceeded | `{ maxRows: N }` |
 | Both lower and upper bounds matter | `{ minRows: N, maxRows: M }` |
 
+The helper opens SE16N, clears inherited criteria, places and verifies requested fields,
+selects output columns, applies include/exclude/range/multiple-selection criteria, executes,
+and captures criteria/output evidence. Do not script SE16N paging, selection dialogs,
+clipboard upload, toolbar overflow, waits, or result polling yourself. It refuses an
+inherited layout unless you explicitly supply `layout`; do not bypass that failure because
+a layout can override the requested columns. Supply a layout only when it is part of the
+intended proof.
+
+`sign` defaults to `"I"`; `option` defaults to `"EQ"`, or `"BT"` when `high` is supplied.
+A `values` entry is `{ low: string, high?: string, sign?: "I" | "E", option?: Se16nOption }`.
+The criterion still requires a `low` value in its type contract; when supplying `values`,
+use `low: ""` on the criterion and put the actual selections in `values`.
+`maxHits` is left at the screen's setting when omitted; it is a fetch cap, not proof that
+more matching records do not exist. Choose a cap above an asserted upper/exact bound and
+use authoritative SQL when complete-table cardinality matters. Result fields follow SAP's
+actual output order, not the order of `outputFields`; address row cells by the returned
+`fields`/`columns`, not guessed offsets. Evidence flags default to true; disable them only
+when the user explicitly declines those screenshots.
+
 Do not weaken a known exact outcome to `minRows: 1` merely because it is easier to pass.
 Derive the cardinality from the TC and SQL postcondition. For example, EKKO at a created
 PO key is normally `exactRows: 1`; EKPO should use the expected item count when known,
 and only `minRows: 1` when the case genuinely permits a variable number of items.
 
 `where` entries support `sign: "I" | "E"`, options `EQ NE BT NB CP NP GT LT GE LE`,
-`high` for BT/NB, and `values` for multiple selection. The result exposes `hits`,
+`high` for BT/NB, and `values` for multiple selection. Do not supply a nonempty `high`
+with non-range options. Use the SAP user's display format for dates/numbers; do not assume
+an ISO date string will be accepted by the target system. The result exposes `hits`,
 `runtime`, technical `fields`, display `columns`, visible `rows`, `partial`, and `message`.
-Use `expect` for authoritative hit-count assertions and explicit `expect(...)` checks on
+Use `expect` for SE16N hit-count assertions and explicit `expect(...)` checks on
 returned rows only when the needed row is guaranteed visible (`partial === false`).
 
 All exported from the single specifier `@sap-testing/runtime` — see `build-scripts` for the full method reference and translation table from `.md` steps to calls.
 
-### Dynpro-specific helpers (tabs, editable grids, technical-name fallback)
+### UI-compatibility helpers
 
-Three `SapSession` methods exist specifically for the ITS DOM patterns you hit on ME21N/MIGO/VA01/MB1B-class transactions. They are NOT one-off escape hatches — they encapsulate DOM traps that would otherwise force `sap.raw()`. Load `sap-webgui` before using them; that skill documents the underlying DOM contracts.
+`SapSession` includes helpers for recurring WebGUI DOM patterns. They are not one-off escape hatches; they encode verified control behavior that would otherwise require raw selectors. Load `sap-webgui` before using them; that skill documents the underlying DOM contracts and their variation across systems.
 
 | Method                                                  | When to reach for it                                                                                                                                                               |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sap.clickTab(name)`                                    | Any dynpro tab strip (Delivery/Invoice, Conditions, Org. Data on ME21N; Where, Detail Data on MIGO; etc.). NEVER use `clickButton` on a tab — the ITS DOM contracts are different. |
 | `sap.setGridCell(columnTitle, rowIndex, value)`         | Any editable ALV/table cell whose input has no accessible name (item-overview / posting tables). Handles BOTH WebGUI renderers (dynpro table control AND `CL_GUI_ALV_GRID`) and fires the commit the ALV grid needs to read the value — so never hand-roll a `raw()` `fill()` on a grid cell (it skips the commit and the cell reverts). Row index is 1-based; row 0 is the header row.  |
 | `sap.setField(name, value, { technicalName: "EKORG" })` | Last-resort disambiguation when two visible fields share the same accessible name. The technical name (e.g. `EKORG`, `LIFNR`, `WERKS`) must be verified against ADT, not guessed.  |
+| `sap.setRange(name, from, to)`                           | Select-option helper. Fills the low/high pair even when the endpoint labels differ. Pass `""` to clear the high endpoint. |
+| `sap.selectOption(fieldName, optionName)`                | Native select or SAP textbox/listbox control. Picks an option by exact accessible name and verifies the resulting selection; it does not depend on visual position or option order. |
+| `sap.contentRoot()`                                      | One-off raw locator scope. Resolves whether SAP controls are in the top-level page or an ITS frame, then returns that document's body locator. Use instead of hard-coding `ITSFRAME1` or choosing the first iframe. |
 
 If you find yourself considering `sap.raw()` for a tab click, an editable grid cell, or a duplicate-label field — stop and use these helpers instead. `sap.raw()` remains the correct answer for other genuinely uncovered patterns.
 
 ### Runtime-safety helpers (popups, dumps, session loss)
 
-Three related mechanisms keep the test loud when SAP misbehaves. All are wired into every `guarded()` action — you rarely call them yourself.
+SapSession interactions automatically apply these safety checks; do not reproduce their implementation in specs.
 
 | Mechanism                                  | Purpose                                                                                                                                                                     |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dismissKnownPopups` (auto)                | Curated allow-list of safe-to-dismiss dialogs (License, System messages, Multiple Logon, Copyright, Data Privacy, Password). Unknown dialogs are LEFT ALONE — including "Exit Document" ("Do you want to save?") which tests handle explicitly via `sap.clickButton("Yes"\|"No", { dialog: "Exit Document" })`. |
+| `dismissKnownPopups` (auto)                | Curated allow-list of safe-to-dismiss dialogs (License, System messages, Copyright, Data Privacy, Password). Unknown dialogs are LEFT ALONE — including "Exit Document" ("Do you want to save?") which tests handle explicitly via `sap.clickButton("Yes"\|"No", { dialog: "Exit Document" })`. |
 | `detectRuntimeError` (auto)                | Detects ABAP short dumps, ITS/ICM errors, and dropped-to-logon-screen states. Throws with `kind`, title, URL, body snippet.                                                 |
 | `detectSilentBounce` (auto, from `openTx`) | SAP silently drops the user back to Easy Access (SAPMSYST/40 / S000) when a tx doesn't exist or the user lacks `S_TCODE`. `openTx` throws instead of silently continuing.   |
 | `SapSessionOptions.extraInterrupters`      | Per-test additional interrupters — for program-specific "Reprint?" / "Continue with X?" popups your report shows.                                                           |
-| `sap.expectNoRuntimeError()`               | Explicit dump-freedom assertion. Redundant most of the time (guarded already runs it) but useful as a post-condition after a long-running batch step.                       |
+| `sap.expectBusinessError(action, message)` | One-action assertion for an expected SAP business-error status; runtime/session failures remain fatal. |
+| `sap.statusMessage()` | Returns `Promise<{ text: string; isError: boolean }>` for the visible SAP status message. |
+| `sap.expectNoRuntimeError()`               | Explicit dump-freedom assertion. Normally automatic after interactions but useful as a post-condition after a long-running batch step.                       |
 
 Failure messages are actionable and unique — treat them as diagnostic contracts:
 
@@ -130,31 +154,43 @@ Failure messages are actionable and unique — treat them as diagnostic contract
 - `Popup guard: recognised interrupter "X" but could not click its "Y" button` → SAP version has a different button label; add `extraInterrupters`, don't disable the guard.
 - `SAP runtime error detected (dump|its|logon): "..."` → real short dump / session loss / ITS error. Fix the SAP-side cause (ST22, SM21, SMICM) before touching the test.
 
-Load `sap-webgui` for the full popup allow-list, dialog DOM contracts, and dump-signature list.
+A Multiple Logon dialog is a failure, not a safe interrupter. The helper never ends other
+sessions. Reduce concurrency or ask the user to resolve SAP logon policy; do not add this
+dialog to `extraInterrupters`.
 
-## The "guarded" pattern
+Load `sap-webgui` for supported screen/control patterns.
 
-Every `SapSession` action goes through:
+## Interaction and expected-error contract
+
+Await each `SapSession` interaction. The helper handles SAP processing waits, supported
+interrupters, runtime-error checks, unexpected SAP status errors, and step evidence. Do not
+add fixed sleeps, duplicate popup handling, or manual screenshots around ordinary calls.
+Screenshots remain enabled unless the user explicitly declines them.
+
+An ordinary action fails on a SAP error status before a following `expectAlert()` can run.
+For a deliberate negative validation case, prepare the input first, then wrap **one**
+interaction that produces the expected business error:
 
 ```typescript
-private async guarded(description, fn) {
-  await dismissKnownPopups(...)   // before
-  await fn()                      // the action
-  await waitForServer(...)        // networkidle + WebGUI busy overlay gone
-  await waitForDomStable(...)     // DOM mutations settled
-  await dismissKnownPopups(...)   // after
-  await detectRuntimeError(...)   // dump / ITS / logon — throws if hit
-  await this.evidence.step(...)   // screenshot + record
-}
+await sap.setField("Site", "INVALID")
+await sap.expectBusinessError(() => sap.pressKey("Enter"), /Enter a valid site/i)
 ```
 
-Specs never call wait/screenshot/popup logic directly — this is exactly why a spec reads as clean SAP vocabulary (`sap.setField(...)`, `sap.clickButton(...)`) with no manual waits anywhere.
+`expectBusinessError(action: () => Promise<void>, message: string | RegExp): Promise<void>`
+requires an error status whose text includes the string or matches the regular expression.
+A missing error, wrong message, action failure, dump, ITS error, or session loss still fails.
+Do not nest assertions or put setup/multiple interactions inside the callback. Do not use
+broad try/catch to suppress failures. `expectAlert(text)` remains appropriate for ordinary
+success/information messages; `statusMessage()` returns `{ text, isError }` for inspection,
+not as a substitute for the expected-error assertion.
 
 ## Generic helper boundary
 
 Method names describe SAP UI mechanics, never a business domain — `setField`, `pickFromValueHelp`, `verifyAL11FilePresent`, never `setMaterial`, `pickPlant`, `verifySalesOrder`. You cannot add methods to the runtime at all, so there is no way for business-specific logic to leak into it even by accident — it can only ever live in a `.md`/`.data.md`/`.spec.ts` file inside the test folder, which is exactly where it belongs.
 
 ## `resolveTestData` mechanics
+
+Use this resolver when a spec needs declarative data resolution; it is not mandatory for a scoped check using verified/user-provided inline inputs. A static `.data.md` value needs no `data.json` cache; SQL/seeded requirements still need a resolvable pin or prepared cache, and generated fixtures still need valid generation inputs.
 
 - Signature: `resolveTestData(tcId, scope?)` — ALWAYS pass `scope` in a real spec (pass Playwright's `testInfo`, already available as the test function's second argument). Every program restarts TC numbering at TC-001, so without `scope` the lookup falls back to searching the entire `tests/` tree and can silently pick up a DIFFERENT program's `TC-001.data.md`.
 - Reads `tests/<PROGRAM>/test-cases/<TC-ID>.data.md` frontmatter (`requires:` array).
@@ -183,7 +219,7 @@ This will happen occasionally — a SAP UI pattern the runtime doesn't have a cl
 
 1. **Use the escape hatch, in the spec, for this one case**: `sap.raw()` returns the real Playwright `Page`. Write the one-off interaction directly using role + accessible name (same selector discipline as everywhere else — no CSS classes, no positional guessing). This keeps the gap contained to one spec instead of blocking the whole test case.
 
-   **`sap.raw()` returns the TOP-LEVEL Page — all SAP DOM lives inside the ITS iframe.** Every `sap.raw()` interaction or assertion MUST scope through the iframe first, or it queries an empty outer document and either times out or (worse) passes vacuously — e.g. an `expect(...).toBeHidden()` on an element that was never in scope. Use `sap.raw().frameLocator("iframe#ITSFRAME1").getByRole(...)`. Do NOT write `frameLocator("iframe")` alone — the page has TWO iframes (`ITSFRAME1` and `ITSTERMFRAME`) and the unqualified selector triggers a Playwright strict-mode violation. Only `#ITSFRAME1` contains the SAP content.
+  `sap.raw()` returns the top-level Playwright `Page`, but SAP may be in that page or an ITS frame. Every raw interaction/assertion must use the runtime-selected SAP document: `const root = await sap.contentRoot(); await root.getByRole(...)`. Never hard-code `ITSFRAME1` or pick the first iframe. If `contentRoot()` cannot identify SAP controls, treat that as a runtime/environment failure; do not fall back to a guessed frame or outer-page assertion.
 
 2. **Tell the user explicitly** that this is a bundled-runtime gap, not something fixable from the workspace — a new SAP Testing version is the only real fix. Do not quietly work around it in a way that looks like it solved the underlying problem (e.g. `page.waitForTimeout()` instead of a real wait condition) — that hides the gap instead of surfacing it.
 

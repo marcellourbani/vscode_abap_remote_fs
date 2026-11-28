@@ -6,8 +6,8 @@
  *
  *  A. Full-page short dump (classic ABAP RUNTIME ERROR): the whole browser
  *     document is replaced with a red-themed page whose <title> and top-of-body
- *     text contain phrases like "ABAP Runtime Error", "Runtime Errors", or the
- *     dump category (e.g. MESSAGE_TYPE_X, TSV_TNEW_PAGE_ALLOC_FAILED).
+ *     text exposes Category, Runtime Errors, Application Component and Short Text.
+ *     These labels are checked together, independent of error identifiers and theme.
  *
  *  B. ITS-level error (500 Internal Server Error, ITS Error): the outer page
  *     shows an ICM/ITS error banner; the URL sometimes carries `~error=` but not
@@ -19,15 +19,14 @@
  *     S000). Not a dump, but often a symptom of an auth/authorization failure
  *     the test should notice. `detectSessionLost` covers this.
  *
- * Detection is intentionally cheap: cheap enough to run after every guarded()
- * action without adding meaningful overhead. Everything is a substring match on
- * strings we've already collected for other reasons.
+ * Detection uses title/URL signatures and bounded document inspection after each
+ * interaction. The full-screen label signature is checked in outer and child documents.
  *
  * Fail-safe: if a check itself throws, we return null (no dump). A silent
  * detector bug must not cause every test to fail; a missed dump will surface
  * as the test's own assertion failing loudly on the next expectAlert/expectTitle.
  */
-import type { Page } from "@playwright/test"
+import type { Page, Frame } from "@playwright/test"
 
 export type RuntimeError = {
   /**
@@ -40,6 +39,8 @@ export type RuntimeError = {
   url: string
   /** First ~500 chars of the error body — safe to attach to test evidence. */
   snippet: string
+  /** Supporting visual evidence only; dump detection never depends on theme colors. */
+  redHeader?: boolean
 }
 
 /**
@@ -60,18 +61,14 @@ const DUMP_TITLE_SIGNATURES = [
 
 /**
  * Body-text substrings that appear on a rendered short-dump / ITS error page.
- * These live in the OUTER document body (or the iframe's body when a dump
- * escapes into the frame). They're distinctive enough that no normal SAP
- * screen contains them.
+ * Legacy outer-page failure phrases, retained independently of the full dump's
+ * four-label signature. Generic labels alone must not be added here.
  */
 const DUMP_BODY_SIGNATURES = [
   "The current ABAP program",
-  "Category               ABAP programming error",
-  "Runtime Errors",
   "Short dump has not been completely stored",
   "The system service returned an unexpected exception",
-  "ITS Error",
-  "URL http://" // often paired with the above on ITS error banners
+  "ITS Error"
 ]
 
 /**
@@ -139,6 +136,60 @@ async function safeOuterBody(page: Page): Promise<string> {
   }
 }
 
+/** Runs in the browser: inspect visible text, not source/hidden markup or an error ID. */
+export function inspectDumpDocument(): { text: string; redHeader: boolean } | null {
+  const text = (document.body?.innerText ?? "").slice(0, 16_000)
+  const labels = [
+    /\bcategory\b/i,
+    /\bruntime\s+errors\b/i,
+    /\bapplication\s+component\b/i,
+    /\bshort\s+text\b/i
+  ]
+  if (!labels.every(label => label.test(text))) return null
+  // Color corroborates the label signature but cannot replace any missing label.
+  const redHeader = Array.from(document.querySelectorAll("body, table, tr, td, div, pre"))
+    .slice(0, 300)
+    .some(element => {
+      if (!/\bcategory\b/i.test((element as HTMLElement).innerText ?? "")) return false
+      const style = getComputedStyle(element)
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        !element.getClientRects().length
+      )
+        return false
+      const rgb = style.backgroundColor.match(
+        /^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:\s*[,/]\s*([\d.]+))?\s*\)$/i
+      )
+      return (
+        !!rgb &&
+        Number(rgb[1]) >= 160 &&
+        Number(rgb[1]) > Number(rgb[2]) * 1.2 &&
+        Number(rgb[1]) > Number(rgb[3]) * 1.2 &&
+        (rgb[4] === undefined || Number(rgb[4]) > 0)
+      )
+    })
+  return { text, redHeader }
+}
+
+async function findDumpDocument(page: Page): Promise<{ text: string; redHeader: boolean } | null> {
+  const scopes: Array<Page | Frame> = [page]
+  try {
+    scopes.push(...page.frames().filter(frame => frame !== page.mainFrame()))
+  } catch {
+    // The outer document can still be inspected during frame teardown.
+  }
+  for (const scope of scopes) {
+    try {
+      const result = await scope.evaluate(inspectDumpDocument)
+      if (result) return result
+    } catch {
+      // Navigation/detachment in one scope must not hide a dump in another.
+    }
+  }
+  return null
+}
+
 function matchAny(haystack: string, needles: string[]): string | null {
   const lower = haystack.toLowerCase()
   for (const n of needles) {
@@ -150,9 +201,8 @@ function matchAny(haystack: string, needles: string[]): string | null {
 /**
  * Cheap runtime-error check. Returns `null` when the page looks healthy.
  *
- * Intended to be called from `guarded()` after every action. Cost is one
- * page.title(), one page.url(), and (only if a title/url signature hits) one
- * body.innerText slice.
+ * Called after interactions. Title/URL checks are followed by bounded visible-text
+ * inspection in the page and its child frames when no title/URL signature matches.
  */
 export async function detectRuntimeError(page: Page): Promise<RuntimeError | null> {
   const [url, title] = await Promise.all([safeUrl(page), safeTitle(page)])
@@ -174,9 +224,17 @@ export async function detectRuntimeError(page: Page): Promise<RuntimeError | nul
         snippet: (await safeOuterBody(page)).slice(0, 500)
       }
     }
-    // 4) Fallback: body-text signatures. Only run this on outer document —
-    //    inside-iframe body is expensive to snapshot, and real dumps replace
-    //    the whole document.
+    // Full dump screens may replace the page OR only the WebGUI content frame.
+    const dump = await findDumpDocument(page)
+    if (dump) {
+      return {
+        kind: "dump",
+        title: title || "ABAP short dump",
+        url,
+        snippet: dump.text.slice(0, 500),
+        redHeader: dump.redHeader
+      }
+    }
     const body = await safeOuterBody(page)
     const bodyHit = matchAny(body, DUMP_BODY_SIGNATURES)
     if (!bodyHit) return null

@@ -9,8 +9,9 @@ import { logTelemetry } from "../telemetry"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 import { getTestFolder } from "../testing/config"
 import { verifyTestDataUsage } from "../testing/verify-test-data"
+import { type TestingWorkflowOverride, workflowBypassNotice } from "./testingWorkflowOverride"
 
-export interface IVerifyTestDataUsageParameters {
+export interface IVerifyTestDataUsageParameters extends TestingWorkflowOverride {
   program: string
   tcId: string
 }
@@ -39,9 +40,19 @@ export class VerifyTestDataUsageTool implements vscode.LanguageModelTool<IVerify
       )
     }
 
-    const result = await verifyTestDataUsage(testFolder, options.input.program, options.input.tcId)
+    const bypassNotice = workflowBypassNotice(options.input, "SE16N workflow proof")
+    const result = await verifyTestDataUsage(
+      testFolder,
+      options.input.program,
+      options.input.tcId,
+      {
+        skipWorkflowValidation: !!bypassNotice
+      }
+    )
     return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(result.messages.join("\n"))
+      new vscode.LanguageModelTextPart(
+        [...(bypassNotice ? [bypassNotice] : []), ...result.messages].join("\n")
+      )
     ])
   }
 }

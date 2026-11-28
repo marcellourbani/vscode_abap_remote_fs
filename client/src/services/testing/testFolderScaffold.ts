@@ -391,7 +391,7 @@ function buildPlaywrightConfig(testFolder: string): string {
     "export default {",
     "  testDir: path.join(testFolder, 'tests'),",
     "  testMatch: '**/*.spec.ts',",
-    "  timeout: 60000,",
+    "  timeout: 120000,",
     "  fullyParallel: false,",
     "  workers: 1,",
     "  retries: 0,",

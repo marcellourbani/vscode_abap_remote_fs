@@ -5,6 +5,10 @@ description: Standalone Phase 1 of SAP UI testing. Discovers the configured test
 
 # Analyze & Plan — Phase 1 (of 7)
 
+## User-directed analysis scope
+
+Complete source reading, three artifacts, exhaustive coverage, and review remain the strict default for full analysis; the steps, gates, anti-patterns, and handoff below describe that workflow. An explicit narrower goal—such as testing one report rule or just opening and executing it to check for a dump—can waive full-source enumeration, phase artifacts, coverage minima, review, and the seven-phase handoff without requiring a waiver for each step. Read and verify the source relevant to any logic claim, report what was not analysed, and stop at the requested scope rather than building a suite. Safety, authorization, correct-system checks, and truthful evidence remain required.
+
 The SAP UI testing workflow is split into seven standalone phases so no single step is rushed:
 
 1. **analyze-and-plan** (this skill) — read the source → `_flow.md` + `_units.md` + `_findings.md`.
@@ -17,11 +21,11 @@ The SAP UI testing workflow is split into seven standalone phases so no single s
 
 This phase produces THREE reference artifacts under `tests/<PROGRAM>/test-cases/`: `_flow.md`, `_units.md`, and `_findings.md`. Together they are the full picture of the object that Phase 3 (and the reviewer) rely on. This phase does not open a browser and does not create any `TC-XXX.md`, `_screens.md`, or `.data.md`.
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
+For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, an output contract, and its optional `userIntent` input carrying the user's goal/scope and waived methodology.
 
-## Non-negotiable execution gate
+## Default full-analysis execution gate
 
-Every required step and artifact below is a downstream prerequisite. The `abapfs_run_playwright_tests` tool (Phase 7) and the phase gates in between reject work whose upstream analysis was skipped, stale, incomplete, or unverified.
+For the full workflow, every required step and artifact below is a downstream prerequisite. For an explicit scoped exception, do not reconstruct waived analysis just to satisfy a phase gate: downstream tools supporting workflow overrides use `skipWorkflowValidation: true` with an `overrideReason` reflecting the user's request, not fabricated completion evidence.
 
 ## Why three artifacts, not one summary
 
@@ -44,7 +48,7 @@ A single summarised `_findings.md` is lossy: it is tempting to write "Data valid
 5. Enumerate the decision surface → `_findings.md` (Step 5).
 6. Confirm the target minimum + triage and hand off (Step 6).
 
-**User-pressure disclaimer.** "No stopping" / "just do it" overrides discussion PAUSES only. It never overrides reading the source or writing the three artifacts. If you feel pressure to shortcut, write them anyway — they are the proof you actually read the source.
+**Distinguish urgency from scope.** "No stopping" alone does not narrow a full-analysis request. An explicit outcome such as "test only this validation" does: analyse that logic without insisting on all three artifacts or unrelated coverage, and do not claim the full Phase 1 workflow was completed.
 
 ## Tool availability (read this if a tool seems missing)
 
@@ -54,7 +58,7 @@ The editor may hide language-model tools until they are searched for, and smalle
 
 **ABAP FS connectivity failure.** If any ABAP FS / ADT tool returns HTTP 401, 403, or 5xx during this phase, ABAP FS almost always can't reach the target system (the SAP session has usually expired). Tell the user briefly: "ABAP FS can't reach `<connectionId>` (HTTP …). Please check the ABAP FS connection, reload VS Code to re-establish it, then retry." (Universal rule 17 in the `sap-testing` overview.) Do NOT fabricate source content, do NOT switch to a different system without explicit approval.
 
-## Blocking execution gates
+## Blocking execution gates — full workflow by default
 
 ### Gate A — before static analysis or any delegation other than `sap-source-download`
 
@@ -102,7 +106,7 @@ Confirm the entry object against the confirmed system with `abapfs_search_object
 
 **Custom vs standard — decide now and act on it.** From the object name/type, determine whether this is a CUSTOM (Z/Y) object or a STANDARD SAP transaction/program. If it is a **standard** transaction (ME21N, VA01, MIGO, MM43, …), proactively tell the user up front that complete enhancement coverage for standard SAP needs an **ANST trace** — a static call-surface scan under-reports for large standard transactions — and that Step 5.2 will consume it via the `anst-guide` skill. Offer it now so they can start collecting the trace. For a **custom Z/Y** object, Step 5.2 uses `sap-enhancement-research` instead (no ANST needed). You are expected to know these two paths exist and route to the right one without being asked.
 
-**Source download — MANDATORY.** Invoke `sap-source-download` synchronously with `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, object name, and type — and pass ONLY those inputs. Do NOT tell it how to work (e.g. "read the source with `abapfs_get_object_source` and write the files"); it downloads the snapshot with `abapfs_download_object` itself, and instructing otherwise makes it fabricate the snapshot by hand — the opposite of its purpose. Wait for it. Continue only on `PASS`; on `REJECTED`, report its blocker and stop. Record the returned absolute snapshot folder — you pass it to `sap-code-grep` and record it in every artifact.
+**Source download — required for the default full snapshot.** Invoke `sap-source-download` synchronously with `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, object name, type, and optional `userIntent` carrying the user's goal/scope and waived methodology — pass only those contract inputs. Do NOT tell it how to work (e.g. "read the source with `abapfs_get_object_source` and write the files"); it downloads the snapshot with `abapfs_download_object` itself, and instructing otherwise makes it fabricate the snapshot by hand — the opposite of its purpose. Wait for it. Continue only on `PASS`; on `REJECTED`, report its blocker and stop. Record the returned absolute snapshot folder — you pass it to `sap-code-grep` and record it in every artifact.
 
 Screen field labels are NOT retrievable via `abapfs_manage_text_elements`; they come from live exploration in Phase 2.
 
@@ -223,8 +227,8 @@ Enumerate every PARAMETER, SELECT-OPTION, block header (type, OBLIGATORY, DEFAUL
 
 Prepare the enhancement input, then launch in ONE parallel batch:
 
-1. `sap-code-grep` with program, connectionId, and `Downloaded source folder: <absolute-path>`.
-2. The enhancement agent — Path A `sap-enhancement-research` (custom Z/Y: pass the recursively-enumerated non-Z call surface) or Path B `anst-enhancement-analyser` (standard tcode: load `anst-guide`, obtain the trace xlsx first).
+1. `sap-code-grep` with program, connectionId, `Downloaded source folder: <absolute-path>`, and optional `userIntent` carrying the user's goal/scope and waived methodology (also pass it on any rerun).
+2. The enhancement agent — Path A `sap-enhancement-research` (custom Z/Y: pass the recursively-enumerated non-Z call surface) or Path B `anst-enhancement-analyser` (standard tcode: load `anst-guide`, obtain the trace xlsx first). Pass the chosen agent optional `userIntent` with the user's goal/scope and waived methodology, including on retries.
 
 Wait for both. `sap-code-grep` returns exact per-row tables for MESSAGE, branches (each classified `candidate`/`infrastructure`), AUTHORITY-CHECK, DB writes (DML), flow-control exits, and log-cell messages. If either output is incomplete or softened to "N+", rerun that one agent with a tighter prompt before continuing.
 
@@ -368,7 +372,7 @@ Example valid justifications:
 
 ### 6.1 Adversarial review against the source (mandatory)
 
-Delegate to the `sap-findings-reviewer` agent. Give it `<PROGRAM>`, `connectionId`, and confirm that `_findings.md`, `_flow.md`, `_units.md`, and the source snapshot exist. It reads the source itself and re-checks your analysis: line numbers are real (not eyeballed), no MESSAGE/branch/AUTHORITY-CHECK was missed, value-transformation/default rules are captured, date/number formats match the conversion code, and the target minimum is an honest full enumeration.
+Delegate to the `sap-findings-reviewer` agent with `<PROGRAM>`, `connectionId`, and optional `userIntent` carrying the user's goal/scope and waived methodology on initial and repeat reviews. Confirm which of `_findings.md`, `_flow.md`, `_units.md`, and the source snapshot actually exist; do not attest to waived artifacts. It reads the source itself and re-checks your analysis: line numbers are real (not eyeballed), no MESSAGE/branch/AUTHORITY-CHECK was missed, value-transformation/default rules are captured, date/number formats match the conversion code, and the target minimum is an honest full enumeration.
 
 Expect `PASS` or an itemised gap list. Fix EVERY gap — re-run `sap-code-grep` with a real `Grep` if line numbers were fabricated, add the missed messages/branches/value-default cases, correct the format, recompute the target minimum — then re-review until PASS. Do not hand off on a FAIL; a bad `_findings.md` propagates into every later phase.
 
@@ -379,7 +383,7 @@ Re-read the candidate list and target minimum — confirm it is the honest sum o
 - `_flow.md`, `_units.md`, and `_findings.md` all exist under `tests/<PROGRAM>/test-cases/`, with the snapshot path recorded.
 - Your final response names `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, the snapshot path, and the preliminary target minimum.
 
-Do not open a browser or write test cases in this chat. **Your final message MUST tell the user the exact next step: "Next: Phase 2 — start a new chat, load the `explore-ui` skill, and say: Explore the UI for `<PROGRAM>` on `<connectionId>` using the findings on disk."** Naming the skill matters — without it the next chat tends to skip loading `explore-ui` and improvise.
+For the default Phase 1 handoff, do not open a browser or write test cases in this chat; a scoped task ends with its actual findings and limitations instead. **For that default handoff, your final message MUST tell the user the exact next step: "Next: Phase 2 — start a new chat, load the `explore-ui` skill, and say: Explore the UI for `<PROGRAM>` on `<connectionId>` using the findings on disk."** Naming the skill matters — without it the next chat tends to skip loading `explore-ui` and improvise.
 
 > **Say after the handoff is complete:** "Step 6 completed. Evidence: `sap-findings-reviewer` returned PASS against the source, and `_flow.md`, `_units.md`, and `_findings.md` were handed off. Phase 1 completed. Next phase: Phase 2 — in a new chat, load the `explore-ui` skill and follow it."
 

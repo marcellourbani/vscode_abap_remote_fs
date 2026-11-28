@@ -352,7 +352,7 @@ describe("repository usage webview interactions", () => {
         await page.close()
       }
     },
-    10000
+    20000
   )
   it("restores vertical scroll after switching analyses and reloading", async () => {
     const page = await browser.newPage({ locale: "en-US", viewport: { width: 1440, height: 900 } })

@@ -39,13 +39,12 @@ import { funWindow } from "../funMessenger"
 import {
   PlaywrightTestTool,
   cleanupStorageState,
-  killTree,
   playwrightArgs,
   registerPlaywrightTestTool,
-  runProcess,
   summarizeReport
 } from "./playwrightTestTool"
 import { registerToolWithRegistry } from "./toolRegistry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 import type { Mock } from "vitest"
 
 const result = (status: string, extra: Record<string, unknown> = {}) => ({ status, ...extra })
@@ -104,6 +103,17 @@ describe("summarizeReport", () => {
     expect(summary).toContain("1 passed, 2 failed, 1 interrupted, 2 not run (6 selected)")
   })
 
+  it("strips ANSI color codes from error text", () => {
+    const colored = "\x1b[2mexpect(\x1b[22m\x1b[31mreceived\x1b[39m\x1b[2m).\x1b[22mtoEqual"
+    const summary = summarizeReport(
+      report({ title: "colored", results: [result("failed", { error: { message: colored } })] }),
+      3
+    )
+
+    expect(summary).toContain("expect(received).toEqual")
+    expect(summary).not.toContain("\x1b")
+  })
+
   it("reports native max-failure early stopping", () => {
     const value: any = report(
       { title: "fail 1", results: [result("failed")] },
@@ -112,7 +122,9 @@ describe("summarizeReport", () => {
     )
     value.errors = [{ message: "Testing stopped early after 2 maximum allowed failures." }]
 
-    expect(summarizeReport(value, 2)).toContain("Run stopped early after reaching maxFailures=2")
+    expect(summarizeReport(value, 2)).toContain(
+      "A runner stopped early after reaching maxFailures=2"
+    )
   })
 
   it("uses the count fallback when Playwright omits its stop error", () => {
@@ -120,7 +132,25 @@ describe("summarizeReport", () => {
       { title: "fail", results: [result("timedOut")] },
       { title: "queued", results: [result("skipped")] }
     )
-    expect(summarizeReport(value, 1)).toContain("Run stopped early after reaching maxFailures=1")
+    expect(summarizeReport(value, 1)).toContain(
+      "A runner stopped early after reaching maxFailures=1"
+    )
+  })
+
+  it("does not infer a shared failure threshold from merged parallel results", () => {
+    const value = report(
+      { title: "failed in one partition", results: [result("failed")] },
+      { title: "skipped elsewhere", results: [result("skipped")] }
+    )
+    expect(summarizeReport(value, 1, true)).not.toContain("stopped early")
+  })
+
+  it("surfaces worker setup errors even when a sibling passes", () => {
+    const value = {
+      ...report({ title: "pass", results: [result("passed")] }),
+      errors: [{ message: "Playwright worker setup failed: disk unavailable" }]
+    }
+    expect(summarizeReport(value, 3)).toContain("Runner error: Playwright worker setup failed")
   })
 
   it("handles discovery errors and empty matches", () => {
@@ -205,6 +235,7 @@ describe("PlaywrightTestTool", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    vi.mocked(assertToolInvocationAuthorized).mockReset()
     root = await fs.mkdtemp(path.join(os.tmpdir(), "playwright-tool-"))
     extension = path.join(root, "extension")
     specDir = path.join(root, "tests", "PROGRAM", "test-scripts")
@@ -243,6 +274,44 @@ describe("PlaywrightTestTool", () => {
     await fs.rm(root, { recursive: true, force: true })
   })
 
+  it("rejects empty parallel discovery without creating a run", async () => {
+    await expect(
+      tool.invoke(
+        options({
+          program: "PROGRAM",
+          connectionId: "DEV100",
+          runInParallel: true,
+          skipWorkflowValidation: true,
+          overrideReason: "User requested a focused check"
+        }),
+        token()
+      )
+    ).rejects.toThrow("No TC-*.spec.ts files")
+    expect(spawn).not.toHaveBeenCalled()
+    await expect(fs.stat(path.join(root, ".playwright-runs"))).rejects.toThrow()
+  })
+
+  it("does not inherit a stale login ticket when automatic login is unavailable", async () => {
+    const previous = process.env.SAP_TESTING_LOGIN_URL
+    process.env.SAP_TESTING_LOGIN_URL = "https://example.invalid/expired"
+    try {
+      mockProcess(report({ title: "one", results: [result("passed")] }))
+      await tool.invoke(
+        options({
+          program: "PROGRAM",
+          connectionId: "DEV100",
+          skipWorkflowValidation: true,
+          overrideReason: "User requested a smoke check"
+        }),
+        token()
+      )
+      expect((spawn as unknown as Mock).mock.calls[0][2].env.SAP_TESTING_LOGIN_URL).toBeUndefined()
+    } finally {
+      if (previous === undefined) delete process.env.SAP_TESTING_LOGIN_URL
+      else process.env.SAP_TESTING_LOGIN_URL = previous
+    }
+  })
+
   it("describes exact and all-spec invocations", async () => {
     await expect(
       tool.prepareInvocation(
@@ -255,7 +324,7 @@ describe("PlaywrightTestTool", () => {
     ).resolves.toEqual({ invocationMessage: "Running all specs for PROGRAM on DEV" })
   })
 
-  it("runs an exact parallel subset with capped limits and one shared login URL", async () => {
+  it("runs an exact parallel subset with capped limits and a login URL per worker", async () => {
     await fs.writeFile(path.join(specDir, "TC-001.spec.ts"), "test")
     await fs.writeFile(path.join(specDir, "TC-002.spec.ts"), "test")
     const launcher = { url: "http://launcher", dispose: vi.fn() }
@@ -284,22 +353,62 @@ describe("PlaywrightTestTool", () => {
     ) as Promise<any>
     const value = await invocation
 
-    expect(value.parts[0].text).toContain("1 passed")
-    expect(spawn).toHaveBeenCalledTimes(1)
-    const [_command, args, processOptions] = (spawn as unknown as Mock).mock.calls[0]
-    expect(args).toEqual(expect.arrayContaining(["TC-001.spec.ts", "TC-002.spec.ts"]))
-    expect(processOptions.env).toMatchObject({
-      SAP_TESTING_PARALLEL: "1",
-      SAP_TESTING_MAX_TASKS: "5",
-      SAP_TESTING_MAX_FAILURES: "10",
-      SAP_TESTING_HEADED: "1",
-      SAP_TESTING_LOGIN_URL: "http://launcher",
-      SAP_TESTING_BROWSER_EXECUTABLE: "C:/browser.exe",
-      SAP_SYSTEM: "dev100",
-      SAP_URL_DEV100: "http://sap/webgui"
-    })
+    expect(value.parts[0].text).toContain("2 passed, 0 failed")
+    expect(spawn).toHaveBeenCalledTimes(2)
+    const workers = (spawn as unknown as Mock).mock.calls.map(call => call[2].env)
+    expect(workers.map(env => env.SAP_TESTING_LOGIN_URL)).toEqual([
+      "http://launcher",
+      "http://launcher"
+    ])
+    expect(new Set(workers.map(env => env.SAP_TESTING_STORAGE_STATE)).size).toBe(2)
+    expect(workers.every(env => env.SAP_TESTING_PARALLEL === "0")).toBe(true)
+    expect(workers.every(env => env.SAP_TESTING_MAX_TASKS === "1")).toBe(true)
+    expect(workers.every(env => env.SAP_TESTING_MAX_FAILURES === "10")).toBe(true)
+    expect(workers.every(env => env.SAP_TESTING_HEADED === "1")).toBe(true)
+    expect(workers.every(env => env.SAP_TESTING_BROWSER_EXECUTABLE === "C:/browser.exe")).toBe(true)
+    expect(workers.every(env => env.SAP_SYSTEM === "dev100")).toBe(true)
+    expect(workers.every(env => env.SAP_URL_DEV100 === "http://sap/webgui")).toBe(true)
     expect(funWindow.showWarningMessage).toHaveBeenCalledWith("browser warning")
-    expect(launcher.dispose).toHaveBeenCalledTimes(1)
+    expect(launcher.dispose).toHaveBeenCalledTimes(2)
+  })
+
+  it("gives each parallel worker a distinct SAP login and isolated report state", async () => {
+    await fs.writeFile(path.join(specDir, "TC-001.spec.ts"), "test")
+    await fs.writeFile(path.join(specDir, "TC-002.spec.ts"), "test")
+    await fs.writeFile(path.join(specDir, "TC-003.spec.ts"), "test")
+    ;(RemoteManager.get as Mock).mockReturnValue({
+      byIdAsync: vi.fn().mockResolvedValue({ webGuiAutoLogin: true })
+    })
+    ;(ssoLoginUrl as Mock)
+      .mockResolvedValueOnce({ url: "http://launcher/one", dispose: vi.fn() })
+      .mockResolvedValueOnce({ url: "http://launcher/two", dispose: vi.fn() })
+      .mockResolvedValueOnce({ url: "http://launcher/three", dispose: vi.fn() })
+    mockProcess(report({ title: "worker", results: [result("passed")] }))
+
+    const value: any = await tool.invoke(
+      options({
+        program: "PROGRAM",
+        tcIds: ["TC-001", "TC-002", "TC-003"],
+        connectionId: "DEV100",
+        runInParallel: true,
+        maxTasks: 3,
+        skipWorkflowValidation: true,
+        overrideReason: "User requested parallel testing"
+      }),
+      token()
+    )
+
+    expect(value.parts[0].text).toContain("3 passed, 0 failed")
+    expect(spawn).toHaveBeenCalledTimes(3)
+    expect(ssoLoginUrl).toHaveBeenCalledTimes(3)
+    const workers = (spawn as unknown as Mock).mock.calls.map(call => call[2].env)
+    expect(workers.map(env => env.SAP_TESTING_LOGIN_URL).sort()).toEqual([
+      "http://launcher/one",
+      "http://launcher/three",
+      "http://launcher/two"
+    ])
+    expect(new Set(workers.map(env => env.SAP_TESTING_STORAGE_STATE)).size).toBe(3)
+    expect(workers.every(env => env.SAP_TESTING_PARALLEL === "0")).toBe(true)
   })
 
   it("runs all specs sequentially and falls back to process output without JSON", async () => {
@@ -312,7 +421,9 @@ describe("PlaywrightTestTool", () => {
       }),
       token()
     )
-    expect(value.parts[0].text).toContain("Playwright did not produce a report (exit code 1)")
+    expect(value.parts[0].text).toContain(
+      "Playwright worker 1 did not produce a report (exit code 1)"
+    )
     expect(value.parts[0].text).toContain("load failed")
     const [_command, args, processOptions] = (spawn as unknown as Mock).mock.calls[0]
     expect(args.some((arg: string) => arg.endsWith(".spec.ts"))).toBe(false)
@@ -379,9 +490,16 @@ describe("PlaywrightTestTool", () => {
     await expect(cleanupStorageState(nonEmpty)).resolves.toBeUndefined()
   })
 
-  it("rejects invalid readiness, folder, URL, spec directory, selected files, and gates", async () => {
-    const base = { program: "PROGRAM", connectionId: "DEV100" }
-    await expect(tool.invoke(options(base), token())).rejects.toThrow(/prerequisiteConfirmation/)
+  it.each([false, true])("retains execution checks with bypass=%s", async bypass => {
+    const base = {
+      program: "PROGRAM",
+      connectionId: "DEV100",
+      skipWorkflowValidation: bypass,
+      overrideReason: "User requested smoke testing"
+    }
+    if (!bypass) {
+      await expect(tool.invoke(options(base), token())).rejects.toThrow(/prerequisiteConfirmation/)
+    }
     ;(getTestFolder as Mock).mockReturnValue(undefined)
     await expect(
       tool.invoke(options({ ...base, prerequisiteConfirmation: confirmation }), token())
@@ -412,22 +530,86 @@ describe("PlaywrightTestTool", () => {
       path.join(cases, "TC-001.md"),
       "---\nverification: sql\nse16nTables: [EKKO]\n---\n"
     )
+    if (bypass) {
+      mockProcess(report({ title: "smoke", results: [result("passed")] }))
+      const value: any = await tool.invoke(options({ ...base, tcIds: ["TC-001"] }), token())
+      expect(value.parts[0].text).toContain("SE16N workflow proof")
+      expect(value.parts[0].text).toContain("1 passed")
+    } else {
+      await expect(
+        tool.invoke(
+          options({ ...base, tcIds: ["TC-001"], prerequisiteConfirmation: confirmation }),
+          token()
+        )
+      ).rejects.toThrow(/missing EKKO/)
+      expect(spawn).not.toHaveBeenCalled()
+    }
+  })
+
+  it("bypasses confirmations without planning artifacts and reports the actual scope", async () => {
+    await fs.writeFile(path.join(specDir, "TC-001.spec.ts"), "test")
+    mockProcess(report({ title: "smoke", results: [result("passed")] }))
+    const value: any = await tool.invoke(
+      options({
+        program: "PROGRAM",
+        connectionId: "DEV100",
+        tcIds: ["TC-001"],
+        skipWorkflowValidation: true,
+        overrideReason: "  User requested execution only  "
+      }),
+      token()
+    )
+    expect(value.parts[0].text).toContain("WORKFLOW VALIDATION BYPASSED")
+    expect(value.parts[0].text).toContain("Reason: User requested execution only")
+    expect(value.parts[0].text).toContain("not verified")
+    expect(value.parts[0].text).not.toContain(confirmation)
+    expect(value.parts[0].text).toContain("1 passed")
+  })
+
+  it.each([undefined, "", "   "])("requires a bypass reason: %s", async overrideReason => {
     await expect(
       tool.invoke(
-        options({ ...base, tcIds: ["TC-001"], prerequisiteConfirmation: confirmation }),
+        options({
+          program: "PROGRAM",
+          connectionId: "DEV100",
+          skipWorkflowValidation: true,
+          overrideReason,
+          prerequisiteConfirmation: confirmation
+        }),
         token()
       )
-    ).rejects.toThrow(/missing EKKO/)
+    ).rejects.toThrow(/nonempty overrideReason/)
     expect(spawn).not.toHaveBeenCalled()
   })
 
-  it("fails clearly when the extension or vendored Playwright package is missing", async () => {
+  it("still enforces authorization during a workflow bypass", async () => {
+    vi.mocked(assertToolInvocationAuthorized).mockImplementationOnce(() => {
+      throw new Error("Unauthorized")
+    })
+    await expect(
+      tool.invoke(
+        options({
+          program: "PROGRAM",
+          connectionId: "DEV100",
+          skipWorkflowValidation: true,
+          overrideReason: "User requested execution only"
+        }),
+        token()
+      )
+    ).rejects.toThrow("Unauthorized")
+    expect(getWebGuiUrl).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])("retains packaging checks with bypass=%s", async bypass => {
     ;(vscode.extensions.getExtension as Mock).mockReturnValue(undefined)
     await expect(
       tool.invoke(
         options({
           program: "PROGRAM",
           connectionId: "DEV100",
+          skipWorkflowValidation: bypass,
+          overrideReason: "User requested execution only",
           prerequisiteConfirmation: confirmation
         }),
         token()
@@ -443,6 +625,8 @@ describe("PlaywrightTestTool", () => {
         options({
           program: "PROGRAM",
           connectionId: "DEV100",
+          skipWorkflowValidation: bypass,
+          overrideReason: "User requested execution only",
           prerequisiteConfirmation: confirmation
         }),
         token()
@@ -505,124 +689,5 @@ describe("PlaywrightTestTool", () => {
       expect.any(PlaywrightTestTool)
     )
     expect(context.subscriptions.push).toHaveBeenCalledWith("registration")
-  })
-})
-
-function fakeChild() {
-  const child = new EventEmitter() as any
-  child.stdout = new EventEmitter()
-  child.stderr = new EventEmitter()
-  child.pid = 321
-  child.exitCode = null
-  child.signalCode = null
-  child.kill = vi.fn()
-  return child
-}
-
-describe("Playwright process lifecycle", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it("captures both streams and settles on close", async () => {
-    const child = fakeChild()
-    ;(spawn as unknown as Mock).mockReturnValue(child)
-    const cancel = { dispose: vi.fn() }
-    const runToken = {
-      onCancellationRequested: vi.fn(function () {
-        return cancel
-      })
-    } as any
-    const promise = runProcess("node", ["cli"], { cwd: "C:/tests", env: {} }, runToken)
-    child.stdout.emit("data", Buffer.from("out\n"))
-    child.stderr.emit("data", Buffer.from("err\n"))
-    child.emit("close", 2)
-    child.emit("close", 3)
-    await expect(promise).resolves.toEqual({ code: 2, stdout: "out\n", stderr: "err\n" })
-    expect(cancel.dispose).toHaveBeenCalledTimes(1)
-  })
-
-  it("settles through the exit grace path when close never arrives", async () => {
-    vi.useFakeTimers()
-    const child = fakeChild()
-    ;(spawn as unknown as Mock).mockReturnValue(child)
-    const promise = runProcess("node", [], { cwd: "C:/tests", env: {} }, token())
-    child.emit("exit", 0)
-    vi.advanceTimersByTime(2_000)
-    await expect(promise).resolves.toEqual({ code: 0, stdout: "", stderr: "" })
-    vi.useRealTimers()
-  })
-
-  describe("on Windows", () => {
-    const platform = Object.getOwnPropertyDescriptor(process, "platform")!
-
-    beforeEach(() => {
-      Object.defineProperty(process, "platform", { value: "win32" })
-    })
-
-    afterEach(() => {
-      Object.defineProperty(process, "platform", platform)
-    })
-
-    it("kills an active process tree on cancellation", async () => {
-      const child = fakeChild()
-      const taskkill = fakeChild()
-      const calls: any[] = []
-      ;(spawn as unknown as Mock).mockImplementation(function (...args: any[]) {
-        calls.push(args)
-        return calls.length === 1 ? child : taskkill
-      })
-      let cancel: (() => void) | undefined
-      const runToken = {
-        onCancellationRequested: vi.fn(function (handler: () => void) {
-          cancel = handler
-          return { dispose: vi.fn() }
-        })
-      } as any
-      const promise = runProcess("node", [], { cwd: "C:/tests", env: {} }, runToken)
-      cancel!()
-      child.signalCode = "SIGKILL"
-      child.emit("close", null)
-      await promise
-      expect(calls[1][0]).toBe("taskkill")
-      expect(calls[1][1]).toEqual(["/pid", "321", "/T", "/F"])
-    })
-
-    it("does not kill a settled child and falls back when taskkill fails", () => {
-      const settled = fakeChild()
-      settled.exitCode = 0
-      killTree(settled)
-      expect(spawn).not.toHaveBeenCalled()
-
-      const child = fakeChild()
-      const taskkill = fakeChild()
-      ;(spawn as unknown as Mock).mockReturnValue(taskkill)
-      killTree(child)
-      taskkill.emit("error", new Error("taskkill unavailable"))
-      expect(child.kill).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  it("kills a POSIX process group and falls back to the child when that fails", () => {
-    const descriptor = Object.getOwnPropertyDescriptor(process, "platform")!
-    Object.defineProperty(process, "platform", { value: "linux" })
-    const processKill = vi.spyOn(process, "kill").mockImplementation(function () {
-      return true
-    })
-    try {
-      const grouped = fakeChild()
-      killTree(grouped)
-      expect(processKill).toHaveBeenCalledWith(-321, "SIGKILL")
-
-      processKill.mockImplementation(function () {
-        throw new Error("no group")
-      })
-      const fallback = fakeChild()
-      killTree(fallback)
-      expect(fallback.kill).toHaveBeenCalledWith("SIGKILL")
-    } finally {
-      processKill.mockRestore()
-      Object.defineProperty(process, "platform", descriptor)
-    }
   })
 })

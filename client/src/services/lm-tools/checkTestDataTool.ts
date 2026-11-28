@@ -14,6 +14,7 @@ import { checkTestData } from "../testing/check-fixtures"
 export interface ICheckTestDataParameters {
   program: string
   connectionId: string
+  tcIds?: string[]
 }
 
 export class CheckTestDataTool implements vscode.LanguageModelTool<ICheckTestDataParameters> {
@@ -40,11 +41,24 @@ export class CheckTestDataTool implements vscode.LanguageModelTool<ICheckTestDat
       )
     }
     const connectionId = formatKey(options.input.connectionId)
-    const result = await checkTestData(testFolder, options.input.program, connectionId)
+    const result = await checkTestData(
+      testFolder,
+      options.input.program,
+      connectionId,
+      options.input.tcIds
+    )
     const lines = [
+      options.input.tcIds ? `Scope: selected cases — ${options.input.tcIds.join(", ")}` : "",
+      result.total === 0
+        ? "No managed .data.md sidecars found in scope (a missing test-cases directory means zero managed sidecars). Inline specs do not require managed data; their inline values were not validated by this check."
+        : "",
+      ...result.skippedUnmanaged.map(
+        id =>
+          `SKIPPED (unmanaged)  ${id} — no .data.md sidecar; inline values were not validated and this ID is not counted as passed.`
+      ),
       ...result.failures.map(f => `FAIL  ${f.tcId}\n        ${f.message}`),
       ...result.distinctViolations.map(v => `DISTINCT VIOLATION  ${v.tcId}\n        ${v.message}`),
-      `\n${result.passed}/${result.total} case(s) resolvable on ${connectionId}. Breakdown:`,
+      `\n${result.passed}/${result.total} managed sidecar(s) resolvable on ${connectionId}. Breakdown:`,
       `  - prepared from data.json cache (sql/seeded): ${result.cached.length}` +
         (result.cached.length ? ` — ${result.cached.join(", ")}` : ""),
       `  - no cache needed (static/generated only, would pass on any system): ${result.noCacheNeeded.length}` +

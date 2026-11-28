@@ -35,12 +35,9 @@ export class SapArtifacts {
     // Set a temp local target — CG3Y will complain if source missing before it opens the save dialog.
     await this.sap.setField("Target file on Presentation Server", `C:\\Temp\\_probe.tmp`)
     try {
-      await this.sap.execute()
-      // If a "file does not exist" alert appears, the assertion has failed.
-      const body = await this.sap.raw().locator("body").innerText()
-      if (/does not exist|not found/i.test(body)) {
-        throw new Error(`AL11 file not found: ${fullPath}`)
-      }
+      // Only an actual completed download proves the server supplied the file.
+      // A successful click or the absence of a status error is not sufficient.
+      await this.sap.captureDownload(() => this.sap.execute(), "application-server-file-probe")
       await this.sap.note(`AL11 file present: ${fullPath}`)
       return true
     } catch (e) {
@@ -54,9 +51,18 @@ export class SapArtifacts {
     await this.sap.openTx("SP01")
     await this.sap.setField("Created by", user)
     await this.sap.execute()
+    // Without a verified sort contract, selecting the first matching user does NOT
+    // establish the latest request. Fail closed rather than certify unrelated output.
+    const root = await this.sap.contentRoot()
+    const rows = root.getByRole("row").filter({ hasText: user })
+    if ((await rows.count()) !== 1) {
+      throw new Error(
+        "Cannot identify the latest spool unambiguously. Narrow SP01 to one request before capturing output."
+      )
+    }
     await this.sap.selectGridRowByText(user)
     await this.sap.clickButton(/^Display/i)
-    const text = await this.sap.raw().locator("body").innerText()
+    const text = await (await this.sap.contentRoot()).innerText()
     await this.sap.note("Captured latest spool")
     return text
   }

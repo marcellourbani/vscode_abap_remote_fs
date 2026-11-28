@@ -5,12 +5,16 @@ description: Standalone Phase 5 of SAP UI testing. Rediscovers the configured te
 
 # Prepare Data — Phase 5 (of 7)
 
+## User-directed preparation scope
+
+Resolving reusable `.data.md` requirements into per-system `data.json` caches, with the gates and checks below, remains the strict default for full data preparation. For an explicit scoped smoke check or test of specific report logic, the user may choose supplied or verified inline values in the executable spec, skip define-data/prepare-data when unnecessary, and waive phase artifacts, review, coverage, or separate methodology confirmations. Prepare only the requested cases when a subset is selected, without claiming whole-program readiness or fabricating values, absence proofs, or completed checks. Correct-system checks, safety, authorization, and approval for consequential SAP writes remain required.
+
 For a cross-system staged scenario, also load `multi-system-workflows`. Do not cache a
 runtime-produced predecessor key in `data.json`; resolve only genuine pre-run inputs here.
 
 Phase order: analyze-and-plan (1) → explore-ui (2) → design-cases (3) → define-data (4) → **prepare-data (5)** → build-scripts (6) → run-scripts (7). This phase reads the `TC-XXX.data.md` specs authored in Phase 4 and resolves them into per-system `data.json` caches.
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
+For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, an output contract, and optional `userIntent` carrying the user's goal/scope and waived methodology.
 
 ## Tool availability (read this if a tool seems missing)
 
@@ -18,9 +22,9 @@ For bounded, self-contained support work, use `sap-task-helper` with explicit in
 
 The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_test_folder`, `abapfs_get_connected_systems`, `abapfs_check_test_data`, `abapfs_verify_test_data_usage`, `abapfs_get_sql_syntax`, and `abapfs_run_sql_query` are available; if any is missing, search your available tools for it by name. If one cannot be found, tell the user.
 
-## Non-negotiable execution gate
+## Default reusable-data execution gate
 
-Every required step and artifact below is recorded as a Phase 5 prerequisite. The `abapfs_run_playwright_tests` tool verifies data preparation and **will reject every affected case** if preparation was skipped, deferred, incomplete, stale, or unverified. Complete each requirement now; runtime fallback, guessed values, and later phases cannot bypass the tool's validation.
+In the full workflow, complete the required preparation checks before declaring a case ready. An explicit scoped inline-data test may omit this phase and its artifacts; supporting downstream tools use `skipWorkflowValidation: true` with an `overrideReason` reflecting the user's request. That bypass does not supply missing executable inputs: a spec still needs actual valid values or must report itself blocked, never fall back to guesses.
 
 ## Why
 
@@ -40,12 +44,12 @@ Goal: turn a system-agnostic `TC-XXX.data.md` requirement spec into a connection
 
 > **Say before acting:** "Starting Step 0: standalone bootstrap and upstream input gate."
 
-Run these actions in this exact order in every chat:
+For the default reusable-data workflow, run these actions in this order; a scoped inline-data task does not need a cache or these upstream artifacts:
 
 1. Call `abapfs_get_test_folder` **before reading or writing any artifact**. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
 3. Resolve `<PROGRAM>` and requested TC-IDs from the current request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`. Auto-select only when exactly one program is a valid candidate; otherwise ask. Use `_index.md` runnable status, priorities, and `Data required?` column rather than conversation memory or rereading every TC file.
-4. Enforce the upstream input gate. For the selected program, require:
+4. Enforce the default upstream input gate. For full preparation of the selected program, require:
    - `test-cases/_index.md` and `test-cases/_findings.md` (from analyze-and-plan / design-cases)
    - `test-cases/_screens.md` (from explore-ui)
    - each selected `TC-XXX.md` (from design-cases)
@@ -106,8 +110,9 @@ For each `requires` entry, act according to `source`:
 > - `requirement` — copy the `description` field from the `.data.md` requirement
 > - `count` — how many values you need (usually 3-5)
 > - `context` (optional) — the TC-ID this feeds, so the agent can write better filter logic
+> - `userIntent` (optional agent input) — the user's goal/scope and waived methodology; pass it to every scout instance, including retries, so a narrow lookup does not turn into full-suite preparation
 >
-> The agent handles `abapfs_get_sql_syntax` + `abapfs_run_sql_query` + spot-validation internally. It returns a table of concrete values ready for the Step 3 approval table. After it returns, complete Step 3 (show the user and get approval) and Step 4 (write `data.json`); use the agent only to find data, not to write the cache.
+> The agent handles `abapfs_get_sql_syntax` + `abapfs_run_sql_query` + spot-validation internally. It returns concrete values for Step 3 and Step 4 in the default cache workflow; if the user explicitly chose a scoped inline spec, pass back verified values without forcing cache creation. Use the agent only to find data, not to write the cache.
 
 Rules:
 
@@ -188,7 +193,7 @@ This is a Phase 5 responsibility because `abapfs_check_test_data` deliberately n
 
 > **Say before acting:** "Starting Step 3: present one consolidated data-approval table."
 
-Print ONE table of resolved values across the whole batch (key → value + description + which TC(s) it applies to, per Step 1a). Ask confirmation. Never persist without approval.
+By default, print ONE table of resolved values across the whole batch (key → value + description + which TC(s) it applies to, per Step 1a) and ask confirmation before persisting. An explicit user instruction to use verified values for the scoped test may waive this separate methodology confirmation; it does not authorize SAP seeding or other consequential writes.
 
 > **Say before continuing:** "Step 3 completed. Evidence: the user approved the consolidated resolved values. Next: Step 4 — save the cache."
 
@@ -262,7 +267,7 @@ Before ending Phase 5, make the disk state sufficient for a brand-new `build-scr
 - `abapfs_check_test_data` has been run for the program/system when preparing the complete program.
 - Your final response names `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, prepared/no-data/blocked TC-IDs, and the `abapfs_check_test_data` result.
 
-Do not rely on the next chat knowing which rows you chose. Persist approved values and report blockers. **Your final message MUST tell the user the exact next step: "Next: Phase 6 — start a new chat, load the `build-scripts` skill, and say: Build scripts for `<PROGRAM>` using the approved cases on disk; primary system is `<connectionId>`."** Naming the skill matters — without it the next chat tends to skip loading `build-scripts` and improvise.
+Do not rely on the next chat knowing which rows you chose: report the selected data strategy, verified values or cache paths, and blockers. For a scoped inline test, hand off only the requested scripting/execution work without claiming Phase 5 cache readiness. **For the default reusable-data handoff, your final message MUST tell the user the exact next step: "Next: Phase 6 — start a new chat, load the `build-scripts` skill, and say: Build scripts for `<PROGRAM>` using the approved cases on disk; primary system is `<connectionId>`."** Naming the skill matters — without it the next chat tends to skip loading `build-scripts` and improvise.
 
 > **Say after the handoff is complete:** "Step 7 completed. Evidence: prepared/no-data/blocked cases and readiness results were handed off. Next phase: Phase 6 — in a new chat, load the `build-scripts` skill and follow it."
 
@@ -301,4 +306,4 @@ Missing test data for TC-050 on system QAS:
   - existing_range (A precondition row with an overlapping date range) — requires seeding via TC-001 (prepare-data must run that spec once as a setup step, then cache the result)
 ```
 
-When either error appears, follow this workflow again and resolve the missing data. You can also call `abapfs_check_test_data` proactively to find every such gap in one pass instead of discovering them one at a time from test failures.
+When either error appears in a resolver-backed spec, follow this workflow again to resolve its missing inputs. If the user explicitly chose scoped inline values instead, remove unnecessary resolver use and supply verified inputs in the spec; a workflow override alone cannot make an undefined key executable. You can also call `abapfs_check_test_data` proactively for reusable-data gaps.

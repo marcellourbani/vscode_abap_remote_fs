@@ -37,6 +37,15 @@ import {
   normalizeTcIds
 } from "../testing/playwright-limits"
 import { findSqlVerificationGateErrors } from "../testing/verification-gate"
+import {
+  createRunDir,
+  newRunId,
+  pruneRuns,
+  releaseRun,
+  runsRoot,
+  writeRunLog
+} from "../testing/playwright-run-store"
+import { type TestingWorkflowOverride, workflowBypassNotice } from "./testingWorkflowOverride"
 
 /** Time a startup phase into the debug channel, so a slow run points at a specific step. */
 async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {
@@ -49,7 +58,7 @@ async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {
   }
 }
 
-export interface IPlaywrightTestParameters {
+export interface IPlaywrightTestParameters extends TestingWorkflowOverride {
   program: string
   tcIds?: string[]
   connectionId: string
@@ -57,11 +66,14 @@ export interface IPlaywrightTestParameters {
   maxFailures?: number
   runInParallel?: boolean
   maxTasks?: number
-  prerequisiteConfirmation: string
+  keepArtifacts?: boolean
+  prerequisiteConfirmation?: string
 }
 
 /**
- * The exact sentence the model must pass before a run is allowed. Same behavioral-gate
+ * The exact sentence required by default before a run. Explicit workflow overrides skip
+ * this certification rather than asking the model to claim checks it did not perform.
+ * Same behavioral-gate
  * technique as abapfs_build_test_index's reviewerConfirmation: the tool cannot itself re-derive
  * every upstream phase gate cheaply, but requiring the model to type this certification
  * forces it to consciously complete the run-scripts Step 0 gate (artifacts present, data
@@ -152,18 +164,23 @@ type JsonReport = {
   errors?: Array<{ message?: string }>
 }
 
+/** Playwright colors its error text with ANSI escapes, which show up as noise in tool output. */
+export function stripAnsi(text: string): string {
+  return text.replace(/\x1b\[[0-9;]*m/g, "")
+}
+
 function collectSpecs(suite: JsonReportSuite | undefined, out: JsonReportSpec[]): void {
   if (!suite) return
   for (const s of suite.specs ?? []) out.push(s)
   for (const child of suite.suites ?? []) collectSpecs(child, out)
 }
 
-export function summarizeReport(report: JsonReport, maxFailures: number): string {
+export function summarizeReport(report: JsonReport, maxFailures: number, parallel = false): string {
   const specs: JsonReportSpec[] = []
   for (const suite of report.suites ?? []) collectSpecs(suite, specs)
 
   if (!specs.length) {
-    const errs = (report.errors ?? []).map(e => e.message).filter(Boolean)
+    const errs = (report.errors ?? []).map(e => e.message && stripAnsi(e.message)).filter(Boolean)
     return errs.length ? `No tests ran. Errors:\n${errs.join("\n")}` : "No tests matched."
   }
 
@@ -192,7 +209,7 @@ export function summarizeReport(report: JsonReport, maxFailures: number): string
         lines.push(`FAIL  ${spec.title}`)
         if (last?.error?.message) {
           lines.push(
-            last.error.message
+            stripAnsi(last.error.message)
               .split("\n")
               .slice(0, 8)
               .map(l => `        ${l}`)
@@ -206,7 +223,7 @@ export function summarizeReport(report: JsonReport, maxFailures: number): string
         }
         // Surface artifact paths (trace zip, failure screenshot, error context) so the model
         // can open the trace — which contains the HTTP request/response bodies and per-step DOM
-        // snapshots — instead of guessing. Traces live under <root>/.playwright-artifacts/.
+        // snapshots — instead of guessing. Traces live under the per-call folder reported below.
         for (const att of last?.attachments ?? []) {
           if (att.path && /trace|screenshot|snapshot|\.zip$|\.png$/i.test(att.name + att.path)) {
             lines.push(`        [${att.name}] ${att.path}`)
@@ -223,12 +240,17 @@ export function summarizeReport(report: JsonReport, maxFailures: number): string
   const stoppedEarly = (report.errors ?? []).some(error =>
     /stopped early|maximum allowed failures/i.test(error.message ?? "")
   )
-  if (stoppedEarly || (failed >= maxFailures && interrupted + notRun > 0)) {
-    lines.push(`Run stopped early after reaching maxFailures=${maxFailures}.`)
+  if (stoppedEarly || (!parallel && failed >= maxFailures && interrupted + notRun > 0)) {
+    lines.push(
+      `A runner stopped early after reaching maxFailures=${maxFailures} (per runner process).`
+    )
+  }
+  for (const error of report.errors ?? []) {
+    if (error.message) lines.push(`Runner error: ${stripAnsi(error.message)}`)
   }
   if (failed > 0) {
     lines.push(
-      "For each FAIL: open the trace (path above, under <test-folder>/.playwright-artifacts/) " +
+      "For each FAIL: open the trace (path above, under the per-call run folder) " +
         "for request/response bodies and per-step DOM; the last step + screenshot are in " +
         "test-results/<CONNECTION-ID>/<TC-ID>/ (connectionId UPPERCASE). Diagnose before rerunning."
     )
@@ -238,6 +260,13 @@ export function summarizeReport(report: JsonReport, maxFailures: number): string
 
 export function playwrightArgs(configPath: string, tcIds?: string[]): string[] {
   return ["test", "--config", configPath, ...(tcIds?.map(tcId => `${tcId}.spec.ts`) ?? [])]
+}
+
+function splitTcIds(tcIds: string[], maxTasks: number): string[][] {
+  const taskCount = Math.min(tcIds.length, maxTasks)
+  const tasks = Array.from({ length: taskCount }, () => [] as string[])
+  tcIds.forEach((tcId, index) => tasks[index % taskCount].push(tcId))
+  return tasks
 }
 
 export function cleanupStorageState(storageStateFile: string): Promise<void> {
@@ -263,6 +292,10 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     assertToolInvocationAuthorized(options)
     logTelemetry("tool_playwright_test_called")
 
+    const bypassNotice = workflowBypassNotice(
+      options.input,
+      "prerequisite confirmation and SE16N workflow proof"
+    )
     const invokeStarted = Date.now()
     const { program, headed } = options.input
     const tcIds = normalizeTcIds(options.input.tcIds)
@@ -275,8 +308,9 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     )
 
     if (
+      !bypassNotice &&
       normalizeConfirmation(options.input.prerequisiteConfirmation) !==
-      normalizeConfirmation(REQUIRED_PREREQUISITE_CONFIRMATION)
+        normalizeConfirmation(REQUIRED_PREREQUISITE_CONFIRMATION)
     ) {
       throw new Error(
         "abapfs_run_playwright_tests is blocked: the mandatory 'prerequisiteConfirmation' field was " +
@@ -321,77 +355,137 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
       }
     }
 
-    const verificationErrors = await findSqlVerificationGateErrors(testFolder, program, tcIds)
-    if (verificationErrors.length) {
-      throw new Error(
-        `abapfs_run_playwright_tests blocked: SQL/mixed post-validation cases require SE16N screenshot ` +
-          `proof in the matching spec:\n- ${verificationErrors.join("\n- ")}`
-      )
+    if (!bypassNotice) {
+      const verificationErrors = await findSqlVerificationGateErrors(testFolder, program, tcIds)
+      if (verificationErrors.length) {
+        throw new Error(
+          `abapfs_run_playwright_tests blocked: SQL/mixed post-validation cases require SE16N screenshot ` +
+            `proof in the matching spec:\n- ${verificationErrors.join("\n- ")}`
+        )
+      }
     }
 
     const extPath = extensionPath()
     const cliPath = await resolvePlaywrightCli(extPath)
     const configPath = path.join(vendorDir(extPath), "playwright.config.js")
-    const runDir = await fs.mkdtemp(path.join(os.tmpdir(), "abapfs-testing-"))
-    const reportFile = path.join(runDir, "report.json")
-    // Holds a live session cookie, so it lives in the temp dir and is deleted after the run.
-    const storageStateFile = path.join(runDir, "storage-state.json")
-
-    const args = playwrightArgs(configPath, tcIds)
-
     const browser = await timed("resolve browser executable", () => resolveBrowserExecutable())
     if (browser.warning) {
       funWindow.showWarningMessage(browser.warning)
     }
 
-    const loginUrl = await tryLoginUrl(connectionId, url)
-    // Logged host-side so the auto-login decision is visible even if the child says nothing.
-    log.debug(
-      loginUrl
-        ? "[playwright] auto-login enabled, login URL passed to globalSetup"
-        : "[playwright] auto-login not in use — SAP must authenticate this session by other means"
-    )
-    const env: NodeJS.ProcessEnv = {
-      ...process.env,
-      SAP_TESTING_ROOT: testFolder,
-      SAP_TESTING_SPEC_DIR: specDir,
-      SAP_TESTING_HEADED: headed ? "1" : "0",
-      SAP_TESTING_MAX_FAILURES: String(maxFailures),
-      SAP_TESTING_PARALLEL: runInParallel ? "1" : "0",
-      SAP_TESTING_MAX_TASKS: String(maxTasks),
-      SAP_TESTING_REPORT_FILE: reportFile,
-      SAP_TESTING_STORAGE_STATE: storageStateFile,
-      SAP_SYSTEM: connectionId,
-      [`SAP_URL_${connectionId.toUpperCase()}`]: url
-    }
-    if (loginUrl) env.SAP_TESTING_LOGIN_URL = loginUrl.url
-    if (browser.executablePath) {
-      env.SAP_TESTING_BROWSER_EXECUTABLE = browser.executablePath
+    let taskIds: string[][]
+    if (!runInParallel) {
+      taskIds = [tcIds ?? []]
+    } else {
+      const selectedIds =
+        tcIds ??
+        (await fs.readdir(specDir))
+          .filter(name => /^TC-[A-Za-z0-9-]+\.spec\.ts$/i.test(name))
+          .map(name => name.replace(/\.spec\.ts$/i, ""))
+          .sort()
+      if (!selectedIds.length)
+        throw new Error("No TC-*.spec.ts files found for parallel execution.")
+      taskIds = splitTcIds(selectedIds, maxTasks)
     }
 
-    const { code, stdout, stderr } = await timed("playwright run", () =>
-      runProcess(process.execPath, [cliPath, ...args], { cwd: testFolder, env }, token)
-    ).finally(() => {
-      // A cancelled run never fetches the login URL, so without this a usable ticket stays
-      // served on a loopback port until its expiry elapses.
-      loginUrl?.dispose()
-      return cleanupStorageState(storageStateFile)
-    })
+    const runId = newRunId(connectionId)
+    const callDir = await createRunDir(testFolder, runId)
+    const keepArtifacts = options.input.keepArtifacts === true
 
-    let summary: string
-    const summaryStarted = Date.now()
     try {
-      const reportRaw = await fs.readFile(reportFile, "utf8")
-      summary = summarizeReport(JSON.parse(reportRaw), maxFailures)
-    } catch {
-      // JSON reporter didn't produce a file — likely a config/spec-load error before
-      // any test ran. Fall back to raw process output so the AI can still diagnose it.
-      summary = `Playwright did not produce a report (exit code ${code}).\n\n${stderr || stdout}`
-    }
-    log.debug(`[playwright] summarized report in ${Date.now() - summaryStarted}ms`)
-    log.debug(`[playwright] returning to model after ${Date.now() - invokeStarted}ms total`)
+      const workerReports = await Promise.allSettled(
+        taskIds.map(async (workerTcIds, workerIndex) => {
+          const runDir = await fs.mkdtemp(path.join(os.tmpdir(), "abapfs-testing-"))
+          const workerDir = path.join(callDir, `worker-${workerIndex + 1}`)
+          const storageStateFile = path.join(runDir, "storage-state.json")
+          let loginUrl: SsoLauncher | undefined
+          try {
+            await fs.mkdir(workerDir, { recursive: true })
+            const reportFile = path.join(runDir, "report.json")
+            // A parallel worker must establish its own SAP session, not clone a sibling's cookie.
+            loginUrl = await tryLoginUrl(connectionId, url)
+            log.debug(
+              loginUrl
+                ? `[playwright] worker ${workerIndex + 1}: own SAP login URL ready`
+                : `[playwright] worker ${workerIndex + 1}: auto-login unavailable`
+            )
+            const env: NodeJS.ProcessEnv = {
+              ...process.env,
+              SAP_TESTING_ROOT: testFolder,
+              SAP_TESTING_SPEC_DIR: specDir,
+              SAP_TESTING_HEADED: headed ? "1" : "0",
+              SAP_TESTING_MAX_FAILURES: String(maxFailures),
+              SAP_TESTING_PARALLEL: "0",
+              SAP_TESTING_MAX_TASKS: "1",
+              SAP_TESTING_REPORT_FILE: reportFile,
+              SAP_TESTING_STORAGE_STATE: storageStateFile,
+              SAP_TESTING_ARTIFACTS_DIR: path.join(workerDir, "artifacts"),
+              SAP_TESTING_KEEP_ARTIFACTS: keepArtifacts ? "1" : "0",
+              SAP_SYSTEM: connectionId,
+              [`SAP_URL_${connectionId.toUpperCase()}`]: url
+            }
+            delete env.SAP_TESTING_LOGIN_URL
+            if (loginUrl) env.SAP_TESTING_LOGIN_URL = loginUrl.url
+            if (browser.executablePath) {
+              env.SAP_TESTING_BROWSER_EXECUTABLE = browser.executablePath
+            }
 
-    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(summary)])
+            const args = playwrightArgs(configPath, runInParallel ? workerTcIds : tcIds)
+            const { code, stdout, stderr } = await timed(
+              `playwright worker ${workerIndex + 1}`,
+              () =>
+                runProcess(process.execPath, [cliPath, ...args], { cwd: testFolder, env }, token)
+            )
+            await writeRunLog(workerDir, stdout, stderr)
+            try {
+              const raw = await fs.readFile(reportFile, "utf8")
+              await fs.writeFile(path.join(workerDir, "report.json"), raw, "utf8").catch(() => {})
+              return JSON.parse(raw) as JsonReport
+            } catch {
+              return {
+                errors: [
+                  {
+                    message:
+                      `Playwright worker ${workerIndex + 1} did not produce a report ` +
+                      `(exit code ${code}).\n${stderr || stdout}`
+                  }
+                ]
+              } satisfies JsonReport
+            }
+          } finally {
+            // A cancelled worker may leave its one-shot ticket unused; always close its listener.
+            loginUrl?.dispose()
+            await cleanupStorageState(storageStateFile)
+            await fs.rm(runDir, { recursive: true, force: true })
+          }
+        })
+      )
+
+      const mergedReport: JsonReport = {
+        suites: workerReports.flatMap(worker =>
+          worker.status === "fulfilled" ? (worker.value.suites ?? []) : []
+        ),
+        errors: workerReports.flatMap(worker =>
+          worker.status === "fulfilled"
+            ? (worker.value.errors ?? [])
+            : [{ message: `Playwright worker setup failed: ${String(worker.reason)}` }]
+        )
+      }
+      const summaryStarted = Date.now()
+      const summary = summarizeReport(mergedReport, maxFailures, runInParallel)
+      log.debug(`[playwright] summarized report in ${Date.now() - summaryStarted}ms`)
+      log.debug(`[playwright] returning to model after ${Date.now() - invokeStarted}ms total`)
+
+      const runsNote =
+        `\nFull report, runner log and traces for this call: ${callDir}` +
+        ` (best-effort retention under ${runsRoot(testFolder)}; active/current runs may exceed the budgets).`
+      const withNote = summary + runsNote
+      const output = bypassNotice ? `${bypassNotice}\n\n${withNote}` : withNote
+      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(output)])
+    } finally {
+      await pruneRuns(testFolder, runId)
+      releaseRun(testFolder, runId)
+    }
   }
 }
 

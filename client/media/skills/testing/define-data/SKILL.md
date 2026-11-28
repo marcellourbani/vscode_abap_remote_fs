@@ -5,6 +5,10 @@ description: Standalone Phase 4 of SAP UI testing. Authors one tests/<PROGRAM>/t
 
 # Define Data — Phase 4 (of 7)
 
+## User-directed data-definition scope
+
+Reusable `.data.md` requirements and per-system `data.json` preparation remain the strict default, with the upstream gates, sidecar checks, and handoff below applying to that workflow. For an explicit scoped smoke check or test of particular report logic, the user may choose supplied or verified inline values in the executable spec and skip define-data/prepare-data, full-plan artifacts, review, and coverage requirements when unnecessary. If only a subset needs reusable data, define that subset without demanding sidecars for unrelated cases; do not invent values, fixture formats, or completed validations. Safety, authorization, and truthful reporting remain required regardless of data strategy.
+
 For a cross-system staged scenario, also load `multi-system-workflows`: declare only
 pre-existing inputs here. A key produced by an earlier system at run time belongs in the
 workflow JSON handoff, not a prepared-data requirement.
@@ -13,15 +17,15 @@ Phase order: analyze-and-plan (1) → explore-ui (2) → design-cases (3) → **
 
 This phase produces `TC-XXX.data.md` requirement specs — the reusable, system-agnostic SHAPE of the data each case needs. It does NOT resolve concrete values (that is Phase 5, `prepare-data`) and does NOT write specs (Phase 6).
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
+For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, an output contract, and optional `userIntent` carrying the user's goal/scope and waived methodology.
 
 ## Why this is its own phase
 
 Data specs written as an afterthought at the end of a big case-writing session come out as one-line stubs ("cache key + status") that Phase 5 then has to throw away and rewrite from scratch. That is exactly what happened before this was split out. A `.data.md` is a real contract: it decides which of four sources each value comes from, whether an upload fixture is Excel or CSV, and which keys the spec (Phase 6) will reference. Getting the format wrong here means the program silently rejects the upload at run time and the "test" proves nothing. This phase exists so every data requirement gets deliberate attention, once, in the right format.
 
-## Non-negotiable execution gate
+## Default reusable-data execution gate
 
-`prepare-data` (Phase 5), `build-scripts` (Phase 6), and `abapfs_run_playwright_tests` (Phase 7) all reject cases whose `.data.md` is missing, malformed, or references undeclared keys. Author every required sidecar here, correctly, before handing off.
+Cases using the reusable resolver require valid sidecars and declared keys before handoff. A scoped inline spec need not use that resolver or create `.data.md`/`data.json`; for supporting downstream tools, pass `skipWorkflowValidation: true` with an `overrideReason` reflecting the explicit user request rather than claiming waived phases ran. Any sidecar actually consumed must still parse correctly and provide its referenced keys.
 
 ## Tool availability (read this if a tool seems missing)
 
@@ -36,7 +40,7 @@ The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_
 1. Call `abapfs_get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
 3. Resolve `<PROGRAM>` from the request; if omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`. Auto-select only when exactly one candidate matches; otherwise ask.
-4. **Enforce the Phase 3 input gate:** `_index.md`, `_findings.md`, `_units.md`, `_screens.md`, and every `TC-XXX.md` must exist. If `_index.md` is missing, STOP and follow `design-cases`. From `_index.md`, take the authoritative `Data required?` column — that is the list of cases needing a `.data.md`. Do NOT re-derive it by rereading every TC body.
+4. **For the full reusable-data workflow, enforce the Phase 3 input gate:** `_index.md`, `_findings.md`, `_units.md`, `_screens.md`, and every `TC-XXX.md` must exist. If `_index.md` is missing, STOP and follow `design-cases`. From `_index.md`, take the authoritative `Data required?` column — that is the list of cases needing a `.data.md`. Do NOT re-derive it by rereading every TC body.
 5. Read `_findings.md`'s `## Input file format` — the fixture format, column count, and header names come from there.
 6. Read `_units.md` — its "Effective inputs" (DB tables the program reads to validate rows, e.g. MARC/MARA existence) tell you which tables a `source: sql` requirement should query for genuinely valid values, so the data you spec actually passes the program's own validation.
 
@@ -170,11 +174,11 @@ Upload fixtures (`source: generated`) are built by the runtime's fixture builder
 
 > **Say before acting:** "Starting Step 4: rebuild the index to confirm every dataRequired declaration has its sidecar."
 
-Re-run `abapfs_build_test_index` (`program`, the `sourceSnapshot` from `_findings.md`, and `reviewerConfirmation` = `I called the reviewer agent and it passed all test cases` — the reviewer already passed in Phase 3). This is where the `.data.md` existence check that was deferred in Phase 3 is enforced: the tool WARNS for every `dataRequired: yes` case still missing its `.data.md`, and ERRORS for any `dataRequired: no` case that has one.
+Re-run `abapfs_build_test_index` with `program`, the actual `sourceSnapshot` from `_findings.md`, and `reviewerConfirmation` = `I called the reviewer agent and it passed all test cases` only if Phase 3 genuinely passed review. If the user waived review or upstream artifacts for a scoped index, use `skipWorkflowValidation: true` and `overrideReason`, omit unavailable snapshot metadata, and never attest to a review that did not happen. This is where the `.data.md` existence check that was deferred in Phase 3 is enforced: the tool WARNS for every `dataRequired: yes` case still missing its `.data.md`, and ERRORS for any `dataRequired: no` case that has one.
 
 `abapfs_build_test_index` now also ERRORS if a `.data.md` exists but its `requires:` is not parseable top-of-file frontmatter (e.g. it's in a ` ```yaml ` fence or under a `## Requirements` heading) — a hard stop, because that file resolves to zero keys. Fix the placement, don't work around it.
 
-**Completion requirement: there must be ZERO "`.data.md` does not exist yet" warnings.** If any remain, author the missing sidecar (or, if the case genuinely needs no data, change its `TC-XXX.md` to `dataRequired: no` — but that is a case-design decision; if unsure, follow `design-cases`). Do not hand off with outstanding warnings.
+**Full reusable-data completion requirement: there must be ZERO "`.data.md` does not exist yet" warnings.** If any remain, author the missing sidecar (or, if the case genuinely needs no data, change its `TC-XXX.md` to `dataRequired: no` — but that is a case-design decision; if unsure, follow `design-cases`). Do not hand off with outstanding warnings.
 
 > **Say before continuing:** "Step 4 completed. Evidence: `abapfs_build_test_index` reports zero missing-`.data.md` warnings and no `dataRequired`/sidecar mismatches. Next: Step 5 — hand off."
 
@@ -188,7 +192,7 @@ Make disk state sufficient for a fresh `prepare-data` chat:
 - `_index.md`/`_index.docx` are current with zero missing-sidecar warnings.
 - Your final response names `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, the cases whose data still needs resolving against a live system, and any `seeded` requirements that will need approval in Phase 5.
 
-**Your final message MUST tell the user the exact next step: "Next: Phase 5 — start a new chat, load the `prepare-data` skill, and say: Prepare data for `<PROGRAM>` on `<connectionId>` using the data specs on disk."** Naming the skill matters — without it the next chat tends to skip loading `prepare-data` and improvise.
+For an inline/no-preparation scoped test, report the chosen strategy and skip directly to the requested scripting or execution work. **For the default reusable-data handoff, your final message MUST tell the user the exact next step: "Next: Phase 5 — start a new chat, load the `prepare-data` skill, and say: Prepare data for `<PROGRAM>` on `<connectionId>` using the data specs on disk."** Naming the skill matters — without it the next chat tends to skip loading `prepare-data` and improvise.
 
 > **Say after the handoff is complete:** "Step 5 completed. Evidence: every data spec is authored, validated, and handed off. Phase 4 completed. Next phase: Phase 5 — in a new chat, load the `prepare-data` skill and follow it."
 

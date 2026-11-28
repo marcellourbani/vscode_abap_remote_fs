@@ -110,7 +110,7 @@ Keys that must differ from each other declare `distinctFrom` on both sides; `aba
 
 ## Quality gates
 
-Three reviewer agents and two tool-level gates keep the workflow honest.
+Three reviewer agents and two tool-level gates define the default comprehensive workflow. Explicit user-directed scope may override methodology requirements, but never safety, authorization, security, or truthful reporting.
 
 **Reviewer agents** run at the end of phases 1, 2, and 3. Each reads the underlying evidence itself rather than trusting the main agent's summary, returns either a pass or an itemised gap list, and the phase does not hand off until every gap is fixed and it passes.
 
@@ -121,7 +121,13 @@ Three reviewer agents and two tool-level gates keep the workflow honest.
 | `abapfs_build_test_index` | Certification that the test plan reviewer already returned a pass |
 | `abapfs_run_playwright_tests` | Certification that all upstream phase gates and data readiness were verified |
 
-Both reject the call if the confirmation is missing or wrong, which means an agent that skipped a phase cannot produce the case index or run a test. The gate is a behavioural contract rather than a cryptographic one — its purpose is to stop a model from quietly cutting a corner under pressure, not to defend against a determined attacker.
+By default, both reject a missing or incorrect confirmation. A user-directed workflow exception is supported through `skipWorkflowValidation: true` and a nonblank `overrideReason`, instead of a false certification. This skips reviewer certification, source-snapshot validation, and SQL/mixed table-declaration requirements for the index tool, and prerequisite certification plus SE16N workflow proof for the runner. The data-usage tool also supports these flags to skip SE16N proof only; real data-key/resolver dependencies remain enforced. Indexes built with waived checks are labelled, without a new analysis certification. Execution/configuration and structural checks still apply. These are behavioural contracts, not cryptographic authorization: a reason records the user's requested scope, not proof of approval.
+
+Each testing skill documents scope exceptions relevant to its subject. Each testing agent accepts optional `userIntent` from its caller: the user's goal, requested scope, and waived workflow requirements. Without an override, the full workflow remains the default. Scoped reviewer verdicts are not full-suite approvals.
+
+For a smoke check or targeted logic test, user-supplied or verified values may live directly in the spec. Such a spec need not call `resolveTestData()` or have `.data.md`/`data.json` files. The sidecar/cache model remains the default for reusable, cross-system suites; if a spec calls the resolver, its actual data dependencies still apply.
+
+`abapfs_check_test_data` accepts optional `tcIds` to isolate selected cases. Missing sidecars are reported as unmanaged/skipped, never as validated inline data; a missing sidecar directory yields zero managed cases rather than demanding suite artifacts.
 
 `abapfs_build_test_index` also enforces structural rules: valid categories, matching case IDs, parseable frontmatter, and agreement between `dataRequired` and the presence of a `.data.md`. A missing `.data.md` for a case that needs one is a warning during phase 3 (specs come later) and must be zero by the end of phase 4.
 
@@ -131,25 +137,19 @@ Specs import from the fixed specifier `@sap-testing/runtime`, never a relative p
 
 `SapSession` methods describe SAP mechanics rather than business concepts — `setField`, `setRange`, `check`, `selectRadio`, `clickButton`, `clickTab`, `setGridCell`, `pickFromValueHelp`, `execute`, `captureDownload`, plus assertions like `expectAlert`, `expectTitle`, `expectGridHasRow`. You can't add methods to it, which is what stops business logic leaking into the runtime.
 
-Every action goes through the same guarded cycle:
+UI helpers handle SAP processing waits, supported notification dialogs, runtime/session checks, and evidence screenshots. Unexpected SAP error statuses fail the action immediately. Expected business-validation errors are supported through a one-action `expectBusinessError` assertion; a missing or different error still fails, as do dumps and lost sessions. Normal success/information messages use `expectAlert`.
 
-```
-dismiss known popups → perform the action → wait for the server round-trip
-→ wait for the DOM to settle → dismiss popups again
-→ check for a dump, ITS error, or logon screen → capture an evidence screenshot
-```
+The popup guard dismisses only supported notices such as license, system-message, copyright, and data-privacy dialogs. Save confirmations remain for the test to handle deliberately. A Multiple Logon dialog fails safely: ABAP FS does not end your other sessions.
 
-That's why specs contain no manual waits and no explicit screenshots, and why a short dump surfaces as a clear failure instead of a confusing timeout on the next step.
+SAP controls may appear in the page or in an ITS frame. The runtime selects the active SAP document; custom interactions use `sap.contentRoot()` rather than assuming a particular iframe.
 
-The popup guard dismisses a curated allow-list only — license notices, system messages, multiple-logon, copyright, data privacy. Anything else, including "do you want to save?", is left alone for the test to handle deliberately.
-
-For anything the runtime doesn't cover, `sap.raw()` returns the real Playwright page. All SAP content lives inside the ITS iframe, so raw locators must be scoped through it or they query an empty document and can pass vacuously.
+For visual table verification, `sap.se16n()` opens the table, applies explicit fields and criteria, verifies the selection, and captures criteria/result screenshots. It supports include/exclude values, ranges, patterns, and multiple selection. It rejects an inherited layout unless one is explicitly requested, because layouts can override output columns. Returned rows cover only the visible grid; the hit count describes the fetched result and can be capped by Max. Number of Hits. SE16N screenshots support the evidence report but do not replace authoritative SQL post-validation.
 
 ## Authentication
 
 No spec ever contains credentials or a login step.
 
-Before running, the tool mints a SAP reentrance ticket from your ABAP FS connection and posts it through a single-use local form (tickets can't travel in a URL query string). The resulting session cookies are saved and handed to every spec, so tests start already signed in. The same mechanism produces the pre-authenticated URLs used for browser exploration and recording — those URLs are single-use, which is why they must be opened exactly as issued.
+Each runner process establishes its own SAP session using a reentrance ticket from your ABAP FS connection, posted through a single-use local form. Its specs start from that runner's authenticated storage state; parallel runners do not share one SAP login. The same mechanism produces the pre-authenticated URLs used for browser exploration and recording — those URLs are single-use, which is why they must be opened exactly as issued.
 
 Setting `webGuiAutoLogin: false` on a connection skips all of it, for landscapes where a gateway handles authentication.
 
@@ -157,9 +157,13 @@ Setting `webGuiAutoLogin: false` on a connection skips all of it, for landscapes
 
 `abapfs_run_playwright_tests` runs the real `@playwright/test` CLI as a subprocess, using VS Code's own Node runtime and a copy of Playwright vendored into the extension. Nothing is installed into your test folder and no browser is downloaded — it drives your installed Edge.
 
-Defaults: one worker, no retries, 60 seconds per test, 10 minutes overall, traces retained on failure under `.playwright-artifacts/`. Tests run headless unless asked for a headed run, which is worth doing the first time a new spec runs.
+Defaults: sequential execution, no retries, 120 seconds per test, and a one-hour global timeout per runner process. Tests run headless unless a visible browser is requested. Each call returns a diagnostic folder under `.playwright-runs/`, containing per-worker JSON reports, runner logs, and traces for failures. `keepArtifacts` also records traces for passing tests; ordinary evidence screenshots are independent and remain enabled unless you decline them.
 
-Serial execution with no retries is deliberate. Parallel SAP sessions interfere with each other, and automatic retries hide flakiness that usually turns out to be a real timing or data problem.
+Independent spec files can run in parallel across separate runner processes and SAP sessions. The concurrency setting defaults to 3 when parallel mode is enabled and is capped at 5; it is a ceiling, not a recommendation for your machine or SAP system. Failure stopping applies per runner process (3 failed tests by default, capped at 10), not across the whole call. Dependent cases must run in ordered sequential batches.
+
+Start sequentially and increase concurrency cautiously. Multiple browsers can strain your computer, and multiple SAP sessions can slow server responses. If timeouts appear only under parallel load, reduce concurrency and rerun the affected cases before treating them as application defects. Other active calls and browser sessions also contribute to load. Do not run the same case on the same system concurrently because its evidence and data-cache paths are shared.
+
+Diagnostic cleanup is best effort, targeting 15 call folders and 500 MB total. Active calls in the current extension process and the just-completed call are protected, so these are not hard bounds. Copy diagnostics you need to preserve before later cleanup. Case evidence in `test-results/` is separate from this diagnostic retention.
 
 ## Evidence output
 

@@ -40,6 +40,20 @@ Auto-login didn't produce a session. Two normal causes: the connection has `webG
 
 Check the **ABAP FS** output channel at Debug level and look for `[sso]` lines — they name the cause directly, and distinguish an authentication problem from a test problem. Never work around this by putting credentials in a test script; Copilot is instructed to refuse.
 
+### Tests time out when several scripts run together
+
+Parallel runs open separate browsers and SAP sessions. Your computer may run out of CPU or memory, or SAP may respond more slowly under the added load. Ask Copilot to inspect the returned report/log/trace folder, reduce concurrency, and rerun only the affected cases sequentially once other runs finish. A timeout under load is not, by itself, proof of an application defect; keep both run outcomes in the report.
+
+Start with sequential execution. If independent cases pass reliably, try two concurrent runners before increasing further. Other active chats, browser sessions, and tool calls count toward the real load. Do not run the same case on the same system concurrently: its evidence/cache folders are shared.
+
+### A Multiple Logon dialog stops the run
+
+ABAP FS will not terminate your other SAP sessions. Use fewer concurrent runners or resolve the system's multiple-logon policy with your administrator. Do not choose an option that ends another person's or another test's session.
+
+### An intentional validation-error test fails before checking its message
+
+SAP error statuses fail ordinary interactions immediately. Negative validation tests use the runtime's one-action `expectBusinessError` assertion with the expected message. Missing or different messages, dumps, and session loss still fail; ignoring an exception is not a passing negative test.
+
 ### Cases come back BLOCKED instead of passed or failed
 
 Blocked means the test never reached SAP because its data wasn't ready. It's a data problem, not a bug in the program.

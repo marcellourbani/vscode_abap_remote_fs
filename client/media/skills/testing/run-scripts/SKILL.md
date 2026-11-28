@@ -5,33 +5,31 @@ description: Standalone Phase 7 of SAP UI testing. Rediscovers the configured te
 
 # Run Scripts — Phase 7 (of 7)
 
+Default: execute reusable cases with readiness checks, declared verification, and evidence reporting below. An explicit sanity open/execute/no-dump or specific-report-logic request permits a minimal spec without case, index, findings, or screen-map artifacts; verify unmapped controls live and allow verified/user-supplied inline data without `.data.md`, `data.json`, or `resolveTestData`. Screenshots stay enabled unless the user explicitly says they are not needed. Run that reduced scope with `skipWorkflowValidation: true` and an honest `overrideReason`, without SQL, SE16N, or `.docx` obligations unless requested. Keep actual executable dependencies, target checks, authorization, safety, secret protection, and truthful results; never invent business IDs.
+
 If selected cases are linked stages across SAP connections, load
 `multi-system-workflows` alongside this skill and execute separate connection-specific
 tool calls in stage order. Never put dependent stages in one parallel invocation.
 
 Phase order: analyze-and-plan (1) → explore-ui (2) → design-cases (3) → define-data (4) → prepare-data (5) → build-scripts (6) → **run-scripts (7)**.
 
-For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
+For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, an output contract, and `userIntent` containing the user's requested scope and applicable overrides.
 
 ## Tool availability (read this if a tool seems missing)
 
 **Naming:** when these docs say *call* `X`, `X` is a **tool** (you invoke it and get a result); *delegate to / invoke* `X` is an **agent** (a subagent you launch); *load / follow* `X` is a **skill** (a procedure you read). A name without a verb: see the overview's "Skills, tools, and agents" list.
 
-The editor may hide tools until searched for, and this is exactly where it bites: `abapfs_run_playwright_tests` is frequently NOT in the default active toolset, and smaller models fail to find it and waste turns trying `run_in_terminal`/`runTests` instead. Before Step 0, make sure `abapfs_run_playwright_tests`, `abapfs_get_test_folder`, `abapfs_get_connected_systems`, `abapfs_check_test_data`, and `abapfs_build_evidence_report` are available; if any is missing, search your available tools for it by name. **Never use VS Code's generic `runTests` tool for SAP specs** — it expects Vitest/Jest and returns "No tests found" for Playwright specs. If `abapfs_run_playwright_tests` cannot be found after searching, tell the user rather than improvising.
+The editor may hide tools until searched for, and this is exactly where it bites: `abapfs_run_playwright_tests` is frequently NOT in the default active toolset, and smaller models fail to find it and waste turns trying `run_in_terminal`/`runTests` instead. Before Step 0, find `abapfs_run_playwright_tests`, `abapfs_get_test_folder`, and `abapfs_get_connected_systems`; find `abapfs_check_test_data` only for cache-consuming cases and `abapfs_build_evidence_report` when reporting is in scope. **Never use VS Code's generic `runTests` tool for SAP specs** — it expects Vitest/Jest and returns "No tests found" for Playwright specs. If `abapfs_run_playwright_tests` cannot be found after searching, tell the user rather than improvising.
 
 ## The `abapfs_run_playwright_tests` prerequisite gate
 
-`abapfs_run_playwright_tests` is a GATED tool: it refuses to run unless you pass the mandatory `prerequisiteConfirmation` field. Only pass it after you have completed Step 0 (artifacts present AND `abapfs_check_test_data` clean for the selected cases). The exact text to pass is: `I verified all upstream phase gates and test data readiness for this program`. It is valid only once that gate is genuinely complete; the run is rejected otherwise.
-
-## Non-negotiable execution gate
-
-The `abapfs_run_playwright_tests` tool gates the run on all required upstream steps and artifacts from `analyze-and-plan`, `explore-ui`, `design-cases`, `define-data`, `prepare-data`, and `build-scripts`. It **will reject the run** if you have not completed the Step 0 readiness gate (it enforces this through the mandatory `prerequisiteConfirmation` field). Before calling it, complete every prerequisite; calling it early cannot bypass validation.
+Default reusable runs complete Step 0 and pass `prerequisiteConfirmation: "I verified all upstream phase gates and test data readiness for this program"` only when true. Explicit reduced-scope runs instead pass `skipWorkflowValidation: true` and `overrideReason` describing the user's request; omit that full-suite confirmation when upstream gates were skipped. Do not fabricate confirmations to satisfy validation: workflow bypasses do not waive valid specs, runtime/config dependencies, correct targets, or authorization.
 
 ## Why
 
-A test run is only useful if its results are trusted. Rerunning until green, silently retrying flaky tests, or dismissing failures as "environmental" is how bugs reach prod with a passing test suite behind them. Diagnose every failure. A red result is a signal — either the code is wrong, the test is wrong, or the environment is wrong. All three matter. The docx evidence is what auditors, business owners, and post-mortems will look at; if it's incomplete or misleading, the whole exercise was for nothing.
+A test run is only useful if its results are trusted. Rerunning until green, silently retrying flaky tests, or dismissing failures as "environmental" is how bugs reach prod with a passing test suite behind them. Diagnose every failure. A red result is a signal — either the code is wrong, the test is wrong, or the environment is wrong. All three matter. When evidence is requested, keep it complete and honest about its scope.
 
-Goal: execute tests, produce one aggregated evidence `.docx` per program and connection, and turn failures into actionable diagnoses.
+Goal: execute the requested checks and diagnose failures honestly; produce the aggregated evidence `.docx` by default for reusable suites, not as a prerequisite for reduced scope.
 
 ## Tools this phase uses
 
@@ -42,24 +40,26 @@ Goal: execute tests, produce one aggregated evidence `.docx` per program and con
 | Run every spec in a program               | `abapfs_run_playwright_tests` with `program` only; omit `tcIds` |
 | Run spec files concurrently               | add `runInParallel: true`, optionally `maxTasks: 1..5` (default 3) |
 | Watch it run visibly                      | `abapfs_run_playwright_tests` with `headed: true` — do this the first time a new spec runs |
-| Pre-flight data readiness                 | `abapfs_check_test_data` with `program`, `connectionId`                               |
+| Pre-flight cache readiness                | `abapfs_check_test_data` for cache-consuming cases only, with `program`, `connectionId`, and `tcIds` for selected cases |
 | Build the .docx report                    | `abapfs_build_evidence_report` with `program`, `connectionId`                         |
-| Override one data value for this run only | not a tool — re-run `prepare-data` to fix the underlying cache instead         |
+| Data values | Reusable cases: fix caches via `prepare-data`; scoped specs: verified/user-supplied non-secret inline values are allowed |
 
 There is no terminal command for SAP Testing execution or evidence generation — no `npx playwright test`, no `npm run`. Use the tools below. Optional external trace viewing is the only terminal exception described later.
 
 ## Process
 
+Apply default artifact/evidence steps only where the selected scope requires them. Quoted progress messages are examples, not permission to claim skipped checks or nonexistent artifacts.
+
 ### Step 0 — Standalone bootstrap and execution gate (mandatory)
 
 > **Say before acting:** "Starting Step 0: standalone bootstrap and execution gate."
 
-Run these actions in this exact order in every chat:
+Bootstrap either path below; artifact gates apply to the default reusable path:
 
 1. Call `abapfs_get_test_folder` **before reading any test artifact or invoking another SAP Testing tool**. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
-3. Resolve `<PROGRAM>` and requested TC-IDs from the request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md` and `test-scripts/*.spec.ts`. Auto-select only when exactly one valid candidate exists; otherwise ask. Treat `_index.md`'s `Data required?` field as authoritative.
-4. Enforce the artifact gate for every selected TC-ID:
+3. Resolve `<PROGRAM>` and requested spec/TC-IDs from the request and disk. Reduced scope needs only the selected executable spec(s); use `build-scripts` to create missing minimal specs. For the default reusable path, if omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md` and `test-scripts/*.spec.ts`. Auto-select only when exactly one valid candidate exists; otherwise ask. Treat `_index.md`'s `Data required?` field as authoritative.
+4. Default reusable path: enforce the artifact gate for every selected TC-ID:
    - `test-cases/TC-XXX.md` exists
    - `test-scripts/TC-XXX.spec.ts` exists
    - `test-cases/_screens.md` and `_index.md` exist
@@ -68,11 +68,10 @@ Run these actions in this exact order in every chat:
     For every case with `verification: sql` or `verification: mixed`, call `abapfs_verify_test_data_usage`. The tool verifies that every table declared in the case's `se16nTables` frontmatter has a matching `sap.se16n()` call; fix every reported gap before continuing. `abapfs_run_playwright_tests` checks the same coverage again before running.
 5. Call `abapfs_get_connected_systems` and identify the exact target `connectionId`; ask only if ambiguous.
 6. **Do not run a `runnable-elsewhere` case against the wrong user.** A negative-authorization case is `runnable-elsewhere` because it must run as a user who LACKS the authorization (see `design-cases`/`build-scripts`). Running it against the primary connection — whose user IS authorized — makes it "pass" for the wrong reason (the action was allowed, not blocked). Only run such a case when the target `connectionId` is the SEPARATE connection configured for the required unauthorized user; otherwise skip it and report it as "needs the unauthorized-user connection", not as passed or failed.
-7. Call `abapfs_check_test_data` for the program + exact connectionId. If it reports any FAIL for a selected case, STOP that case and follow `prepare-data` to resolve it. Do not start Playwright hoping runtime resolution will work.
+7. Inspect selected specs for cache consumption (`resolveTestData`). Call `abapfs_check_test_data` only for those cases on the exact connection (pass selected `tcIds`); only selected consumers' failures block their execution. Resolve genuine cache failures via `prepare-data`. Scoped inline specs need no sidecar/cache/readiness call; verify their non-secret values are user-supplied or live-verified, never invented.
+8. For reduced scope, verify the spec, runtime/config dependencies, target and authorized actions. Inspect controls live if no screen map exists; do not create planning/evidence artifacts just to pass workflow gates.
 
-Do not continue until `<TEST_FOLDER>`, `<PROGRAM>`, selected TC-IDs, required artifacts, target `connectionId`, and data readiness are all confirmed.
-
-> **Say before continuing:** "Step 0 completed. Evidence: test folder, program, selected cases, upstream artifacts, connection, and data readiness confirmed. Next: Step 1 — verify authentication."
+Continue once actual execution dependencies are ready. Report only checks actually completed and the explicit scope; do not claim skipped upstream artifacts or data checks were verified.
 
 ### Step 1 — Verify authentication
 
@@ -87,16 +86,26 @@ Two cases where that does not happen, both expected:
 
 The extension's `ABAP FS` output channel (Debug level) shows `[sso]` lines for the sign-in, including which cookies were saved — the fastest way to tell an auth failure from a test failure.
 
-> **Say before continuing:** "Step 1 completed. Evidence: SAP authentication is available for the target connection. Next: Step 2 — run the selected specs."
+> Describe the authentication mechanism honestly; only claim a usable session once the run or live inspection confirms it.
 
 ### Step 2 — Run the selected specs
 
 > **Say before acting:** "Starting Step 2: execute the selected specs on `<connectionId>`."
 
-Call `abapfs_run_playwright_tests` with `program`, `connectionId`, the mandatory `prerequisiteConfirmation`, and optionally `tcIds`, `headed`, `maxFailures`, `runInParallel`, and `maxTasks`. `tcIds` is an exact list within one program; omit it for all specs. Parallel mode runs separate spec files concurrently after one authentication setup, using isolated browser contexts seeded from the shared storage state; tests inside one file stay ordered. `maxTasks` defaults to 3 and caps at 5. `maxFailures` defaults to 3 and caps at 10. Because already-running parallel tasks may finish together, the final failure count can exceed the threshold by a small number even though no new tasks are scheduled after it is reached.
+Call `abapfs_run_playwright_tests` with `program`, `connectionId`, and the gate fields for the chosen path above. For explicit reduced scope, always set `skipWorkflowValidation: true` plus `overrideReason` (for example, `"User requested only open/execute/no-dump smoke testing"`) and select exact `tcIds`; do not broaden to the whole program. Default reusable runs pass a truthful `prerequisiteConfirmation`. Options include `headed`, `maxFailures`, `runInParallel`, and `maxTasks`; omit `tcIds` only when all specs are requested. Parallel mode partitions spec files across independent runner processes, each authenticating its own SAP session; tests in each partition run sequentially. `maxTasks` defaults to 3 and caps at 5, but is a ceiling, not a safe-load recommendation. `maxFailures` defaults to 3 and caps at 10 **per runner process**, not per invocation; one partition reaching its threshold does not stop its siblings.
+
+### Concurrency and timeout diagnosis
+
+- Start sequentially for a new/unstable suite. After sequential success, try `runInParallel: true, maxTasks: 2` only for independent cases, then increase cautiously if local browser capacity and SAP responsiveness permit.
+- Count all active tool calls/browser sessions, not just `maxTasks` in this call. Do not launch overlapping runs for the same TC: evidence/cache paths are shared for that system and case. Stage dependent or shared-state cases sequentially.
+- Several browsers can exhaust local CPU/memory; several SAP sessions can slow server processing. A timeout under parallel load is not automatically a selector defect or application regression. Inspect the report, log, screenshots, and failure trace, reduce `maxTasks` or use `runInParallel: false`, then rerun only the affected cases after other sessions finish.
+- Do not mask capacity problems with fixed sleeps, weakened assertions, broad catches, or repeated high-concurrency retries. A sequential rerun is diagnostic evidence; report both outcomes and the concurrency used, not an unqualified pass.
+- Multiple Logon fails safely. Never end someone else's SAP session to make parallel tests pass; reduce concurrency or ask the user to resolve logon policy.
+- Default per-test timeout is 120 seconds; per-runner global timeout is one hour. For a genuinely long, verified operation use an explicit bounded Playwright test timeout, not invented runner parameters or arbitrary waits.
+- Each call returns its own diagnostic folder with worker reports, runner logs, and failure traces. `keepArtifacts: true` also traces passing tests; it does not control normal screenshot evidence. Cleanup targets 15 call folders/500 MB on a best-effort basis; active calls in this extension process and the just-completed call are protected, so these are not hard limits. Copy diagnostics needed long-term before later cleanup.
 
 **Decide parallel batches deliberately.** Before setting `runInParallel: true`, read the
-selected TC files, data specs, and automation notes and ask whether any case produces data
+selected specs and available TC/data/automation notes and determine whether any case produces data
 another consumes, expects state left by another, changes/cleans the same business record,
 uses the same unique key, or otherwise depends on execution order. Keep every dependency
 chain sequential and producer-before-consumer. Run only clearly independent cases together.
@@ -113,14 +122,14 @@ an entire program in parallel merely because the option exists.
 
 ## Post-test verification
 
-A UI/SE16N pass proves the business-visible screen state, not the authoritative persisted/background truth. For each UI-passed TC, still execute every declared SQL/manual check here. SE16N is mandatory supporting screenshot evidence for `sql|mixed`; it never replaces Phase 7 SQL. Only `verification: none` cases skip this.
+Default reusable path: a UI/SE16N pass does not prove persisted/background truth; execute every declared SQL/manual check, retaining SE16N supporting evidence for `sql|mixed`. Reduced scope: perform only requested assertions; no SQL, SE16N, verification file, or screenshot proof is required unless within that scope. Report no-dump success as no-dump success, not proof of all business logic.
 
 Each row in the table is tagged `by: sql` or `by: manual`. Handle them differently:
 
 **Relative (delta) checks need a fresh pre-run baseline — capture it yourself, never from `data.json`.** A check like "the target table has N MORE rows after the run" needs the row count taken IMMEDIATELY BEFORE this case runs. That baseline is a per-run MEASUREMENT, not cached test data — a value stored in `data.json` (or a `requires` key) freezes at first-prepare time and every rerun then compares against a stale number. So for any relative verification row: run its baseline query just before you call `abapfs_run_playwright_tests` for that case, keep the value for the duration of the run, and after the run compute actual-minus-baseline and compare to the expected delta. Record both the baseline and the delta in `verification.json`. Prefer an ABSOLUTE assertion (a `WHERE` that identifies exactly the row(s) this run should have written) when you can — it needs no baseline and can't go stale.
 
 1. After `abapfs_run_playwright_tests` reports the TC PASSED, read that TC's `## Post-test verification` table and the `verification` frontmatter value.
-2. Read the already-resolved values from `tests/<PROGRAM>/test-results/<connectionId>/<TC-ID>/data.json` — substitute the SAME `<data-key: x>` values the spec used. Never re-resolve or guess.
+2. For cache-consuming specs, read already-resolved values from `tests/<PROGRAM>/test-results/<connectionId>/<TC-ID>/data.json`. For scoped inline specs, use the exact values the spec used. Never re-resolve, invent, or guess values.
 3. **`by: sql` checks — you run them.** Execute each via the ABAP data-query tool against the SAME system the spec ran on, and compare the actual result to `Expected` — judge it like any assertion, not "close enough."
 4. **`by: manual` checks — you do NOT run them; you record them as pending for the user.** These are effects the model cannot verify (AL11 file bytes, an SXMB_MONI/SXI_MONITOR payload, an email arrival, an external-system record). Record each with `status: "pending-manual"`, its `tool`, and `instructions`, and explicitly tell the user in your final report exactly what to check and where. Do not mark it passed on the user's behalf.
 5. Write `tests/<PROGRAM>/test-results/<connectionId>/<TC-ID>/verification.json`:
@@ -137,17 +146,17 @@ Each row in the table is tagged `by: sql` or `by: manual`. Handle them different
 6. **If any `by: sql` check fails, the TC's overall result is a FAIL**, even though the UI run passed — a transaction that shows success but persisted the wrong data is exactly what this catches. Do not let a green UI talk you out of a failing check.
 7. **A case with pending manual checks is NOT fully verified.** Report it as "UI + automated checks passed; manual verification pending" and list every manual check the user must perform, per TC, in your final handoff. Track these until the user confirms them (re-run `abapfs_build_evidence_report` after they do, updating the check `status` to `pass`/`fail`).
 
-Skip this step only for `verification: none` cases (see `design-cases`).
+Skip this step for `verification: none` cases or when explicit reduced scope excludes these checks. Do not claim skipped checks passed.
 
-> **Say before continuing:** "Step 3 completed. Evidence: every `by: sql` check ran, every `by: manual` check is recorded pending with its tool, and `verification.json` overall statuses reflect both. Next: Step 4 — build the evidence report."
+> Report only post-test checks actually performed, pending manual checks, and any scope exclusions.
 
 ### Step 4 — Build the evidence report
 
 > **Say before acting:** "Starting Step 4: build the aggregated evidence report."
 
-Call `abapfs_build_evidence_report`. The report is written to `<TEST_FOLDER>/tests/<PROGRAM>/test-results/<PROGRAM>-<CONNECTION-ID>-report.docx`.
+For default reusable suites or an explicit report request, call `abapfs_build_evidence_report`; otherwise skip this step without creating a `.docx` obligation. The report is written to `<TEST_FOLDER>/tests/<PROGRAM>/test-results/<PROGRAM>-<CONNECTION-ID>-report.docx`.
 
-> **Say before continuing:** "Step 4 completed. Evidence: aggregated report written at `<absolute-report-path>`. Next: Step 5 — diagnose failures and hand off results."
+> Give the actual report path if generated; otherwise state that report generation was outside scope.
 
 ### Step 5 — Diagnose failures and hand off results
 
@@ -160,8 +169,8 @@ For every UI-level or post-test verification failure, follow the diagnosis playb
 Order matters:
 
 1. **Read the `abapfs_run_playwright_tests` tool's output** — it summarizes pass/fail per test, the first lines of any error with its file:line, the failing step, and (on failure) the absolute trace-zip and last-screenshot paths.
-2. **Read `tests/<PROGRAM>/test-results/<CONNECTION-ID>/<TC-ID>/manifest.json`** (connectionId UPPERCASE — that's how the framework names the folder; a lowercase guess won't be found on Linux/macOS). The last recorded step shows where progress stopped and names the failing action.
-3. **Look at the last screenshot** in `tests/<PROGRAM>/test-results/<CONNECTION-ID>/<TC-ID>/step-*.png`.
+2. **If generated, read `tests/<PROGRAM>/test-results/<CONNECTION-ID>/<TC-ID>/manifest.json`** (connectionId UPPERCASE — that's how the framework names the folder; a lowercase guess won't be found on Linux/macOS). The last recorded step shows where progress stopped and names the failing action.
+3. **If captured, look at the last screenshot** in `tests/<PROGRAM>/test-results/<CONNECTION-ID>/<TC-ID>/step-*.png`.
 3a. **Open the trace** (path from step 1, under `<TEST_FOLDER>/.playwright-artifacts/`) BEFORE theorising — for an assertion that "sees nothing", a locator timeout, or a suspected wrong-value POST, the trace's request bodies and per-step DOM snapshots usually show the cause directly.
 4. **Categorize**:
 
@@ -182,12 +191,12 @@ Reporting rule for the final handoff: PASS / BLOCKED / FAIL are three separate b
 | Assertion sees NOTHING            | `expectAlert`/`expectTitle`/`expectGridHasRow` fails with `Last seen: []` (an EMPTY list) while the thing is clearly on screen | Not a timing gap — an empty "last seen" means the assertion queried the wrong scope (empty outer document / wrong iframe), not that it waited too long. This is a bundled-runtime frame-scoping matter; report it with the exact `Last seen` text and a screenshot. Do NOT add `page.waitForTimeout()` — waiting longer over the wrong scope stays empty forever. |
 | Timing                            | An assertion just after a click, or a general timeout (last seen shows real, non-empty text) | This is a bundled-runtime limitation, not something available to patch in the workspace — report it; do not add `page.waitForTimeout()` to the spec as a workaround                                                                                   |
 | Unexpected popup                  | Popup in screenshot, action clicked wrong thing                            | Report the popup title — the bundled known-safe-popup list is not workspace-editable; if it is a real part of the flow, handle it explicitly in the spec via `sap.continueDialog()`/`sap.cancelDialog()`                                               |
-| Element not found by label        | "could not locate a textbox/checkbox/radio/button/tab/column for X" | Load the `sap-webgui` skill's locator failure patterns. The `setField`/`check`/`selectRadio`/`clickButton`/`clickTab`/`setGridCell` errors now list the controls of that kind actually present as **UNVERIFIED suggestions** (with any `technicalName`) — use them to spot the correct accessible name, but confirm it live and fix `_screens.md` (re-explore via the `explore-ui` skill if needed); never blindly swap in a similar-looking name, a wrong control can pass green. Then follow the `build-scripts` skill to rebuild the spec. |
-| Ambiguous locator                 | "strict mode violation: 3 elements"                                        | Load `sap-webgui`. Prefer a verified group/dialog/region scope. Use `nth` only when that duplicate order was already observed and recorded in `_screens.md`; never add it as a positional guess during Phase 7.                                        |
-| WebGUI locator instability        | iframe suffix, `M0:...`, `tblNN[...]`, wrong cell after layout change, or repeated tab text | Load `sap-webgui` for the authoritative failure patterns. Generated session IDs, rerendered table IDs, coordinates, and unverified positions require `_screens.md` correction and a rebuilt script, not an ad-hoc rerun.                              |
+| Element not found by label        | "could not locate a textbox/checkbox/radio/button/tab/column for X" | Load the `sap-webgui` skill's locator failure patterns. The `setField`/`check`/`selectRadio`/`clickButton`/`clickTab`/`setGridCell` errors now list the controls of that kind actually present as **UNVERIFIED suggestions** (with any `technicalName`) — use them to spot the correct accessible name, but confirm it live and fix `_screens.md` for reusable cases (or the scoped spec directly when no map is required) (re-explore via the `explore-ui` skill if needed); never blindly swap in a similar-looking name, a wrong control can pass green. Then follow the `build-scripts` skill to rebuild the spec. |
+| Ambiguous locator                 | "strict mode violation: 3 elements"                                        | Load `sap-webgui`. Prefer a verified group/dialog/region scope. Use `nth` only when that duplicate order was observed live and recorded in `_screens.md` for reusable cases or in the scoped spec's provenance; never add it as a positional guess during Phase 7.                                        |
+| WebGUI locator instability        | iframe suffix, `M0:...`, `tblNN[...]`, wrong cell after layout change, or repeated tab text | Load `sap-webgui` for the authoritative failure patterns. Generated session IDs, rerendered table IDs, coordinates, and unverified positions require live reinspection and a corrected script (plus map correction for reusable cases), not an ad-hoc rerun.                              |
 | SAP short dump (ST22)             | Page shows dump; test fails on next action                                 | Use `abapfs_analyze_dumps` on connected system, report ST22 to user — real bug, not test bug                                                                                                                                                            |
 | Data no longer valid              | SAP says "material not found" for the sample                               | Follow `prepare-data` to refresh the cache                                                                                                                                                                                                             |
-| Wrong assertion                   | Screen looks correct but assertion fails                                   | Test case itself may be wrong. STOP and follow `design-cases` to update the `.md` first.                                                                                                                                                              |
+| Wrong assertion                   | Screen looks correct but assertion fails                                   | Reusable case: follow `design-cases` to correct the source case first. Scoped spec: compare with the user's requested logic and verified source before correcting the assertion.                                                                                                                                                              |
 | Background artifact wrong/missing | The TC's `## Post-test verification` check came back wrong (see below) | The UI-level run passed but the underlying data is wrong — this is a real bug signal, not a test-writing mistake; report it as such, don't dismiss it because the spec itself was green                                                               |
 
 ## Debug tricks
@@ -195,7 +204,7 @@ Reporting rule for the final handoff: PASS / BLOCKED / FAIL are three separate b
 - `abapfs_run_playwright_tests` with `headed: true` — visible browser window.
 - `await page.pause()` in the spec drops into Playwright Inspector when run headed — this still works exactly as documented, since `abapfs_run_playwright_tests` runs the real `@playwright/test` CLI, not a reimplementation.
 - **Traces are captured on failure** (`trace: "retain-on-failure"`) and are the richest failure evidence — they contain every HTTP request/response (including SAP PAI post bodies), a DOM snapshot per action, and the console. They are written under `<TEST_FOLDER>/.playwright-artifacts/`, NOT under `test-results/<connectionId>/<TC-ID>/`. On a failure, `abapfs_run_playwright_tests` now prints the absolute trace-zip and last-screenshot paths in its summary — use those. Open a trace with the Playwright VS Code extension, or `npx playwright show-trace <path>` if the user has Node (optional). Inspecting the trace should come BEFORE guessing at a cause (it is step 3a in the playbook below).
-- If tool output, manifest, screenshot, one evidence-driven headed run, and trace inspection still cannot identify a complex control or interaction sequence, load the `sap-webgui-recording` skill and ask the user for one focused recording. Persist the learned behavior in `_screens.md`, then follow the `build-scripts` skill to rebuild the spec. Never execute the raw recording or patch a generated locator directly into the failing spec from Phase 7.
+- If tool output, manifest, screenshot, one evidence-driven headed run, and trace inspection still cannot identify a complex control or interaction sequence, load the `sap-webgui-recording` skill and ask the user for one focused recording. For reusable cases persist learned behavior in `_screens.md`; scoped specs may use live-verified controls without a map. Follow `build-scripts` to correct the spec. Never execute the raw recording or patch a generated locator directly into the failing spec from Phase 7.
 
 ## Evidence .docx
 
@@ -206,18 +215,18 @@ Reporting rule for the final handoff: PASS / BLOCKED / FAIL are three separate b
 - Per-TC section (new page): heading, status, error if any, every step with heading + timestamp + notes + embedded screenshot
 - If `verification.json` exists for that TC: a "Post-test Verification" subsection listing every check, its owner (SQL/automated or manual/user), the SQL or tool + instructions, actual versus expected, and pass/fail/pending, so a UI-green/DB-wrong result — or an unconfirmed manual check — stays visible in the audit trail
 
-Rebuild after re-running — cheap, safe to call again.
+When evidence reporting is in scope, rebuild after re-running.
 
 ## Final handoff
 
-Because this phase may also run in a fresh chat, leave a complete result on disk and in the final response:
+Report the actual outcome and leave generated results intact; do not manufacture artifacts outside scope:
 
-- Keep `manifest.json`, screenshots, data, fixture, trace, and `verification.json` artifacts under `<TEST_FOLDER>/tests/<PROGRAM>/test-results/<connectionId>/<TC-ID>/`.
-- Rebuild the aggregated evidence report after the selected run set is complete.
-- Report `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, every selected TC-ID and pass/fail/blocked status, post-test verification status (including any manual checks still pending user confirmation, with the tool for each), and the absolute report path.
+- Default reusable suites retain their manifests, screenshots, data, fixtures, verification files, and aggregated report. Preserve runtime trace paths as returned by the tool.
+- Reduced scope requires no case/index/findings/screens artifacts or `.docx`; automatic runtime artifacts may still be generated. Report requested checks, skipped workflow checks, and actual pass/fail/blocked outcomes.
+- Report `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, selected spec IDs, verification actually performed, pending manual checks if applicable, and any generated report path.
 - For each failure, classify the required remediation as `analyze-and-plan`, `explore-ui`, `design-cases`, `define-data`, `prepare-data`, `build-scripts`, runtime/environment, or product defect. Persist the diagnosis in an artifact or repeat it in the handoff so a new chat can act on it.
 
-> **Say after the handoff is complete:** "Step 5 completed. Evidence: every selected case has a final status and diagnosis, and the report path was handed off. Phase 7 completed. Next: follow the identified remediation workflow or archive the evidence."
+> Summarize executed checks and diagnoses without claiming full-suite completion or an evidence report when those were outside scope.
 
 ## Rules
 

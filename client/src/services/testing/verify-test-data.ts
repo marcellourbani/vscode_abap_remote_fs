@@ -27,7 +27,8 @@ export type VerifyResult = {
 export async function verifyTestDataUsage(
   testFolder: string,
   program: string,
-  tcId: string
+  tcId: string,
+  options: { skipWorkflowValidation?: boolean } = {}
 ): Promise<VerifyResult> {
   const specPath = path.resolve(testFolder, "tests", program, "test-scripts", `${tcId}.spec.ts`)
   const dataMdPath = path.resolve(testFolder, "tests", program, "test-cases", `${tcId}.data.md`)
@@ -39,7 +40,9 @@ export async function verifyTestDataUsage(
 
   const tcMdPath = path.resolve(testFolder, "tests", program, "test-cases", `${tcId}.md`)
   const tcMdContent = await fs.readFile(tcMdPath, "utf8").catch(() => "")
-  const verificationError = sqlVerificationGateError(tcId, tcMdContent, specContent)
+  const verificationError = options.skipWorkflowValidation
+    ? undefined
+    : sqlVerificationGateError(tcId, tcMdContent, specContent)
   if (verificationError) {
     return {
       ok: false,
@@ -71,7 +74,9 @@ export async function verifyTestDataUsage(
       skipped: true,
       usedNotDeclared: [],
       declaredNotUsed: [],
-      messages: [`${tcId} needs no test data (no .data.md, spec doesn't call resolveTestData).`]
+      messages: [
+        `${tcId} uses no managed test-data sidecar (no .data.md, spec doesn't call resolveTestData); inline inputs are not validated by this check.`
+      ]
     }
   }
 

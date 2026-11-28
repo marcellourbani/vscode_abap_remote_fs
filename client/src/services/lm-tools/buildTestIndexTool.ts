@@ -10,16 +10,19 @@ import { assertToolInvocationAuthorized } from "./toolGuard"
 import { getTestFolder } from "../testing/config"
 import { buildTestIndex } from "../testing/build-index"
 import { buildTestIndexDocx } from "../testing/build-index-docx"
+import { type TestingWorkflowOverride, workflowBypassNotice } from "./testingWorkflowOverride"
 
-export interface IBuildTestIndexParameters {
+export interface IBuildTestIndexParameters extends TestingWorkflowOverride {
   program: string
-  sourceSnapshot: string
-  reviewerConfirmation: string
+  sourceSnapshot?: string
+  reviewerConfirmation?: string
 }
 
 /**
- * The exact sentence the model must pass in `reviewerConfirmation` before the index
- * will build. This is a behavioral gate, not a data field: the tool does nothing with
+ * The exact sentence required in `reviewerConfirmation` by default before the index
+ * will build. Explicit workflow overrides skip this certification, source snapshot
+ * validation and SE16N workflow requirements, not case-format validation.
+ * This is a behavioral gate, not a data field: the tool does nothing with
  * the value except verify the model actually typed it, which it can only truthfully do
  * AFTER it has delegated to the sap-test-plan-reviewer agent and received a PASS. It is
  * the cheapest reliable way to stop the reviewer step from being silently skipped.
@@ -45,6 +48,10 @@ export class BuildTestIndexTool implements vscode.LanguageModelTool<IBuildTestIn
     assertToolInvocationAuthorized(options)
     logTelemetry("tool_build_test_index_called")
 
+    const bypassNotice = workflowBypassNotice(
+      options.input,
+      "reviewer confirmation, source snapshot validation and SQL/mixed se16nTables requirements"
+    )
     const testFolder = getTestFolder()
     if (!testFolder) {
       throw new Error(
@@ -53,8 +60,9 @@ export class BuildTestIndexTool implements vscode.LanguageModelTool<IBuildTestIn
     }
 
     if (
+      !bypassNotice &&
       normalizeConfirmation(options.input.reviewerConfirmation) !==
-      normalizeConfirmation(REQUIRED_REVIEWER_CONFIRMATION)
+        normalizeConfirmation(REQUIRED_REVIEWER_CONFIRMATION)
     ) {
       throw new Error(
         "abapfs_build_test_index is blocked: the mandatory 'reviewerConfirmation' field was " +
@@ -67,14 +75,16 @@ export class BuildTestIndexTool implements vscode.LanguageModelTool<IBuildTestIn
     const result = await buildTestIndex(
       testFolder,
       options.input.program,
-      options.input.sourceSnapshot
+      options.input.sourceSnapshot,
+      { skipWorkflowValidation: !!bypassNotice }
     )
     const docxPath = await buildTestIndexDocx(testFolder, options.input.program)
     const lines = [
+      ...(bypassNotice ? [bypassNotice] : []),
       `Wrote ${result.indexPath}`,
       `Wrote ${docxPath}`,
-      `Recorded analyzedOn: ${result.analyzedOn}`,
-      `Recorded sourceSnapshot: ${result.sourceSnapshot}`,
+      `Recorded analyzedOn: ${result.analyzedOn || "not certified"}${bypassNotice && result.analyzedOn ? " (historical; not revalidated)" : ""}`,
+      `Recorded sourceSnapshot: ${result.sourceSnapshot || "none"}${bypassNotice ? " (not verified by this rebuild)" : ""}`,
       `${result.caseCount} case(s) — runnable: ${result.counts.runnable}, manual: ${result.counts.manual}, blocked: ${result.counts.blocked}, runnable-elsewhere: ${result.counts.elsewhere}`,
       ...result.warnings.map(w => `WARNING: ${w}`)
     ]
